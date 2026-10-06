@@ -58,7 +58,7 @@ public record ArcPath(List<Keyframe> keyframes) {
         return switch (type) {
             case SLASH -> horizontal(140);
             case OVERHEAD -> vertical();
-            case STAB -> thrust();
+            case STAB, JAB -> thrust();
             case KICK, THROW -> kick();
             case SPECIAL -> thrust();
         };

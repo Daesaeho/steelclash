@@ -6,9 +6,10 @@ First public beta.
 - Chivalry 2 controls by default (one slash key whose side alternates or follows your turn; right click parries), or a two-slash-key scheme with a key for each side; optional, customizable mouse-gesture attacks with an optional view lock.
 - Directional attacks (slashes from either side, overhead, stab), each with a windup, release and recovery, traced as a swept blade along a real arc.
 - Accels and drags: turning during a swing moves where it connects, under a Chivalry 2 style turn cap (360°/s during windup and release). Bots accel and drag too. Optionally, strafing picks the swing side.
-- Chivalry 2 footwork and sustain: slower movement while attacking, parrying or staggered and when backpedalling; ducking under level slashes; health regeneration after a few seconds out of combat.
+- Chivalry 2 footwork and sustain: slower movement while attacking, parrying or staggered and when backpedalling; ducking under level slashes; health regeneration after six seconds out of combat (attacking or guarding counts as combat), up to 40% of max health.
 - Heavies, feints, morphs, combos, flinch, heavy hyper armour, counters (answer an attack with the same type).
-- Weapon parries with ripostes, a parry cone, and one parry catching several hits. Shields block in a cone (tower shields stop arrows from the front only).
+- Held weapon block (Chivalry 2): the guard stays up while held and drains stamina slowly; timed parries remain as an option (`blockMode`). Ripostes and counters carry an active parry against other frontal hits. Parry forgiveness turns a last-moment wrong counter into a block. Parry cone, one guard catching several hits. Shields block in a cone (tower shields stop arrows from the front only).
+- Dodge (dash in the direction you move, 12 stamina, abandons a windup or guard) and jab (a quick, short interrupt; bots jab your heavies).
 - Stamina: attacking, parrying and blocking cost it. Parrying with none left disarms you (or holsters the weapon, in config).
 - Kick and shield bash, environment clanks, sprint lunges, jump attacks, weapon specials (lunge, slam, sweep), throwing any weapon, a mounted lance charge, and cut/blunt/chop damage types against armour.
 - 12 weapon archetypes; Spartan Weaponry weapons map onto them automatically.

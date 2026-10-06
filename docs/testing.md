@@ -33,7 +33,7 @@ Use **survival** for stamina (creative works too). Get a **Training Dummy Spawn 
 
 | # | Check | Expected |
 |---|---|---|
-| 1 | Sword in hand: right-click (hold) | Weapon parry raises (`/steelclash_debug`: blue). It drops by itself after ~0.6 s, or when you let go. |
+| 1 | Sword in hand: right-click (hold) | Weapon parry raises (`/steelclash_debug`: blue). Since the held block (2026-10-07) it stays up until you let go; with `blockMode = TIMED` it drops by itself after ~0.6 s. |
 | 2 | Dummy in **Attack** mode: parry its slash on time | No damage, sparks plus an anvil "clank". Its arm snaps back (staggered, magenta). Your stamina bar under the crosshair flashes **white** = riposte ready. |
 | 3 | Attack right after a successful parry | Noticeably faster windup (riposte). |
 | 4 | Parry too early, or stand beside/behind the dummy's swing | You get hit. |
@@ -259,7 +259,7 @@ Sword, dummy in Parry mode, then Attack mode; `/steelclash_debug` on.
 | 2 | Walk backwards holding a sword, then with an empty hand | Slower with the sword (80%), normal without. |
 | 3 | Dummy in Attack mode: crouch as its slash comes | The level slash passes over you. |
 | 4 | Second player (or a footman) slashes while you crouch, then looks down and slashes | The level slash misses; aimed low, it hits. Overheads always hit. |
-| 5 | Take some damage, then step away | After about 5 s health refills at half a heart per second, even when hungry. `healthRegen = false` turns it off. |
+| 5 | Take some damage, then step away | After about 6 s health refills at half a heart per second, even when hungry, and stops at 40% (8 health). `healthRegen = false` turns it off. |
 
 ## Player Animation Library parity (added 2026-10-06)
 The swing animations now run on Player Animation Library instead of playerAnimator. They should look **the same as before**. A pixel comparison with the pose sheet confirmed this for third person and nearly so for first person (docs/spikes.md); these checks cover what screenshots can't (motion, other players, reload).
@@ -272,3 +272,28 @@ The swing animations now run on Player Animation Library instead of playerAnimat
 | 4 | Second player (runClient2) watching you | Your swings animate for them too. |
 | 5 | F3+T | Pose clips still reload. |
 | 6 | Mobs swinging | Unchanged (they don't use PAL). |
+
+## Animation steps C–E: weapon rig, first person, archetype clips (added 2026-10-07)
+Checked on pose sheets already (docs/spikes.md); these cover motion and what the pose sheet can't photograph.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Third person, slow-motion feel: slash both ways with a sword | The body winds up, steps and follows through; the blade still runs along the red debug line (`/steelclash_debug`). |
+| 2 | First person: overhead and parry with a two-handed sword | Both hands on the hilt, the weapon clearly in view, arms not filling the screen. |
+| 3 | Halberd / quarterstaff in both views | Hands spread along the shaft. |
+| 4 | Watch an armed zombie or footman swing (third person) | Torso twists a little (half the player's), arms stay attached; two-handed mobs hold the grip with both hands. |
+| 5 | F3+T after editing a clip or `grip_gap` | Reloads. |
+
+## Chivalry 2 defence and movement (step F, added 2026-10-07)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Hold right-click with a sword for several seconds | The guard stays up; stamina drains slowly (about 4/s) and doesn't regenerate until you let go. |
+| 2 | Block a dummy's slash, then attack | Fast riposte. Have a second dummy (Attack mode) swing at you during the riposte: it's parried too (active parry). |
+| 3 | Two Attack dummies: counter one with the same attack | Countered; the second one's hit during your swing is parried. |
+| 4 | Hold block, and press stab just as a slash arrives | Blocked anyway (parry forgiveness), not hit. Pressing it earlier gets you hit. |
+| 5 | Left Alt standing still / holding A / mid-windup | Short dash backwards / left; a windup is abandoned. 12 stamina; a second dodge within 1 s doesn't happen. Not during a swing's release or a stagger. |
+| 6 | V next to an Attack dummy winding up | Quick short thrust; it interrupts the dummy. Light damage. X (feint) and right-click don't cancel it. |
+| 7 | Hard difficulty footman: wind up heavies up close | It sometimes jabs you out of them. |
+| 8 | Fight, then step away hurt | Regeneration waits 6 s after your last swing or block, not just after your last hit, and stops at 40%. |
+| 9 | `blockMode = "TIMED"` | The old parry: drops by itself after ~0.6 s. |

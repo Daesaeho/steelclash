@@ -46,6 +46,10 @@ public final class ClashBrain {
     /** Start swinging this far inside full reach, so the blade actually arrives. */
     private static final double REACH_MARGIN = 0.3;
     private static final double KICK_RANGE = 1.8;
+    /** A jab reaches about 2.2 blocks. */
+    private static final double JAB_RANGE = 2.1;
+    /** The heavy must still be this far from releasing for the jab (5-tick windup) to get in first. */
+    private static final int JAB_LEAD_TICKS = 6;
     /** How far a bot turns its head over a release to accel or drag a slash. */
     private static final double TRICK_DEGREES = 50;
 
@@ -127,13 +131,14 @@ public final class ClashBrain {
             if (brain.answeredAttacker != attacker.getId() || brain.answeredSerial != incoming.attackSerial()) {
                 brain.answeredAttacker = attacker.getId();
                 brain.answeredSerial = incoming.attackSerial();
-                brain.answer = decide(mob.getRandom(), brain, skill, incoming.type(), hasShield(mob));
+                boolean heavyUpClose = incoming.isHeavy() && mob.distanceTo(attacker) <= JAB_RANGE;
+                brain.answer = decide(mob.getRandom(), brain, skill, incoming.type(), hasShield(mob), heavyUpClose);
                 if (brain.answer == BrainState.Answer.NONE && mob.getRandom().nextDouble() < BotStyles.of(mob).evadeChance()) {
                     brain.evadeUntil = mob.tickCount + 10; // won't parry this one: step out of reach instead
                 }
             }
             // Carrying a shield: raise it as soon as the windup has been read (a shield needs 5 ticks to come up).
-            if (hasShield(mob) && brain.answer != BrainState.Answer.NONE && brain.answer != BrainState.Answer.COUNTER) {
+            if (hasShield(mob) && (brain.answer == BrainState.Answer.PARRY || brain.answer == BrainState.Answer.LATE_PARRY)) {
                 if (skill.canReact(incoming.phaseTick()) && freeToDefend(mob, data, incoming)) {
                     if (!mob.isUsingItem()) {
                         mob.startUsingItem(InteractionHand.OFF_HAND);
@@ -144,6 +149,17 @@ public final class ClashBrain {
                 return;
             }
             switch (brain.answer) {
+                case JAB -> {
+                    // Get the jab in before the heavy lands; too late and it's better to just defend next time.
+                    if (incoming.phase() == Phase.WINDUP && incoming.ticksLeftInPhase() > JAB_LEAD_TICKS
+                            && skill.canReact(incoming.phaseTick()) && data.machine.canStartAttack()
+                            && mob.distanceTo(attacker) <= JAB_RANGE) {
+                        Combat.requestAttack(mob, AttackType.JAB);
+                        brain.answer = BrainState.Answer.NONE;
+                    } else if (incoming.phase() != Phase.WINDUP) {
+                        brain.answer = BrainState.Answer.NONE;
+                    }
+                }
                 case COUNTER -> {
                     // Start the same attack shortly before theirs lands; the counter window does the rest.
                     if (incoming.phase() == Phase.WINDUP && incoming.ticksLeftInPhase() <= 5 && data.machine.canStartAttack()) {
@@ -180,9 +196,13 @@ public final class ClashBrain {
     }
 
     private static BrainState.Answer decide(RandomSource random, BrainState brain, BotSkill skill, AttackType incomingType,
-                                            boolean shield) {
+                                            boolean shield, boolean heavyUpClose) {
         if (incomingType == AttackType.KICK) {
             return BrainState.Answer.NONE; // kicks can't be parried
+        }
+        // A slow heavy right in front of you: interrupt it (Chivalry 2 jab). Skilled bots read it more often.
+        if (heavyUpClose && random.nextDouble() < skill.counterChance() * 0.6) {
+            return BrainState.Answer.JAB;
         }
         if (incomingType == brain.memory.habit() && random.nextDouble() < skill.counterChance()) {
             return BrainState.Answer.COUNTER;

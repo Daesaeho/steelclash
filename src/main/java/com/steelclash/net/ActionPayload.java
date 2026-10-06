@@ -2,6 +2,7 @@ package com.steelclash.net;
 
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
+import com.steelclash.combat.Dodge;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -13,7 +14,9 @@ public record ActionPayload(Action action) implements CustomPacketPayload {
     public enum Action {
         /** The attack input is still held: make it a heavy. */
         HEAVY,
-        FEINT
+        FEINT,
+        /** The player dodged (they've already moved themselves): pay for it, cancel a windup or guard. */
+        DODGE
     }
 
     public static final Type<ActionPayload> TYPE = new Type<>(SteelClash.id("action"));
@@ -36,6 +39,7 @@ public record ActionPayload(Action action) implements CustomPacketPayload {
             switch (payload.action()) {
                 case HEAVY -> Combat.requestHeavy(player);
                 case FEINT -> Combat.requestFeint(player);
+                case DODGE -> Dodge.request(player);
             }
         });
     }

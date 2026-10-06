@@ -13,6 +13,13 @@ public class Config {
         HOLSTER
     }
 
+    public enum BlockMode {
+        /** Chivalry 2: the guard stays up while the parry key is held, draining stamina slowly. */
+        HELD,
+        /** The guard stays up for the weapon's parry_ticks at most, then drops (timing-based parrying). */
+        TIMED
+    }
+
     public static final ModConfigSpec.EnumValue<DisarmMode> DISARM_MODE = BUILDER
             .comment("What happens when a parry is made with no stamina left")
             .defineEnum("disarmMode", DisarmMode.DROP);
@@ -48,6 +55,27 @@ public class Config {
             .comment("After a parry ends (caught an attack, released, or timed out), no new parry for this many ticks.",
                     "Stops parry spamming.")
             .defineInRange("parryCooldownTicks", 5, 0, 100);
+    public static final ModConfigSpec.EnumValue<BlockMode> BLOCK_MODE = BUILDER
+            .comment("How a player's weapon parry works. HELD (Chivalry 2): the guard stays up while the key is held and",
+                    "drains stamina slowly. TIMED: it drops after the weapon's parry_ticks. Mobs always use timed parries.")
+            .defineEnum("blockMode", BlockMode.HELD);
+    public static final ModConfigSpec.DoubleValue HELD_BLOCK_DRAIN_PER_SECOND = BUILDER
+            .comment("Stamina drained per second while holding a weapon guard (HELD mode); stamina doesn't regenerate meanwhile")
+            .defineInRange("heldBlockDrainPerSecond", 4.0, 0.0, 100.0);
+    public static final ModConfigSpec.IntValue RIPOSTE_ACTIVE_PARRY_TICKS = BUILDER
+            .comment("Active parry: while a riposte winds up and swings, attacks from the front are parried automatically",
+                    "for this many ticks (Chivalry 2 lets you riposte through a second attacker)")
+            .defineInRange("riposteActiveParryTicks", 9, 0, 100);
+    public static final ModConfigSpec.IntValue COUNTER_ACTIVE_PARRY_TICKS = BUILDER
+            .comment("Active parry ticks after a successful counter")
+            .defineInRange("counterActiveParryTicks", 15, 0, 100);
+    public static final ModConfigSpec.IntValue ACTIVE_PARRY_EXTEND_TICKS = BUILDER
+            .comment("Each hit an active parry catches extends it by this many ticks")
+            .defineInRange("activeParryExtendTicks", 2, 0, 100);
+    public static final ModConfigSpec.IntValue PARRY_FORGIVENESS_TICKS = BUILDER
+            .comment("Parry forgiveness: an attack started from the guard (a counter attempt of the wrong type, or too",
+                    "late) this many ticks or fewer before a hit lands falls back to a block instead of getting you hit")
+            .defineInRange("parryForgivenessTicks", 2, 0, 20);
     public static final ModConfigSpec.IntValue PARRIED_STAGGER_TICKS = BUILDER
             .comment("How long an attacker is staggered after being parried (they may still parry the riposte)")
             .defineInRange("parriedStaggerTicks", 14, 1, 100);
@@ -89,6 +117,24 @@ public class Config {
     public static final ModConfigSpec.DoubleValue PARRY_CANCEL_STAMINA_COST = BUILDER
             .comment("Cancelling a windup straight into a parry")
             .defineInRange("parryCancelStaminaCost", 10.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue DODGE_STAMINA_COST = BUILDER
+            .comment("Stamina a dodge costs (Chivalry 2: 12); you can't dodge with less")
+            .defineInRange("dodgeStaminaCost", 12.0, 0.0, 1000.0);
+    public static final ModConfigSpec.IntValue DODGE_COOLDOWN_TICKS = BUILDER
+            .comment("Ticks between dodges")
+            .defineInRange("dodgeCooldownTicks", 20, 0, 400);
+    public static final ModConfigSpec.DoubleValue DODGE_SPEED = BUILDER
+            .comment("Dodge burst speed in blocks per tick (about 2.2 blocks travelled per 1.0 on flat ground)")
+            .defineInRange("dodgeSpeed", 1.1, 0.0, 5.0);
+    public static final ModConfigSpec.DoubleValue JAB_DAMAGE_MULT = BUILDER
+            .comment("Jab damage as a fraction of the weapon's attack damage (Chivalry 2: about a tenth of a life bar)")
+            .defineInRange("jabDamageMult", 0.25, 0.0, 10.0);
+    public static final ModConfigSpec.DoubleValue JAB_STAMINA_COST = BUILDER
+            .comment("Stamina spent on a jab")
+            .defineInRange("jabStaminaCost", 6.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue JAB_STAMINA_DAMAGE = BUILDER
+            .comment("Stamina a parried jab costs the defender")
+            .defineInRange("jabStaminaDamage", 8.0, 0.0, 1000.0);
     public static final ModConfigSpec.DoubleValue KICK_STAMINA_COST = BUILDER
             .comment("Stamina spent on a kick or shield bash")
             .defineInRange("kickStaminaCost", 10.0, 0.0, 1000.0);
@@ -240,11 +286,14 @@ public class Config {
     }
 
     public static final ModConfigSpec.BooleanValue HEALTH_REGEN = BUILDER
-            .comment("Players regenerate health a few seconds after they last took damage (Chivalry 2), independent of food")
+            .comment("Players regenerate health a few seconds out of combat (Chivalry 2), independent of food")
             .define("healthRegen", true);
     public static final ModConfigSpec.IntValue HEALTH_REGEN_DELAY_TICKS = BUILDER
-            .comment("Ticks without taking damage before health starts coming back")
-            .defineInRange("healthRegenDelayTicks", 100, 0, 6000);
+            .comment("Ticks out of combat (not hurt, attacking or guarding) before health starts coming back")
+            .defineInRange("healthRegenDelayTicks", 120, 0, 6000);
+    public static final ModConfigSpec.DoubleValue HEALTH_REGEN_CAP = BUILDER
+            .comment("Regeneration stops at this fraction of max health (Chivalry 2: about 0.4; 1 = all the way)")
+            .defineInRange("healthRegenCap", 0.4, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue HEALTH_REGEN_PER_SECOND = BUILDER
             .comment("Health regained per second once it starts (20 = a full vanilla health bar)")
             .defineInRange("healthRegenPerSecond", 1.0, 0.0, 100.0);

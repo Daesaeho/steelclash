@@ -42,9 +42,12 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 
 ## Defending
 
-- **Parry** (right mouse; middle mouse in `TWO_SLASH_KEYS`): raise your guard just before the blade lands. Each weapon has its own parry cone, so attacks from behind get through. One parry can catch several hits. After a parry there's a short delay before you can raise it again.
-- **Riposte:** attack right after a successful parry and your attack winds up much faster.
-- **Counter:** answer an attack with the **same** attack type, started just after theirs. Their attack is parried and yours lands first.
+- **Block** (right mouse; middle mouse in `TWO_SLASH_KEYS`): hold it and your weapon guard stays up, as in Chivalry 2. Holding it drains about 4 stamina a second, and stamina doesn't regenerate meanwhile, so don't turtle. Each weapon has its own parry cone, so attacks from behind get through. One guard can catch several hits. After lowering it there's a short delay before you can raise it again. If you prefer timing-based parries, set `blockMode = "TIMED"` in the common config: the guard then drops on its own after a moment. Mobs always parry that way.
+- **Riposte:** attack after blocking a hit and your attack winds up much faster. While it winds up and swings, it also parries anyone else hitting your front (**active parry**). That's how you fight two at once.
+- **Counter:** answer an attack with the **same** attack type, started just after theirs (from your guard or not). Their attack is parried, yours lands first, and it carries an active parry too.
+- **Parry forgiveness:** attack out of your guard with the wrong type, or too late, in the last tenth of a second before a hit lands, and you still block it instead of getting hit.
+- **Dodge** (Left Alt): a quick dash in the direction you're moving, or backwards when standing still. It costs 12 stamina, has a one-second cooldown, and drops a windup or a raised guard. You can't dodge out of a swing that's already coming down, or while staggered. Dodging a swing makes it whiff, leaving the attacker in recovery.
+- **Jab** (V): a quick, short thrust for a quarter of your weapon's damage. Use it to interrupt a slow heavy up close. It can be parried, and it can't be feinted, made heavy or cancelled. Some mobs jab your heavies too.
 - **Shields:** with a shield in your offhand, the parry key raises it. Shields hold for as long as you keep the key down, but every block costs stamina. Tower shields (Spartan Shields) cover more and stop arrows from the front only.
 - **Kick / shield bash** (Z): can't be parried. It breaks a raised parry or shield and staggers the target. Use it on turtles.
 
@@ -62,7 +65,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 
   Shields use vanilla's own item-use slowdown. Position yourself *before* you swing.
 - **Duck under slashes:** crouch and you only count about one block tall to blades, so level slashes pass over you. Overheads, kicks and slashes aimed downward still hit. An attacker who sees you duck can look down and catch you.
-- **Health regeneration:** after 5 seconds without taking damage, your health comes back at half a heart per second, whatever your hunger. Disengage to recover.
+- **Health regeneration:** after 6 seconds out of combat (not hurt, attacking, guarding or blocking), your health comes back at half a heart per second, whatever your hunger, up to 40% of your max health (as in Chivalry 2; `healthRegenCap` in the config). Disengage to recover. Food still heals you the vanilla way.
 
 All of this is in the `movement` and `health` sections of the common config.
 

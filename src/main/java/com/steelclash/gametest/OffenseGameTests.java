@@ -137,6 +137,50 @@ public final class OffenseGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void jabInterruptsAWindup(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.OVERHEAD);
+        swing(player, AttackType.JAB);
+        check(helper, isHurt(dummy), "the jab should land");
+        check(helper, data(dummy).machine.phase() == Phase.STAGGER, "the jab interrupts the windup");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void jabIsQuickAndLight(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy jabbed = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        swing(player, AttackType.JAB);
+        float jabDamage = jabbed.getMaxHealth() - jabbed.getHealth();
+        jabbed.discard();
+        TrainingDummy slashed = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        swing(player, AttackType.SLASH);
+        float slashDamage = slashed.getMaxHealth() - slashed.getHealth();
+        check(helper, jabDamage > 0 && jabDamage < slashDamage * 0.5f, "jab " + jabDamage + " vs slash " + slashDamage);
+        CombatData d = data(player);
+        Combat.start(player, d, AttackType.JAB);
+        int jabWindup = d.machine.timings().windup();
+        check(helper, !Combat.feint(player, d), "a jab can't be feinted");
+        check(helper, !Combat.makeHeavy(player, d), "or made heavy");
+        check(helper, !Combat.startParry(player, d), "or cancelled into a parry");
+        d.machine.cancel();
+        Combat.start(player, d, AttackType.SLASH);
+        check(helper, jabWindup < d.machine.timings().windup(), "a jab winds up faster than a slash");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void jabCanBeParried(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestParry(dummy);
+        swing(player, AttackType.JAB);
+        check(helper, !isHurt(dummy), "a parried jab doesn't hurt");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void heavyHyperArmorIgnoresFlinch(GameTestHelper helper) {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);

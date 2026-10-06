@@ -13,8 +13,10 @@ import static com.steelclash.gametest.TestSupport.swordsman;
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
+import com.steelclash.combat.Dodge;
 import com.steelclash.combat.HealthRegen;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -23,6 +25,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -82,18 +85,71 @@ public final class FootworkGameTests {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         CombatData data = data(player);
         long now = helper.getLevel().getGameTime();
-        player.setHealth(10);
+        player.setHealth(5);
         data.lastHurtAt = now - 20; // hurt a second ago: still too soon
         for (int i = 0; i < 20; i++) {
             HealthRegen.tick(player, data);
         }
-        check(helper, player.getHealth() == 10, "no regeneration right after taking damage, health " + player.getHealth());
+        check(helper, player.getHealth() == 5, "no regeneration right after taking damage, health " + player.getHealth());
         data.lastHurtAt = now - 200; // ten seconds ago
         for (int i = 0; i < 20; i++) {
             HealthRegen.tick(player, data);
         }
-        check(helper, Math.abs(player.getHealth() - 11) < 0.01, "one health per second once regenerating, health " + player.getHealth());
+        check(helper, Math.abs(player.getHealth() - 6) < 0.01, "one health per second once regenerating, health " + player.getHealth());
+        for (int i = 0; i < 200; i++) {
+            HealthRegen.tick(player, data);
+        }
+        check(helper, Math.abs(player.getHealth() - 8) < 0.01, "regeneration stops at 40% (8 of 20), health " + player.getHealth());
         helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void fightingPausesHealthRegeneration(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData data = data(player);
+        player.setHealth(5);
+        data.lastHurtAt = helper.getLevel().getGameTime() - 200;
+        Combat.requestParry(player);
+        for (int i = 0; i < 20; i++) {
+            HealthRegen.tick(player, data);
+        }
+        check(helper, player.getHealth() == 5, "no regeneration while guarding, health " + player.getHealth());
+        Combat.releaseParry(player);
+        advance(player, 30); // the guard comes down
+        for (int i = 0; i < 20; i++) {
+            HealthRegen.tick(player, data);
+        }
+        check(helper, player.getHealth() == 5, "still none just after the fight, health " + player.getHealth());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA, timeoutTicks = 60)
+    public static void dodgeCostsStaminaCancelsAWindupAndHasACooldown(GameTestHelper helper) {
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        helper.runAfterDelay(5, () -> { // let it settle onto the floor
+            CombatData d = data(dummy);
+            check(helper, dummy.onGround(), "the dummy should be standing on the floor");
+            Combat.start(dummy, d, AttackType.SLASH);
+            float before = d.stamina.current();
+            check(helper, Dodge.perform(dummy, d), "a dodge during a windup is allowed");
+            check(helper, d.machine.phase() == Phase.IDLE, "the dodge abandons the windup, phase " + d.machine.phase());
+            check(helper, Math.abs(before - d.stamina.current() - 12) < 0.01, "a dodge costs 12 stamina");
+            check(helper, !Dodge.canDodge(dummy, d), "no second dodge straight away");
+            d.dodgeReadyAt = 0;
+            Combat.start(dummy, d, AttackType.SLASH);
+            while (d.machine.phase() == Phase.WINDUP) {
+                d.machine.tick();
+            }
+            check(helper, !Dodge.canDodge(dummy, d), "no dodging out of a swing in its release");
+            d.machine.cancel();
+            d.stamina.set(5);
+            check(helper, !Dodge.canDodge(dummy, d), "no dodging without the stamina for it");
+            Vec3 back = Dodge.velocity(0, 0, 0);
+            check(helper, back.z < 0 && Math.abs(back.x) < 1e-6, "standing still dodges backwards (yaw 0 faces +Z), got " + back);
+            Vec3 left = Dodge.velocity(0, 1, 0);
+            check(helper, left.x > 0 && Math.abs(left.z) < 1e-6, "strafing left at yaw 0 goes toward +X, got " + left);
+            helper.succeed();
+        });
     }
 
     /** A fixed variant so the arc height is known: variant 0 passes level through the middle of the swing. */

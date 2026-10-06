@@ -10,6 +10,7 @@ import com.steelclash.net.CombatStatePayload;
 import com.steelclash.net.StaminaPayload;
 import com.steelclash.core.DamageType;
 import com.steelclash.entity.ThrownWeapon;
+import com.steelclash.profile.Jabs;
 import com.steelclash.profile.Kicks;
 import com.steelclash.profile.Throws;
 import com.steelclash.profile.WeaponProfile;
@@ -55,6 +56,8 @@ public final class Combat {
         AttackTimings timings;
         if (type == AttackType.KICK) {
             timings = Kicks.forEntity(entity).timings();
+        } else if (type == AttackType.JAB) {
+            timings = Jabs.spec().timings();
         } else if (type == AttackType.THROW) {
             if (resolved.isEmpty() || entity.getMainHandItem().isEmpty()) {
                 return false; // throw what you're fighting with
@@ -77,12 +80,16 @@ public final class Combat {
                         timings.release(), timings.recovery());
             }
         }
-        if (type == AttackType.KICK || type == AttackType.THROW) {
+        if (type == AttackType.KICK || type == AttackType.THROW || type == AttackType.JAB) {
             variant = 0;
             mirrored = false;
         }
+        boolean riposte = data.machine.isRiposteReady() && isWeaponAttack(type);
         if (!data.machine.startAttack(type, timings, variant, mirrored)) {
             return false;
+        }
+        if (riposte) {
+            data.machine.startActiveParry(Config.RIPOSTE_ACTIVE_PARRY_TICKS.get());
         }
         if (type == AttackType.SPECIAL) {
             data.specialReadyAt = entity.level().getGameTime()
@@ -91,7 +98,7 @@ public final class Combat {
         data.profileKey = resolved.map(WeaponProfiles.Resolved::key).orElse(null);
         data.weapon = entity.getMainHandItem().copy();
         data.queuedAttack = null;
-        data.lunge = type != AttackType.KICK && entity.isSprinting();
+        data.lunge = type != AttackType.KICK && type != AttackType.JAB && entity.isSprinting();
         data.jumpAttack = type == AttackType.OVERHEAD && !entity.onGround();
         data.resetSwing();
         data.prevYaw = CombatMath.viewYaw(entity);
@@ -104,7 +111,7 @@ public final class Combat {
     public static boolean makeHeavy(LivingEntity entity, CombatData data) {
         AttackType current = data.machine.type();
         if (data.machine.phase() != Phase.WINDUP || current == AttackType.KICK || current == AttackType.THROW
-                || current == AttackType.SPECIAL) {
+                || current == AttackType.SPECIAL || current == AttackType.JAB) {
             return false;
         }
         Optional<WeaponProfile> profile = currentProfile(entity, data);
@@ -116,7 +123,8 @@ public final class Combat {
     }
 
     public static boolean feint(LivingEntity entity, CombatData data) {
-        if (data.machine.type() == AttackType.KICK || !data.machine.feint()) {
+        // Kicks and jabs can't be cancelled (Chivalry 2 2.2).
+        if (data.machine.type() == AttackType.KICK || data.machine.type() == AttackType.JAB || !data.machine.feint()) {
             return false;
         }
         spend(entity, data, Config.FEINT_STAMINA_COST.get());
@@ -151,11 +159,14 @@ public final class Combat {
         if (guard.isEmpty()) {
             return false;
         }
+        if (data.machine.phase() == Phase.WINDUP && data.machine.type() == AttackType.JAB) {
+            return false; // a jab is committed
+        }
         boolean parryCancel = data.machine.phase() == Phase.WINDUP && data.machine.type() != AttackType.KICK;
         if (parryCancel) {
             data.machine.feint();
         }
-        if (!data.machine.startParry(guard.get().parryTicks(), guard.get().recovery(), Config.PARRY_COOLDOWN_TICKS.get())) {
+        if (!data.machine.startParry(parryTicks(entity, guard.get()), guard.get().recovery(), Config.PARRY_COOLDOWN_TICKS.get())) {
             return false;
         }
         if (parryCancel) {
@@ -166,6 +177,19 @@ public final class Combat {
         data.queuedAttack = null;
         return true;
     }
+
+    /** Held block (players, HELD mode): the guard stays up until the key is let go. Timed otherwise. */
+    static int parryTicks(LivingEntity entity, WeaponProfile.GuardSpec guard) {
+        return heldBlock(entity) ? HELD_GUARD_TICKS : guard.parryTicks();
+    }
+
+    /** Whether this fighter's weapon guard is held (drains stamina) rather than timed. */
+    public static boolean heldBlock(LivingEntity entity) {
+        return entity instanceof Player && Config.BLOCK_MODE.get() == Config.BlockMode.HELD;
+    }
+
+    /** A held guard's length: effectively until the key is released (an hour, so a stuck key can't last forever). */
+    private static final int HELD_GUARD_TICKS = 20 * 60 * 60;
 
     // ---------------------------------------------------------------- server entry points
 
@@ -243,6 +267,10 @@ public final class Combat {
 
     public static void tickServer(LivingEntity entity, CombatData data) {
         CombatMovement.update(entity, data);
+        if (data.machine.phase() == Phase.PARRY && heldBlock(entity)) {
+            // Holding a guard drains stamina slowly and keeps it from regenerating (Chivalry 2).
+            data.stamina.spend(Config.HELD_BLOCK_DRAIN_PER_SECOND.get().floatValue() / 20f);
+        }
         data.stamina.tick(Config.STAMINA_REGEN_PER_SECOND.get().floatValue() / 20f, Config.STAMINA_REGEN_DELAY_TICKS.get());
         syncStaminaIfChanged(entity, data);
 
@@ -368,6 +396,9 @@ public final class Combat {
         }
         if (data.machine.type() == AttackType.THROW) {
             return Optional.of(Throws.spec());
+        }
+        if (data.machine.type() == AttackType.JAB) {
+            return Optional.of(Jabs.spec());
         }
         return currentProfile(entity, data).flatMap(profile -> profile.spec(data.machine.type()));
     }
@@ -553,6 +584,9 @@ public final class Combat {
     /** Telegraph: an audible cue at the start of every windup, so attacks from off-screen can still be read. */
     private static void onAttackStarted(LivingEntity entity, CombatData data) {
         Feedback.windup(entity);
+        if (data.machine.type() == AttackType.JAB) {
+            spend(entity, data, Config.JAB_STAMINA_COST.get());
+        }
         if (data.machine.type() == AttackType.KICK) {
             spend(entity, data, Config.KICK_STAMINA_COST.get());
             if (entity.isUsingItem()) {

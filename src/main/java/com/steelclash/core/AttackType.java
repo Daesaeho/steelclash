@@ -11,7 +11,9 @@ public enum AttackType {
     /** The weapon's special (lunge, slam or sweep), defined by its profile, on a cooldown. */
     SPECIAL,
     /** Built in: throw the held weapon. */
-    THROW;
+    THROW,
+    /** Built in: a quick, short thrust that interrupts at close range (Chivalry 2 jab). */
+    JAB;
 
     private static final AttackType[] VALUES = values();
 

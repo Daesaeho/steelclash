@@ -81,6 +81,7 @@ public final class EnemyTelegraphRenderer {
             case KICK -> "KICK";
             case SPECIAL -> "SPECIAL";
             case THROW -> "THROW";
+            case JAB -> "JAB";
         };
         return heavy ? "HEAVY " + name : name;
     }

@@ -45,7 +45,7 @@ public final class Defense {
         if (swing != null && tryCounter(defender, data, swing)) {
             return true;
         }
-        if (data.machine.phase() != Phase.PARRY || !(source.getEntity() instanceof LivingEntity attacker)) {
+        if (!(source.getEntity() instanceof LivingEntity attacker)) {
             return false;
         }
         boolean melee = swing != null || source.is(DamageTypes.PLAYER_ATTACK) || source.is(DamageTypes.MOB_ATTACK)
@@ -56,6 +56,16 @@ public final class Defense {
         Optional<WeaponProfile.GuardSpec> guard = Combat.currentProfile(defender, data).flatMap(WeaponProfile::guard);
         if (guard.isEmpty() || !Guard.inCone(CombatMath.viewYaw(defender), defender.getX(), defender.getZ(),
                 attacker.getX(), attacker.getZ(), guard.get().cone())) {
+            return false;
+        }
+        if (data.machine.isActiveParry()) {
+            activeParry(defender, data, attacker, swing, guard.get());
+            return true;
+        }
+        if (data.machine.forgiveIntoParry(Config.PARRY_FORGIVENESS_TICKS.get(), guard.get().recovery())) {
+            Combat.sync(defender, data, true); // the attack it started is gone: the guard is back up
+        }
+        if (data.machine.phase() != Phase.PARRY) {
             return false;
         }
 
@@ -92,11 +102,27 @@ public final class Defense {
             return false;
         }
         data.stamina.spend(swing.staminaDamage() * guard.get().staminaMult() * 0.5f);
-        data.machine.counter(Config.COUNTER_RELEASE_TICKS.get());
+        data.machine.counter(Config.COUNTER_RELEASE_TICKS.get(), Config.COUNTER_ACTIVE_PARRY_TICKS.get());
         Combat.sync(defender, data, true);
         Feedback.parry(defender, attacker);
         Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);
         return true;
+    }
+
+    /**
+     * Active parry (Chivalry 2): a riposte or counter in progress parries a frontal hit without stopping. The attacker
+     * is parried as usual; the defender pays the block's stamina but can't be disarmed by it, and the active parry
+     * lasts a little longer.
+     */
+    private static void activeParry(LivingEntity defender, CombatData data, LivingEntity attacker, @Nullable SwingContext.Active swing,
+                                    WeaponProfile.GuardSpec guard) {
+        float staminaDamage = swing != null ? swing.staminaDamage() : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
+        data.stamina.spend(staminaDamage * guard.staminaMult());
+        data.machine.extendActiveParry(Config.ACTIVE_PARRY_EXTEND_TICKS.get());
+        Feedback.parry(defender, attacker);
+        if (swing != null) {
+            Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);
+        }
     }
 
     /**

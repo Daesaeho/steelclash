@@ -9,10 +9,13 @@ import org.jetbrains.annotations.Nullable;
  *            WINDUP: feint → IDLE, morph → WINDUP (other type), heavy → longer WINDUP, counter → shorter WINDUP
  *            RECOVERY after a landed hit: attack again immediately (combo)
  * parry:   IDLE/RECOVERY → PARRY (catches any number of hits while up; each opens the riposte window)
- *                            → attack = riposte straight out of the guard
+ *                            → attack = riposte straight out of the guard (or, before a catch, a counter attempt)
  *                            → (release/timeout) IDLE if it caught something, else GUARD_RECOVERY → IDLE
  * stagger: any → STAGGER → IDLE   (parried, shield-blocked, flinched, kicked, clanked, guard broken)
  * </pre>
+ * Ripostes and counters carry an <em>active parry</em> for a few ticks: hits from the front are parried while the
+ * return attack winds up and swings. An attack started from the guard that is hit within the forgiveness window falls
+ * back into the guard ({@link #forgiveIntoParry}).
  * Ticked once per game tick on the server (authoritative) and on clients (for visuals and prediction). During
  * RELEASE each tick yields a {@link Sweep}: the slice of release progress the blade moved through that tick.
  */
@@ -44,9 +47,14 @@ public final class CombatStateMachine {
     private int variant;
     /** Swung from the other side (left to right). */
     private boolean mirrored;
+    /** Ticks of active parry left (riposte or counter); only counts while attacking. */
+    private int activeParryTicks;
+    /** The current attack was started out of a raised guard (a riposte or a counter attempt). */
+    private boolean fromGuard;
 
     public boolean canStartAttack() {
-        return phase == Phase.IDLE || (phase == Phase.RECOVERY && comboAllowed) || (phase == Phase.PARRY && riposteTicks > 0);
+        // From a raised guard: a riposte after catching a hit, otherwise a counter attempt that drops the guard.
+        return phase == Phase.IDLE || (phase == Phase.RECOVERY && comboAllowed) || phase == Phase.PARRY;
     }
 
     public boolean startAttack(AttackType attackType, AttackTimings attackTimings) {
@@ -57,6 +65,8 @@ public final class CombatStateMachine {
         if (!canStartAttack()) {
             return false;
         }
+        fromGuard = phase == Phase.PARRY;
+        activeParryTicks = 0;
         if (phase == Phase.PARRY) {
             parryCooldownLeft = parryCooldown; // riposting out of the guard ends the parry
         }
@@ -114,10 +124,58 @@ public final class CombatStateMachine {
 
     /** The windup countered an incoming attack: it releases after at most {@code ticksLeft} more ticks. */
     public boolean counter(int ticksLeft) {
+        return counter(ticksLeft, 0);
+    }
+
+    /** As {@link #counter(int)}, with an active parry of {@code activeParry} ticks for the rest of the swing. */
+    public boolean counter(int ticksLeft, int activeParry) {
         if (phase != Phase.WINDUP) {
             return false;
         }
         phaseDuration = Math.min(phaseDuration, phaseTick + Math.max(1, ticksLeft));
+        activeParryTicks = Math.max(activeParryTicks, activeParry);
+        return true;
+    }
+
+    /** Starts the active parry that comes with a riposte. */
+    public void startActiveParry(int ticks) {
+        if (isAttacking()) {
+            activeParryTicks = Math.max(activeParryTicks, ticks);
+        }
+    }
+
+    /** While attacking with an active parry: frontal hits are parried without dropping the attack. */
+    public boolean isActiveParry() {
+        return activeParryTicks > 0 && (phase == Phase.WINDUP || phase == Phase.RELEASE);
+    }
+
+    /** An active parry caught a hit: it lasts a little longer. */
+    public void extendActiveParry(int ticks) {
+        if (isActiveParry()) {
+            activeParryTicks += Math.max(0, ticks);
+        }
+    }
+
+    /** The current windup was started out of a raised guard (riposte or counter attempt). */
+    public boolean isFromGuard() {
+        return fromGuard && phase == Phase.WINDUP;
+    }
+
+    /**
+     * Parry forgiveness: an attack started from the guard is hit within {@code windowTicks} of starting. Instead of
+     * being hit, the fighter drops back into the guard (ignoring the parry cooldown), which then catches the hit.
+     *
+     * @return whether the guard is up again
+     */
+    public boolean forgiveIntoParry(int windowTicks, int recoveryTicks) {
+        if (!isFromGuard() || phaseTick > windowTicks) {
+            return false;
+        }
+        fromGuard = false;
+        activeParryTicks = 0;
+        guardRecovery = Math.max(1, recoveryTicks);
+        parriedHits = 0;
+        enter(Phase.PARRY, PARRY_HOLD_AFTER_HIT);
         return true;
     }
 
@@ -183,6 +241,7 @@ public final class CombatStateMachine {
     /** @param allowParry whether the staggered fighter may still parry (true after being parried, false on guard break) */
     public void stagger(int ticks, boolean allowParry) {
         riposteTicks = 0;
+        activeParryTicks = 0;
         staggerAllowsParry = allowParry;
         enter(Phase.STAGGER, Math.max(1, ticks));
     }
@@ -200,6 +259,9 @@ public final class CombatStateMachine {
     public Sweep tick() {
         if (parryCooldownLeft > 0) {
             parryCooldownLeft--;
+        }
+        if (activeParryTicks > 0) {
+            activeParryTicks = isAttacking() ? activeParryTicks - 1 : 0;
         }
         if ((phase == Phase.IDLE || phase == Phase.PARRY) && riposteTicks > 0) {
             riposteTicks--;

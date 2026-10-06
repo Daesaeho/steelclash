@@ -159,11 +159,59 @@ class CombatStateMachineTest {
     void ripostingStraightOutOfTheGuard() {
         CombatStateMachine m = new CombatStateMachine();
         m.startParry(12, 4, 5);
-        assertFalse(m.startAttack(AttackType.SLASH, TIMINGS), "can't attack out of a parry that caught nothing");
         m.parrySucceeded(10);
         assertTrue(m.startAttack(AttackType.SLASH, TIMINGS), "riposte out of the guard");
         assertEquals(Phase.WINDUP, m.phase());
+        assertTrue(m.isFromGuard());
         assertEquals(5, m.parryCooldownLeft(), "leaving the parry starts its cooldown");
+    }
+
+    @Test
+    void attackingFromAnEmptyGuardIsACounterAttempt() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(12, 4, 5);
+        assertTrue(m.startAttack(AttackType.SLASH, TIMINGS), "a counter attempt drops the guard");
+        assertFalse(m.isRiposteReady());
+        assertTrue(m.isFromGuard());
+    }
+
+    @Test
+    void forgivenessOnlyRightAfterAnAttackFromTheGuard() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        assertFalse(m.forgiveIntoParry(2, 4), "an attack from neutral isn't forgiven");
+        m.cancel();
+        m.startParry(12, 4, 0);
+        m.startAttack(AttackType.OVERHEAD, TIMINGS);
+        m.tick();
+        m.tick();
+        m.tick();
+        assertFalse(m.forgiveIntoParry(2, 4), "three ticks in is too late");
+        m.cancel();
+        m.startParry(12, 4, 0);
+        m.startAttack(AttackType.OVERHEAD, TIMINGS);
+        m.tick();
+        assertTrue(m.forgiveIntoParry(2, 4));
+        assertEquals(Phase.PARRY, m.phase());
+    }
+
+    @Test
+    void activeParryLastsWhileAttackingAndCanBeExtended() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, new AttackTimings(10, 5, 5));
+        m.startActiveParry(3);
+        assertTrue(m.isActiveParry());
+        m.tick();
+        m.extendActiveParry(2);
+        for (int i = 0; i < 3; i++) {
+            m.tick();
+        }
+        assertTrue(m.isActiveParry(), "3 + 2 ticks, 4 gone");
+        m.tick();
+        assertFalse(m.isActiveParry());
+        m.startActiveParry(5);
+        m.stagger(4, true);
+        assertFalse(m.isActiveParry(), "a stagger ends it");
     }
 
     @Test

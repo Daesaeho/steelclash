@@ -46,11 +46,15 @@ public class CombatData {
     public boolean jumpAttack;
     /** Game time when the weapon special is off cooldown. */
     public long specialReadyAt;
+    /** Game time the next dodge is allowed. */
+    public long dodgeReadyAt;
     /** Weapon unusable until this game time (HOLSTER disarm mode for mobs). */
     public long holsteredUntil;
     public float lastSentStamina = -1;
     /** Game time this entity last took damage (health regeneration waits for a quiet spell). */
     public long lastHurtAt = Long.MIN_VALUE / 2;
+    /** Last tick this fighter attacked, guarded or shield-blocked (pauses health regeneration). */
+    public long lastCombatAt = Long.MIN_VALUE / 2;
 
     // ---- mob decision making ----
     /** Bot brain state (spacing, plans, opponent memory); created on first use. */

@@ -55,8 +55,8 @@ public final class Tutorial {
         line(player, Component.translatable("tutorial.steelclash.heavy", key(ClientInput.FEINT)));
         line(player, Component.translatable("tutorial.steelclash.parry", key(ClientInput.PARRY)));
         line(player, Component.translatable("tutorial.steelclash.counter"));
-        line(player, Component.translatable("tutorial.steelclash.kick", key(ClientInput.KICK), key(ClientInput.SPECIAL),
-                key(ClientInput.THROW)));
+        line(player, Component.translatable("tutorial.steelclash.kick", key(ClientInput.KICK), key(ClientInput.JAB),
+                key(ClientInput.DODGE), key(ClientInput.SPECIAL), key(ClientInput.THROW)));
         line(player, Component.translatable("tutorial.steelclash.stamina"));
         line(player, Component.translatable("tutorial.steelclash.dummy"));
         line(player, Component.translatable("tutorial.steelclash.settings").withStyle(ChatFormatting.GRAY));

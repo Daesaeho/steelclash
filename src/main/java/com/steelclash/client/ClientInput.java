@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
+import com.steelclash.combat.Dodge;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackType;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.BlockTags;
@@ -55,7 +57,8 @@ import org.lwjgl.glfw.GLFW;
  *     <li>CHIVALRY: slash on left click, its side alternating (or following your turn); parry on right click.</li>
  *     <li>TWO_SLASH_KEYS: left click slashes right→left, right click left→right; parry on middle click.</li>
  *     <li>Overhead: Mouse 5 / scroll up. Stab: Mouse 4 / scroll down. Hold any attack for a heavy.</li>
- *     <li>Parry also raises an offhand shield. Feint X, kick Z, special R, throw G. Optional gestures: see below.</li>
+ *     <li>Parry also raises an offhand shield. Feint X, kick Z, jab V, dodge Left Alt, special R, throw G. Optional
+ *     gestures: see below.</li>
  * </ul>
  * Mouse-bound inputs are intercepted in {@link InputEvent.MouseButton.Pre}, before Minecraft registers the click on any
  * {@link KeyMapping}. That stops vanilla attacking, block mining and using, and also stops Spartan Shields from reading
@@ -103,6 +106,12 @@ public final class ClientInput {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY);
     public static final KeyMapping THROW = new KeyMapping("key.steelclash.throw",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY);
+    /** Quick short thrust that interrupts at close range. */
+    public static final KeyMapping JAB = new KeyMapping("key.steelclash.jab",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY);
+    /** Dash in the direction you're moving (backwards when standing still). */
+    public static final KeyMapping DODGE = new KeyMapping("key.steelclash.dodge",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, CATEGORY);
 
     /**
      * An attack input: which attack it starts and which side it swings from ({@code null} = alternating, or chosen by
@@ -162,6 +171,8 @@ public final class ClientInput {
         event.register(STAB);
         event.register(PARRY);
         event.register(FEINT);
+        event.register(DODGE);
+        event.register(JAB);
         event.register(KICK);
         event.register(SPECIAL);
         event.register(THROW);
@@ -337,6 +348,11 @@ public final class ClientInput {
                 tryAttack(player, AttackType.KICK, null, null);
             }
         }
+        while (JAB.consumeClick()) {
+            if (inGame(mc)) {
+                tryAttack(player, AttackType.JAB, null, null);
+            }
+        }
         while (SPECIAL.consumeClick()) {
             if (inGame(mc) && holdsWeapon(player)) {
                 tryAttack(player, AttackType.SPECIAL, null, null);
@@ -356,6 +372,14 @@ public final class ClientInput {
         }
         tickGesture(mc, player);
         CombatData data = player.getData(ModAttachments.COMBAT);
+        while (DODGE.consumeClick()) {
+            if (inGame(mc) && Dodge.perform(player, data)) {
+                hold = null;
+                Vec3 burst = Dodge.velocity(player.getYRot(), player.input.leftImpulse, player.input.forwardImpulse);
+                player.setDeltaMovement(burst.x, player.getDeltaMovement().y, burst.z);
+                PacketDistributor.sendToServer(new ActionPayload(ActionPayload.Action.DODGE));
+            }
+        }
         while (FEINT.consumeClick()) {
             if (inGame(mc) && Combat.feint(player, data)) {
                 hold = null;

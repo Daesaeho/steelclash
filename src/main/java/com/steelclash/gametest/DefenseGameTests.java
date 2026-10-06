@@ -2,6 +2,7 @@ package com.steelclash.gametest;
 
 import static com.steelclash.gametest.TestSupport.FACING_NEGATIVE_X;
 import static com.steelclash.gametest.TestSupport.FACING_POSITIVE_X;
+import static com.steelclash.gametest.TestSupport.advance;
 import static com.steelclash.gametest.TestSupport.check;
 import static com.steelclash.gametest.TestSupport.data;
 import static com.steelclash.gametest.TestSupport.dummy;
@@ -102,6 +103,100 @@ public final class DefenseGameTests {
         Combat.start(fresh, f, AttackType.SLASH);
         check(helper, riposteWindup < f.machine.timings().windup(),
                 "riposte windup " + riposteWindup + " should be shorter than " + f.machine.timings().windup());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void heldBlockStaysUpAndDrainsStamina(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(player);
+        Combat.requestParry(player);
+        advance(player, 40);
+        check(helper, d.machine.phase() == Phase.PARRY, "a held guard is still up after 2 s, phase " + d.machine.phase());
+        float drained = d.stamina.max() - d.stamina.current();
+        check(helper, Math.abs(drained - 8) < 0.5, "2 s of holding drains about 8 stamina, drained " + drained);
+        Combat.releaseParry(player);
+        check(helper, d.machine.phase() != Phase.PARRY, "letting go lowers the guard");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void mobParriesStayTimed(GameTestHelper helper) {
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestParry(dummy);
+        advance(dummy, 40);
+        check(helper, data(dummy).machine.phase() != Phase.PARRY, "a mob's parry drops on its own");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void riposteActiveParryCatchesASecondAttacker(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Player first = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -45f, 2);
+        Player second = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -135f, 6);
+        CombatData d = data(defender);
+        Combat.requestParry(defender);
+        swing(first, AttackType.SLASH);
+        check(helper, Combat.start(defender, d, AttackType.SLASH), "riposte should start");
+        check(helper, d.machine.isActiveParry(), "a riposte carries an active parry");
+        swing(second, AttackType.STAB);
+        check(helper, !isHurt(defender), "the active parry stops the second attacker's stab");
+        check(helper, data(second).machine.phase() == Phase.STAGGER, "the second attacker is parried");
+        check(helper, d.machine.isAttacking(), "the riposte carries on");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void plainAttackHasNoActiveParry(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.start(defender, data(defender), AttackType.OVERHEAD);
+        advance(defender, 4); // past the forgiveness window
+        swing(attacker, AttackType.STAB);
+        check(helper, !data(defender).machine.isActiveParry(), "an ordinary attack has no active parry");
+        check(helper, isHurt(defender), "so it gets hit");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void counterActiveParryCatchesASecondAttacker(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Player first = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -45f, 2);
+        Player second = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -135f, 6);
+        CombatData d = data(defender);
+        Combat.start(defender, d, AttackType.SLASH);
+        swing(first, AttackType.SLASH); // countered: same attack, just started
+        check(helper, data(first).machine.phase() == Phase.STAGGER, "the slash is countered");
+        check(helper, d.machine.isActiveParry(), "a counter carries an active parry");
+        swing(second, AttackType.OVERHEAD);
+        check(helper, !isHurt(defender), "the active parry stops the second attacker too");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void wrongCounterRightBeforeImpactIsForgiven(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        CombatData d = data(defender);
+        Combat.requestParry(defender);
+        check(helper, Combat.start(defender, d, AttackType.OVERHEAD), "attacking from the guard should start");
+        swing(attacker, AttackType.SLASH); // the wrong counter, started just before impact
+        check(helper, !isHurt(defender), "a wrong counter right before impact falls back to a block");
+        check(helper, d.machine.phase() == Phase.PARRY, "the guard is back up, phase " + d.machine.phase());
+        check(helper, data(attacker).machine.phase() == Phase.STAGGER, "the attacker is parried");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void lateWrongCounterIsNotForgiven(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        CombatData d = data(defender);
+        Combat.requestParry(defender);
+        Combat.start(defender, d, AttackType.OVERHEAD);
+        advance(defender, 4); // committed: well past the forgiveness window
+        swing(attacker, AttackType.SLASH);
+        check(helper, isHurt(defender), "a wrong counter started earlier is just a hit");
         helper.succeed();
     }
 

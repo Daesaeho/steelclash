@@ -10,7 +10,9 @@ import org.jetbrains.annotations.Nullable;
 public class BrainState {
     /** How the bot plans to answer the opponent's current windup. */
     public enum Answer {
-        NONE, PARRY, LATE_PARRY, COUNTER
+        NONE, PARRY, LATE_PARRY, COUNTER,
+        /** Interrupt a slow heavy at close range with a jab. */
+        JAB
     }
 
     public final OpponentMemory memory = new OpponentMemory();
