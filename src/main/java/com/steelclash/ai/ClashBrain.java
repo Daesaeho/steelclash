@@ -9,6 +9,7 @@ import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackTokens;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.BotSkill;
+import com.steelclash.core.BotStyle;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Guard;
 import com.steelclash.core.Phase;
@@ -22,6 +23,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.InteractionHand;
+import net.neoforged.neoforge.common.ItemAbilities;
 
 /**
  * Chivalry 2-style bot behaviour for fighter mobs, layered on top of their vanilla AI (vanilla still does pathing
@@ -89,7 +92,7 @@ public final class ClashBrain {
     // ------------------------------------------------------------------ defense
 
     private static void defend(PathfinderMob mob, CombatData data, BrainState brain, BotSkill skill) {
-        if (WeaponProfiles.resolveFor(mob).flatMap(r -> r.profile().guard()).isEmpty()) {
+        if (WeaponProfiles.resolveFor(mob).flatMap(r -> r.profile().guard()).isEmpty() && !hasShield(mob)) {
             return; // claws and beasts can't parry
         }
         for (LivingEntity attacker : threats(mob)) {
@@ -97,7 +100,21 @@ public final class ClashBrain {
             if (brain.answeredAttacker != attacker.getId() || brain.answeredSerial != incoming.attackSerial()) {
                 brain.answeredAttacker = attacker.getId();
                 brain.answeredSerial = incoming.attackSerial();
-                brain.answer = decide(mob.getRandom(), brain, skill, incoming.type());
+                brain.answer = decide(mob.getRandom(), brain, skill, incoming.type(), hasShield(mob));
+                if (brain.answer == BrainState.Answer.NONE && mob.getRandom().nextDouble() < BotStyles.of(mob).evadeChance()) {
+                    brain.evadeUntil = mob.tickCount + 10; // won't parry this one: step out of reach instead
+                }
+            }
+            // Carrying a shield: raise it as soon as the windup has been read (a shield needs 5 ticks to come up).
+            if (hasShield(mob) && brain.answer != BrainState.Answer.NONE && brain.answer != BrainState.Answer.COUNTER) {
+                if (skill.canReact(incoming.phaseTick()) && freeToDefend(mob, data, incoming)) {
+                    if (!mob.isUsingItem()) {
+                        mob.startUsingItem(InteractionHand.OFF_HAND);
+                    }
+                    brain.shieldDownAt = mob.tickCount + incoming.ticksLeftInPhase() + incoming.timings().release() + 6;
+                    brain.answer = BrainState.Answer.NONE;
+                }
+                return;
             }
             switch (brain.answer) {
                 case COUNTER -> {
@@ -109,7 +126,7 @@ public final class ClashBrain {
                 }
                 case PARRY -> {
                     if (incoming.phase() == Phase.WINDUP && incoming.ticksLeftInPhase() <= 2) {
-                        if (skill.canReact(incoming.phaseTick())) {
+                        if (skill.canReact(incoming.phaseTick()) && freeToDefend(mob, data, incoming)) {
                             raiseParry(mob, data);
                         }
                         brain.answer = BrainState.Answer.NONE;
@@ -118,7 +135,7 @@ public final class ClashBrain {
                 case LATE_PARRY -> {
                     // Against feinters: wait until the blade is actually coming.
                     if (incoming.phase() == Phase.RELEASE) {
-                        if (skill.canReact(incoming.timings().windup())) {
+                        if (skill.canReact(incoming.timings().windup()) && freeToDefend(mob, data, incoming)) {
                             raiseParry(mob, data);
                         }
                         brain.answer = BrainState.Answer.NONE;
@@ -131,14 +148,21 @@ public final class ClashBrain {
         }
     }
 
-    private static BrainState.Answer decide(RandomSource random, BrainState brain, BotSkill skill, AttackType incomingType) {
+    static boolean hasShield(LivingEntity mob) {
+        return mob.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK);
+    }
+
+    private static BrainState.Answer decide(RandomSource random, BrainState brain, BotSkill skill, AttackType incomingType,
+                                            boolean shield) {
         if (incomingType == AttackType.KICK) {
             return BrainState.Answer.NONE; // kicks can't be parried
         }
         if (incomingType == brain.memory.habit() && random.nextDouble() < skill.counterChance()) {
             return BrainState.Answer.COUNTER;
         }
-        if (random.nextDouble() >= skill.parryChance()) {
+        // Holding a shield up is far easier than timing a parry.
+        double chance = shield ? Math.min(1, skill.parryChance() * 2) : skill.parryChance();
+        if (random.nextDouble() >= chance) {
             return BrainState.Answer.NONE;
         }
         // A known feinter gets parried late, which can only catch the real attack and is a bit harder to pull off.
@@ -149,9 +173,27 @@ public final class ClashBrain {
     }
 
     private static void raiseParry(PathfinderMob mob, CombatData data) {
-        if (data.machine.canParry() && Combat.startParry(mob, data)) {
+        // startParry also cancels a windup into the parry (Chivalry 2 parry-cancel), costing stamina.
+        if (Combat.startParry(mob, data)) {
             Combat.sync(mob, data, false);
         }
+    }
+
+    /**
+     * Can the bot defend right now? Yes if it's free to parry, or if it's winding up an attack that would land
+     * <em>after</em> the incoming one: then it cancels its own windup into the defense (Chivalry 2 parry-cancel).
+     * If its own swing lands first, it keeps swinging and trades.
+     */
+    private static boolean freeToDefend(PathfinderMob mob, CombatData data, CombatStateMachine incoming) {
+        CombatStateMachine own = data.machine;
+        if (own.canParry()) {
+            return true;
+        }
+        if (own.phase() == Phase.WINDUP && own.type() != AttackType.KICK && own.ticksLeftInPhase() > incoming.ticksLeftInPhase()) {
+            Combat.requestFeint(mob);
+            return own.canParry();
+        }
+        return false;
     }
 
     private static List<LivingEntity> threats(PathfinderMob mob) {
@@ -206,6 +248,24 @@ public final class ClashBrain {
         if (m.isBusy()) {
             return;
         }
+        if (mob.isUsingItem() && hasShield(mob)) {
+            if (mob.tickCount < brain.shieldDownAt) {
+                return; // shield up for an incoming attack: hold it, don't swing
+            }
+            mob.stopUsingItem();
+        }
+        // Out of breath: hold back until stamina recovers (being parried or blocked costs bots stamina too).
+        float stamina = data.stamina.current() / data.stamina.max();
+        if (stamina < 0.3f) {
+            brain.lowStamina = true;
+        } else if (stamina > 0.6f) {
+            brain.lowStamina = false;
+        }
+        if (brain.lowStamina || mob.tickCount < brain.evadeUntil) {
+            brain.wantsSpace = true;
+            TOKENS.release(target.getId(), mob.getId());
+            return;
+        }
 
         if (brain.cooldown > 0) {
             brain.cooldown--;
@@ -213,8 +273,19 @@ public final class ClashBrain {
             TOKENS.release(target.getId(), mob.getId()); // give someone else a turn
             return;
         }
+        BotStyle style = BotStyles.of(mob);
         if (!inReach) {
-            brain.wantsSpace = false; // let vanilla pathing close the distance
+            // Lunge in from just outside reach (rushers, skirmishers), otherwise let vanilla pathing close in.
+            if (style.lungeRange() > 0 && distance <= reach + style.lungeRange() && random.nextDouble() < 0.08
+                    && TOKENS.acquire(target.getId(), mob.getId(), skill.attackers(), id -> stillEngaged(mob, id, target))) {
+                startAttack(mob, brain, skill, profile.get(), target, true);
+                double dx = target.getX() - mob.getX();
+                double dz = target.getZ() - mob.getZ();
+                double len = Math.max(0.01, Math.sqrt(dx * dx + dz * dz));
+                mob.setDeltaMovement(mob.getDeltaMovement().add(dx / len * 0.45, 0.08, dz / len * 0.45));
+                return;
+            }
+            brain.wantsSpace = false;
             return;
         }
         // Kick a turtle.
@@ -235,6 +306,9 @@ public final class ClashBrain {
                                     LivingEntity target, boolean allowTricks) {
         RandomSource random = mob.getRandom();
         mob.getLookControl().setLookAt(target, 30, 30);
+        if (mob.isUsingItem()) {
+            mob.stopUsingItem(); // lower the shield to swing
+        }
         List<AttackType> options = new ArrayList<>(profile.attacks().keySet());
         options.sort(null);
         AttackType type = options.get(random.nextInt(options.size()));
@@ -256,7 +330,7 @@ public final class ClashBrain {
         } else if (random.nextDouble() < skill.heavyChance()) {
             Combat.requestHeavy(mob);
         }
-        brain.cooldown = 8 + random.nextInt(18);
+        brain.cooldown = (int) Math.round((8 + random.nextInt(18)) * BotStyles.of(mob).cooldownMult());
     }
 
     /** A token holder keeps its turn while it's alive, still fighting this target, and close. */

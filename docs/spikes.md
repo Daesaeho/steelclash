@@ -84,3 +84,10 @@ The plan said "author animations in Blockbench, extract the arcs from them". Cha
 - **Monster infighting:** with wide arcs, zombies cut each other, and vanilla hurt-by-target retaliation then split the horde across targets, which defeated per-target attack tokens. Fix: a hostile mob's swing only hurts another hostile mob if that's its target (`SwingTracer.isValidTarget`).
 - **`GameTestHelper.spawnWithNoFreeWill` removes *all* goals**, including ones added in `EntityJoinLevelEvent`. Use `spawn` when a test needs AI goals.
 - Circling bots broke an M2 test that pinned the defender's facing. Defenders in AI tests should turn to face their attacker.
+
+## M6a findings (2026-10-06)
+- **When to hand out gear:** `GameTestHelper#spawn` skips `finalizeSpawn` (so test mobs stay unarmed), while natural spawns, spawn eggs and `/summon` without NBT fire `FinalizeSpawnEvent` *before* vanilla's `finalizeSpawn` equipment roll. So `MobGear` marks the mob in `FinalizeSpawnEvent` and arms it in `EntityJoinLevelEvent` (not `loadedFromDisk`), after vanilla. That way it can respect gear vanilla or Spartan Weaponry already gave.
+- **Bots must not lower a raised shield to attack:** a vanilla shield only blocks after 5 ticks raised, so a bot that swings as soon as it's free never actually blocks. The brain holds the shield until `shieldDownAt` (the incoming attack's release plus a margin).
+- **Bot parry-cancel:** a bot mid-windup cancels into a parry or shield if the incoming hit lands *before* its own; otherwise it keeps swinging and trades.
+- **Test isolation for AI behaviour:** a relentless attacker flinches its opponent out of every attack, so "does it defend?" tests must stop the defender from attacking (pin its brain cooldown). Diagnosing this took failure messages that report what happened (attack counts, phases during the opponent's windup, distance), which is now the pattern for AI tests.
+- Minecraft's sideways movement input (`xxa`, `MoveControl#strafe` right) is positive toward the entity's **left**.

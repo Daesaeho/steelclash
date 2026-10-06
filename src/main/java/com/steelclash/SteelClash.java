@@ -1,6 +1,7 @@
 package com.steelclash;
 
 import com.mojang.logging.LogUtils;
+import com.steelclash.ai.BotStyles;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.compat.Compat;
 import com.steelclash.compat.SpartanWeaponryCompat;
@@ -25,6 +26,7 @@ public class SteelClash {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(WeaponProfiles::registerRegistry);
         modEventBus.addListener(WeaponProfiles::registerDataMap);
+        modEventBus.addListener(BotStyles::registerDataMap);
         modEventBus.addListener(ModNetwork::register);
         ModAttachments.register(modEventBus);
         ModEntities.register(modEventBus);

@@ -18,7 +18,10 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -87,7 +90,12 @@ public class TrainingDummy extends PathfinderMob implements Enemy {
         if (level().isClientSide()) {
             return;
         }
-        Player nearest = level().getNearestPlayer(this, FACE_RANGE);
+        // Spar with the nearest player; with no player around, with the nearest hostile mob (handy for arenas).
+        LivingEntity nearest = level().getNearestPlayer(this, FACE_RANGE);
+        if (nearest == null) {
+            nearest = level().getNearestEntity(Monster.class, TargetingConditions.forCombat().range(ATTACK_RANGE + 1),
+                    this, getX(), getY(), getZ(), getBoundingBox().inflate(ATTACK_RANGE + 1));
+        }
         if (nearest != null && mode != Mode.PASSIVE) {
             double dx = nearest.getX() - getX();
             double dz = nearest.getZ() - getZ();

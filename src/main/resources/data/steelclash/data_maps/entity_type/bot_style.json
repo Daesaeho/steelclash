@@ -1,0 +1,64 @@
+{
+  "values": {
+    "minecraft:zombie": {
+      "style": "shambler"
+    },
+    "minecraft:husk": {
+      "style": "shambler"
+    },
+    "minecraft:drowned": {
+      "style": "shambler"
+    },
+    "minecraft:zombie_villager": {
+      "style": "shambler"
+    },
+    "minecraft:vindicator": {
+      "style": "rusher"
+    },
+    "minecraft:piglin_brute": {
+      "style": "rusher"
+    },
+    "minecraft:wither_skeleton": {
+      "style": "duelist"
+    },
+    "minecraft:skeleton": {
+      "style": "duelist"
+    },
+    "minecraft:stray": {
+      "style": "duelist"
+    },
+    "minecraft:bogged": {
+      "style": "duelist"
+    },
+    "minecraft:piglin": {
+      "style": "duelist"
+    },
+    "minecraft:zombified_piglin": {
+      "style": "duelist"
+    },
+    "minecraft:enderman": {
+      "style": "duelist"
+    },
+    "minecraft:ravager": {
+      "style": "brute"
+    },
+    "minecraft:hoglin": {
+      "style": "brute"
+    },
+    "minecraft:zoglin": {
+      "style": "brute"
+    },
+    "minecraft:iron_golem": {
+      "style": "brute"
+    },
+    "minecraft:spider": {
+      "style": "skirmisher"
+    },
+    "minecraft:cave_spider": {
+      "style": "skirmisher"
+    },
+    "steelclash:training_dummy": {
+      "style": "duelist"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package com.steelclash.ai;
 
 import com.steelclash.core.AttackType;
+import com.steelclash.core.BotStyle;
 import com.steelclash.core.OpponentMemory;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,6 +28,16 @@ public class BrainState {
     public int morphAt = -1;
     @Nullable
     public AttackType morphTo;
+
+    /** Current footwork while holding back, and when to pick a new one. */
+    public BotStyle.Footwork footwork = BotStyle.Footwork.CIRCLE;
+    public int footworkUntil;
+    /** Backing off from an attack it decided not to parry, until this tick. */
+    public int evadeUntil;
+    /** Shield held up until this tick (mobs with a shield block instead of parrying). */
+    public int shieldDownAt;
+    /** Out of breath: holds back until stamina recovers. */
+    public boolean lowStamina;
 
     public Answer answer = Answer.NONE;
     public int answeredAttacker = -1;

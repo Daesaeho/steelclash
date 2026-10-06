@@ -1,0 +1,9 @@
+{
+  "values": [
+    "minecraft:shield",
+    {
+      "id": "#spartanshieldsunofficial:basic_shields",
+      "required": false
+    }
+  ]
+}

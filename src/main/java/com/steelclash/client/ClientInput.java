@@ -225,6 +225,11 @@ public final class ClientInput {
         }
     }
 
+    /** The input that started the current windup is still held, so the windup may still become a heavy. */
+    public static boolean isChargingHeavy() {
+        return hold != Hold.NONE && isHeld(hold);
+    }
+
     private static boolean isHeld(Hold source) {
         return switch (source) {
             case ATTACK_BUTTON -> attackButtonDown;

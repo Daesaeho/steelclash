@@ -1,0 +1,10 @@
+{
+  "values": [
+    "minecraft:iron_sword",
+    "minecraft:iron_axe",
+    {
+      "id": "#spartan_weaponry_unofficial:iron_weapons",
+      "required": false
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "values": [
+    "minecraft:diamond_sword",
+    "minecraft:diamond_axe",
+    {
+      "id": "#spartan_weaponry_unofficial:diamond_weapons",
+      "required": false
+    }
+  ]
+}

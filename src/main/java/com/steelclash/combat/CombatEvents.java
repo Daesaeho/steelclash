@@ -13,6 +13,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -96,12 +97,21 @@ public final class CombatEvents {
         Defense.onShieldBlock(event);
     }
 
-    /** Fighter mobs get the spacing goal the bot brain uses to hold back and circle. */
+    /** Mobs spawning for real (natural, spawner, egg, command) may get armed once they've joined; see {@link MobGear}. */
+    @SubscribeEvent
+    static void onFinalizeSpawn(FinalizeSpawnEvent event) {
+        MobGear.markForArming(event.getEntity());
+    }
+
+    /** Fighter mobs get the spacing goal the bot brain uses to hold back and circle; freshly spawned ones get gear. */
     @SubscribeEvent
     static void onJoinLevel(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide() || !(event.getEntity() instanceof PathfinderMob mob)
                 || mob instanceof TrainingDummy || !MobCombat.isFighter(mob)) {
             return;
+        }
+        if (!event.loadedFromDisk()) {
+            MobGear.armIfPending(mob);
         }
         boolean installed = mob.goalSelector.getAvailableGoals().stream().anyMatch(g -> g.getGoal() instanceof ClashSpacingGoal);
         if (!installed) {

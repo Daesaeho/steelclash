@@ -109,3 +109,19 @@ The last one stands still, which is useful for looking at poses. It won't fight 
 | 7 | 1v4 zombies | Only 1 (Easy) / 2 (Normal) / 3 (Hard) swing at you at a time; the rest circle at a distance and take turns. It should feel hard but readable. |
 | 8 | Group of zombies near each other | They no longer hit each other with wide swings (no infighting). |
 | 9 | `botBrain = false` in the common config | Mobs fall back to the M2 behaviour (telegraphed attacks plus reactive parries, no spacing). |
+
+## Manual in-game checklist (M6a: timing HUD, armed mobs, mob movement)
+| # | Check | Expected |
+|---|---|---|
+| 1 | Hold left-click | A grey bar under the stamina bar fills toward a white tick (the heavy point), then turns orange (heavy windup). Tap instead: yellow windup. |
+| 2 | Watch one attack through | Yellow/orange windup → **red** release (blade live) → grey recovery draining. After a landed hit, recovery is **green** (combo available). |
+| 3 | Parry | A **blue** bar drains for how long the parry stays up, then dim blue for the guard recovery. After a successful parry, a **white** bar shows the riposte window. |
+| 4 | Get staggered (parried, kicked, clanked) | A **magenta** bar drains for the stagger. |
+| 5 | `timingHud = false` (client config) | Bar hidden. |
+| 6 | `enemyTelegraphs = true` (client config) | Enemies winding up show e.g. `HEAVY OVERHEAD ▮▮▮▯▯▯` above their heads, counting down. |
+| 7 | Natural zombies on Normal/Hard | About half (Normal) / most (Hard) carry weapons: vanilla swords/axes, or Spartan weapons when installed, better materials on Hard. Some have shields and helmets. Spawn eggs too; `/summon` with NBT is untouched. |
+| 8 | Zombie with a shield | Raises it when you attack and its reaction allows; keeps it up through your swing; kick it (Z) to break the guard. |
+| 9 | Fight a group | Zombies shuffle in relentlessly; vindicators rush and lunge in from outside reach; spiders dart in and back off; skeletons with swords keep their distance. Waiting mobs spread around you instead of bunching up, and each moves a little differently. |
+| 10 | Throw a slow heavy at a skeleton or spider | Sometimes it steps back out of reach instead of parrying. |
+| 11 | Drain a mob's stamina (make it parry a lot) | It backs off until it has recovered. |
+| 12 | Training dummy in Attack or Spar mode with no player nearby | It fights the nearest monster (handy for watching mobs defend). |

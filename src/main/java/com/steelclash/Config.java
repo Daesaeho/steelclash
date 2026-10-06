@@ -127,6 +127,20 @@ public class Config {
             .defineInRange("maxAttackersNormal", 2, 1, 64);
     public static final ModConfigSpec.IntValue MAX_ATTACKERS_HARD = BUILDER
             .defineInRange("maxAttackersHard", 3, 1, 64);
+    public static final ModConfigSpec.DoubleValue ARMED_CHANCE_EASY = BUILDER
+            .comment("Chance a #steelclash:armable mob (zombies, husks, zombie villagers) spawns with a melee weapon",
+                    "from #steelclash:mob_weapons/tier_1..3 (includes Spartan Weaponry weapons when installed)")
+            .defineInRange("armedChanceEasy", 0.30, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue ARMED_CHANCE_NORMAL = BUILDER
+            .defineInRange("armedChanceNormal", 0.50, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue ARMED_CHANCE_HARD = BUILDER
+            .defineInRange("armedChanceHard", 0.70, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue ARMED_SHIELD_CHANCE = BUILDER
+            .comment("Chance an armed mob with a one-handed weapon also gets a shield (scaled up with difficulty)")
+            .defineInRange("armedShieldChance", 0.20, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue ARMED_HELMET_CHANCE = BUILDER
+            .comment("Chance an armed mob also gets a helmet (scaled up with difficulty; also stops daylight burning)")
+            .defineInRange("armedHelmetChance", 0.30, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue MOB_HEAVY_CHANCE = BUILDER
             .comment("Chance a mob's telegraphed attack is a heavy")
             .defineInRange("heavyChance", 0.25, 0.0, 1.0);
@@ -154,6 +168,15 @@ public class Config {
                 .comment("While holding a weapon, scroll up = overhead and scroll down = stab (as in Chivalry 2).",
                         "Number keys still switch hotbar slots. Turn off to keep vanilla scroll-to-switch.")
                 .define("scrollAttacks", true);
+
+        public static final ModConfigSpec.BooleanValue TIMING_HUD = BUILDER
+                .comment("Timing bar under the crosshair: heavy charge, windup/release/recovery, combo window,",
+                        "parry duration, guard recovery, stagger and the riposte window")
+                .define("timingHud", true);
+        public static final ModConfigSpec.BooleanValue ENEMY_TELEGRAPHS = BUILDER
+                .comment("Learning aid: show the attack type and remaining windup above enemies' heads.",
+                        "Off by default: reading the animation is the core skill.")
+                .define("enemyTelegraphs", false);
 
         public static final ModConfigSpec.DoubleValue CAMERA_MOTION = BUILDER
                 .comment("Scale of camera sway during swings and shake on hits/parries. 0 turns it off (motion sensitivity).")

@@ -1,0 +1,20 @@
+{
+  "values": [
+    "minecraft:wooden_sword",
+    "minecraft:stone_sword",
+    "minecraft:wooden_axe",
+    "minecraft:stone_axe",
+    {
+      "id": "#spartan_weaponry_unofficial:wooden_weapons",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:stone_weapons",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:copper_weapons",
+      "required": false
+    }
+  ]
+}
