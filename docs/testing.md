@@ -187,3 +187,16 @@ Spawn eggs: **Brigand Footman / Knight / Archer** (Spawn Eggs tab). Survival, No
 | 5 | Night time in plains/forest/taiga | Soldiers occasionally spawn among the zombies and skeletons (rarer). |
 | 6 | `/locate structure steelclash:brigand_camp` in a new world, then go there | A camp: two tents, a campfire with log seats, hay, a barrel, a red banner, and a loot chest (food, arrows, iron, emeralds, sometimes a weapon), guarded by a knight, two footmen and an archer. More soldiers spawn there at night. |
 | 7 | Kill soldiers | Small chance to drop their gear. |
+
+## Manual in-game checklist (M7: multiplayer and latency)
+Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2` (Dev2) joins it. Add latency with [clumsy](https://jagt.github.io/clumsy/): filter `udp or tcp and (tcp.DstPort == <lan port> or tcp.SrcPort == <lan port>)`, **Lag** 75 ms both ways (≈150 ms ping). Turn on `/steelclash_debug` on Dev2: the top-left shows ping, rewind ticks and parry grace ticks (from Dev2's own config copy).
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Dev2 (lagged) parries a zombie's or footman's telegraphed swing, pressing parry when the swing visibly lands on screen | Parried reliably (aim for 9/10). Without compensation (`lagCompensation = false` in Dev1's common config, then rejoin) it should feel noticeably late. |
+| 2 | Dev2 slashes a zombie walking sideways past them | Hits when the blade visibly crosses it on Dev2's screen, not where the server has it. |
+| 3 | Dev2 gets parried by a bot, then attacks again as soon as the stagger visibly ends | The attack starts; no snap-back or eaten input. |
+| 4 | Dev2 stands still with no parry while a mob hits them | The hit lands about a ping later than without lag, never lost. |
+| 5 | Dev1 (host, no lag) fights normally next to Dev2 | Unchanged: no delayed hits on the host. |
+| 6 | Both players watch each other swing and parry | The other player's arm, debug blade and parries match what they're doing, about a ping behind. |
+

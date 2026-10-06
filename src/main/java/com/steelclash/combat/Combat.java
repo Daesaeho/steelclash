@@ -274,8 +274,12 @@ public final class Combat {
             SwingTracer.Result result = SwingTracer.trace(entity, data, spec.get(), sweep);
             boolean landed = false;
             for (LivingEntity target : result.hits()) {
+                Hit hit = prepareHit(entity, data, target, spec.get());
+                if (LagCompensation.hold(entity, target, hit)) {
+                    continue; // a lagged defender gets time for their parry to arrive; see deliverHeld
+                }
                 float healthBefore = target.getHealth();
-                applyHit(entity, data, target, spec.get());
+                deliver(entity, target, hit);
                 if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
                     break; // parried, countered or blocked: the swing stops here
                 }
@@ -409,15 +413,18 @@ public final class Combat {
     // ---------------------------------------------------------------- hits
 
     /**
-     * Applies a hit through vanilla attack code, so enchantments, Spartan Weaponry traits and other mods'
-     * attack listeners all still apply. {@link Defense} decides parries, counters and blocks, and the swing's damage
-     * multiplier is applied while the {@link SwingContext} is active.
+     * A hit's numbers, fixed when the blade connects: a hit held for a lagged defender lands with them later.
+     *
+     * @param damageMult    final damage multiplier (attack x heavy x lunge x jump x damage type x mount)
+     * @param staminaDamage stamina a parrying or blocking defender loses
      */
-    private static void applyHit(LivingEntity attacker, CombatData data, LivingEntity target, WeaponProfile.AttackSpec spec) {
+    public record Hit(AttackType type, WeaponProfile.AttackSpec spec, float damageMult, float staminaDamage, boolean heavy) {
+    }
+
+    private static Hit prepareHit(LivingEntity attacker, CombatData data, LivingEntity target, WeaponProfile.AttackSpec spec) {
         AttackType type = data.machine.type();
         if (type == AttackType.KICK) {
-            applyKick(attacker, target, spec);
-            return;
+            return new Hit(type, spec, 1f, spec.staminaDamage(), false);
         }
         float damageMult = spec.damage();
         float staminaDamage = spec.staminaDamage();
@@ -439,7 +446,20 @@ public final class Combat {
         if (attacker.getVehicle() != null && (type == AttackType.STAB || type == AttackType.SPECIAL)) {
             damageMult *= (float) DamageType.mountedChargeMultiplier(attacker.getVehicle().getDeltaMovement().horizontalDistance());
         }
-        SwingContext.run(attacker, type, spec, damageMult, staminaDamage, () -> {
+        return new Hit(type, spec, damageMult, staminaDamage, data.machine.isHeavy());
+    }
+
+    /**
+     * Applies a hit through vanilla attack code, so enchantments, Spartan Weaponry traits and other mods'
+     * attack listeners all still apply. {@link Defense} decides parries, counters and blocks, and the swing's damage
+     * multiplier is applied while the {@link SwingContext} is active.
+     */
+    private static void deliver(LivingEntity attacker, LivingEntity target, Hit hit) {
+        if (hit.type() == AttackType.KICK) {
+            applyKick(attacker, target, hit.spec());
+            return;
+        }
+        SwingContext.run(attacker, hit.type(), hit.spec(), hit.damageMult(), hit.staminaDamage(), () -> {
             // Our swings hit each target at most once, so vanilla i-frames would only eat legitimate hits.
             target.invulnerableTime = 0;
             if (attacker instanceof Player player) {
@@ -450,6 +470,20 @@ public final class Combat {
                 mob.doHurtTarget(target);
             }
         });
+    }
+
+    /** Lands a hit {@link LagCompensation} held for a lagged defender; it may now be parried, blocked or countered. */
+    static void deliverHeld(LivingEntity attacker, LivingEntity target, Hit hit) {
+        float healthBefore = target.getHealth();
+        deliver(attacker, target, hit);
+        if (target.getHealth() < healthBefore) {
+            Feedback.hit(attacker, target, hit.heavy());
+            CombatData data = attacker.getData(ModAttachments.COMBAT);
+            if (data.machine.phase() == Phase.RECOVERY && !data.machine.isComboAllowed()) {
+                data.machine.allowCombo();
+                sync(attacker, data, false);
+            }
+        }
     }
 
     /**

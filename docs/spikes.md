@@ -109,3 +109,11 @@ The plan said "author animations in Blockbench, extract the arcs from them". Cha
 - Entities saved in a jigsaw template are finalized on placement (`SinglePoolElement` sets `setFinalizeEntities(true)` → `finalizeSpawn(STRUCTURE)`), so camp soldiers equip themselves.
 - Vanilla `PatrollingMonster#finalizeSpawn` puts the illager banner on patrol leaders; `Soldier` restores its helmet afterwards.
 - Soldier skins are generated procedurally (PIL, 64×64 player layout) as placeholders; replace them in `assets/steelclash/textures/entity/soldier/`.
+
+## M7 findings (2026-10-06)
+- **A lagged player is a whole round trip behind the server, not half.** Their own actions run a one-way delay ahead of the server copy, and they see the world a one-way delay (plus interpolation) behind it. So the rewind for their swings is `ping + interpolation` (capped at `maxRewindMs`, default 300 ms). Parry grace on hits against them is `ping + 25 ms` (capped at `maxParryGraceMs`, default 250 ms).
+- **Grace holds the hit rather than backdating the parry.** Vanilla damage can't be undone, so a hit on a lagged player who isn't defending is held (`LagCompensation`). It is delivered as soon as they parry, block with a shield, or wind up a matching counter, or when the grace runs out. Its numbers (damage multiplier, stamina damage, heavy) are fixed when the blade connects (`Combat.Hit`). Kicks aren't held: holding only lets a guard go up for the kick to break.
+- **Remote entities' combat snapshots are deliberately not fast-forwarded.** They would cut the defender's reaction time, and the grace already covers the delay. Only the local player's own authoritative corrections catch up by the one-way delay, so a stagger ends locally when it ends on the server.
+- Mock players and mobs have no connection, so GameTests force a latency with `LagCompensation.forceLatency`.
+- `runClient` once died with a native access violation (0xC0000005) while opening FML's early window, before any mod code ran. It booted normally on retry: an environment or driver hiccup.
+

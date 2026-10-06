@@ -172,6 +172,23 @@ public class Config {
             .defineInRange("parryChanceHard", 0.55, 0.0, 1.0);
 
     static {
+        BUILDER.pop().push("network");
+    }
+
+    public static final ModConfigSpec.BooleanValue LAG_COMPENSATION = BUILDER
+            .comment("Compensate for player latency: rewind targets for lagged attackers, give lagged defenders time to parry")
+            .define("lagCompensation", true);
+    public static final ModConfigSpec.IntValue MAX_REWIND_MS = BUILDER
+            .comment("Furthest back (ms) hit detection rewinds targets for a lagged attacker")
+            .defineInRange("maxRewindMs", 300, 0, 1000);
+    public static final ModConfigSpec.IntValue INTERPOLATION_TICKS = BUILDER
+            .comment("How far behind the server clients display other entities (vanilla interpolation), in ticks")
+            .defineInRange("interpolationTicks", 2, 0, 10);
+    public static final ModConfigSpec.IntValue MAX_PARRY_GRACE_MS = BUILDER
+            .comment("Longest (ms) a hit on a lagged player is held so their parry, block or counter can still arrive")
+            .defineInRange("maxParryGraceMs", 250, 0, 1000);
+
+    static {
         BUILDER.pop();
     }
 

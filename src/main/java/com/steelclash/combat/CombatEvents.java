@@ -26,6 +26,7 @@ import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
 import net.neoforged.neoforge.event.entity.player.CriticalHitEvent;
 import net.neoforged.neoforge.event.entity.player.SweepAttackEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 @EventBusSubscriber(modid = SteelClash.MOD_ID)
 public final class CombatEvents {
@@ -46,6 +47,7 @@ public final class CombatEvents {
             }
             return;
         }
+        LagCompensation.record(entity);
         if (entity instanceof ServerPlayer player && player.tickCount % 4 == 0) {
             Disarm.tryPickUp(player);
         }
@@ -122,6 +124,13 @@ public final class CombatEvents {
     @SubscribeEvent
     static void onServerStopped(ServerStoppedEvent event) {
         ClashBrain.TOKENS.clear();
+        LagCompensation.clear();
+    }
+
+    /** Hits held for lagged defenders land (or are parried) at the end of the tick. */
+    @SubscribeEvent
+    static void onServerTick(ServerTickEvent.Post event) {
+        LagCompensation.tick();
     }
 
     /** Two-handed weapons need both hands: no raising a shield in the offhand. */

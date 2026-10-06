@@ -2,11 +2,13 @@ package com.steelclash.client;
 
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
+import com.steelclash.core.LagMath;
 import com.steelclash.net.CombatStatePayload;
 import com.steelclash.net.FeedbackPayload;
 import com.steelclash.net.StaminaPayload;
 import com.steelclash.profile.WeaponProfiles;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -36,8 +38,20 @@ public final class ClientPayloadHandler {
                     .orElse(null);
             if (payload.authoritative()) {
                 data.queuedAttack = null;
+                if (entity == mc.player) {
+                    // The correction is half a round trip old: catch up, so a stagger ends here when it ends on the
+                    // server and the next input (another half trip away) arrives after it.
+                    for (int tick = LagMath.oneWayTicks(ownLatency(mc)); tick > 0; tick--) {
+                        data.machine.tick();
+                    }
+                }
             }
         });
+    }
+
+    private static int ownLatency(Minecraft mc) {
+        PlayerInfo info = mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(mc.player.getUUID());
+        return info == null ? 0 : info.getLatency();
     }
 
     public static void handleFeedback(FeedbackPayload payload, IPayloadContext context) {

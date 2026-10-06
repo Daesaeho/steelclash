@@ -36,6 +36,8 @@ public final class SwingTracer {
      * detection, but a 3-block steel bar would scrape every ceiling.
      */
     private static final double CLANK_LENGTH = 2.0;
+    /** Generous per-tick movement bound, to widen the candidate search when targets are rewound. */
+    private static final double MAX_SPEED_PER_TICK = 1.0;
 
     private SwingTracer() {
     }
@@ -45,6 +47,13 @@ public final class SwingTracer {
      * @param clank where the blade struck a wall or obstacle this tick, if it did; the swing should stop there
      */
     public record Result(List<LivingEntity> hits, @Nullable Vec3 clank) {
+    }
+
+    /** A possible target and where the attacker saw it, as an offset from where it is now. */
+    private record Candidate(LivingEntity target, Vec3 offset) {
+        AABB box() {
+            return target.getBoundingBox().move(offset);
+        }
     }
 
     public static Result trace(LivingEntity attacker, CombatData data, WeaponProfile.AttackSpec spec,
@@ -58,9 +67,13 @@ public final class SwingTracer {
         float yawNow = CombatMath.viewYaw(attacker);
         float pitchNow = attacker.getXRot();
 
-        AABB searchBox = new AABB(pivotNow, pivotNow).inflate(length + 1.0).minmax(new AABB(data.prevPivot, data.prevPivot));
-        List<LivingEntity> candidates = attacker.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-                target -> isValidTarget(attacker, target) && !data.hitThisSwing.contains(target.getId()));
+        // A lagged attacker swings at targets as their screen showed them: trace those against where they were then.
+        int rewind = LagCompensation.rewindTicks(attacker);
+        AABB searchBox = new AABB(pivotNow, pivotNow).inflate(length + 1.0 + rewind * MAX_SPEED_PER_TICK)
+                .minmax(new AABB(data.prevPivot, data.prevPivot));
+        List<Candidate> candidates = attacker.level().getEntitiesOfClass(LivingEntity.class, searchBox,
+                        target -> isValidTarget(attacker, target) && !data.hitThisSwing.contains(target.getId()))
+                .stream().map(target -> new Candidate(target, LagCompensation.rewindOffset(target, rewind))).toList();
 
         // Include the very first blade position on the first release tick, otherwise only the swept positions.
         int firstStep = sweep.from() == 0 ? 0 : 1;
@@ -75,25 +88,25 @@ public final class SwingTracer {
 
             boolean hitThisStep = false;
             if (hits.size() < remaining) {
-                List<LivingEntity> stepHits = new ArrayList<>();
-                for (LivingEntity target : candidates) {
-                    if (data.hitThisSwing.contains(target.getId())) {
+                List<Candidate> stepHits = new ArrayList<>();
+                for (Candidate candidate : candidates) {
+                    if (data.hitThisSwing.contains(candidate.target().getId())) {
                         continue;
                     }
-                    AABB box = target.getBoundingBox().inflate(BLADE_RADIUS + target.getPickRadius());
+                    AABB box = candidate.box().inflate(BLADE_RADIUS + candidate.target().getPickRadius());
                     if (Blade.intersectsBox(blade.hilt(), blade.tip(),
                             new Vec(box.minX, box.minY, box.minZ), new Vec(box.maxX, box.maxY, box.maxZ))
-                            && canReach(attacker, pivot3, target)) {
-                        stepHits.add(target);
+                            && canReach(attacker, pivot3, candidate)) {
+                        stepHits.add(candidate);
                     }
                 }
-                stepHits.sort(Comparator.comparingDouble(e -> e.getBoundingBox().getCenter().distanceToSqr(pivot3)));
-                for (LivingEntity target : stepHits) {
+                stepHits.sort(Comparator.comparingDouble(c -> c.box().getCenter().distanceToSqr(pivot3)));
+                for (Candidate candidate : stepHits) {
                     if (hits.size() >= remaining) {
                         break;
                     }
-                    data.hitThisSwing.add(target.getId());
-                    hits.add(target);
+                    data.hitThisSwing.add(candidate.target().getId());
+                    hits.add(candidate.target());
                     hitThisStep = true;
                 }
             }
@@ -140,8 +153,9 @@ public final class SwingTracer {
     }
 
     /** No hitting through walls: the target's center or eyes must be visible from the blade pivot. */
-    private static boolean canReach(Entity attacker, Vec3 pivot, LivingEntity target) {
-        return isClear(attacker, pivot, target.getBoundingBox().getCenter()) || isClear(attacker, pivot, target.getEyePosition());
+    private static boolean canReach(Entity attacker, Vec3 pivot, Candidate candidate) {
+        return isClear(attacker, pivot, candidate.box().getCenter())
+                || isClear(attacker, pivot, candidate.target().getEyePosition().add(candidate.offset()));
     }
 
     private static boolean isClear(Entity attacker, Vec3 from, Vec3 to) {
