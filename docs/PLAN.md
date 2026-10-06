@@ -259,6 +259,30 @@ Vanilla zombies almost never carry weapons, and Spartan Weaponry's own rates are
 - Respect mobs that already got gear from vanilla or Spartan Weaponry (don't overwrite). Keep the vanilla drop chance for spawned gear low, so it isn't a loot fountain.
 - Shields in the offhand make mobs block with them (M2 shield rules already apply to mobs).
 
+### 7.5 More varied movement (requested 2026-10-06)
+Fights currently look repetitive: every slash of an archetype is the same motion, and bots only circle and step in/out. Planned:
+
+**Players and all fighters: attack variety**
+- Several variants per attack type and archetype (e.g. 2–3 slashes, overheads and stabs), each with its own arc **and** matching pose clip. Variant choice: alternate on combos (Chivalry 2 alternates slash direction), random otherwise. Mirrored arcs come from the directional-slash backlog item, and variants extend `ArcSpec` to keyframe arcs instead of the three presets.
+- Distinct heavy windups (not just an exaggerated light), and different riposte and counter motions.
+- Footwork in the pose clips: step-in on stabs, pivot on slashes, recoil steps on stagger.
+
+**Mobs: movement variety** (extends `ai/ClashSpacingGoal` and `ai/ClashBrain`)
+- Footwork patterns instead of constant circling: hold, sidestep, backpedal, a feinted step in, and lunging in from just outside reach.
+- Personality per mob type: zombies shamble straight in, vindicators rush and flank, skeletons with swords keep distance, piglin brutes press forward. Weighted by difficulty.
+- Reacting with movement, not only parries: step back out of reach of a slow heavy, sidestep a stab, back off to regenerate stamina when low.
+- Groups spread around the target (flanking positions) instead of bunching on one side; mobs waiting for an attack token pick open angles.
+- Per-mob variation (stored random seed) so a group doesn't move in lockstep.
+
+### 7.6 Timing HUD (requested 2026-10-06)
+Players need to see how long their own actions last. Add a small timing indicator near the crosshair (next to the stamina bar, same style; scalable or hideable in the client config):
+- **Heavy charge:** while holding an attack, a bar fills toward the point where it becomes a heavy (`HEAVY_HOLD_TICKS`), then shows the heavy's windup filling until release.
+- **Windup → release → recovery:** a segmented bar for the current attack, so you can see when the blade goes live and when you can act again. The combo window lights up during recovery once a hit has landed.
+- **Parry:** a draining bar for how long the raised parry lasts (`parry_ticks`), then the guard-recovery cooldown. The riposte window flashes after a successful parry (the stamina bar already flashes white; this makes its length visible).
+- **Other timed states:** feint and morph availability (windup only), stagger and flinch duration, kick recovery, and the shield cooldown after a guard break.
+- All of these are client-side reads of the predicted state machine (`phaseTick` / `phaseDuration` / `riposteTicks`), so the HUD costs no new networking.
+- Optional (config): a small indicator over *enemies'* heads during their windup (attack type and remaining time), as an accessibility and learning aid. Off by default, to keep reading animations the core skill.
+
 ## 8. Milestones
 
 Each milestone has a hard exit test.
@@ -271,7 +295,7 @@ Each milestone has a hard exit test.
 | **M3** Mind games *(built 2026-10-06; automated tests pass, in-game checklist pending)* | Heavies, feint, morph, combo, flinch, hyper armor, kick and shield bash, counter, environment clank, sprint lunge, jump attack. | Scripted GameTests pass for each interaction, run against the dummy. |
 | **M4** Feel and first person *(built 2026-10-06 with a changed approach, see docs/spikes.md "M4"; in-game look check pending)* | Blockbench animations (first and third person) with the arc-extraction script, retargeted to humanoid mobs, plus sounds, particles, hit-stop and camera sway. | Side-by-side comparison against Chiv 2 reference clips for each archetype. A playtester can predict which attack is coming from the windup alone. |
 | **M5** Bot brain *(built 2026-10-06; automated tests pass, in-game feel check pending)* | `ClashBrain`: spacing, parry reaction by difficulty, feints and morphs, ripostes, kicking turtles, adapting to the player, attack tokens for groups. | 1v1 a Hard vindicator with a SW halberd and it feels like a Chiv 2 bot. A 1v4 zombie fight stays readable. |
-| **M6** PvE content | **Mobs spawn with gear far more often** (see §7.4), soldier mobs (footman, knight, archer), patrols and outpost spawns, specials for each archetype (hammer slam, spear lunge…), throwing any weapon, mounted lance, cut/blunt/chop vs armor. | Per feature. |
+| **M6** PvE content | **Timing HUD for heavies, parries and other timed actions** (see §7.6), **mobs spawn with gear far more often** (see §7.4), **more varied mob movement and attack variants** (see §7.5), soldier mobs (footman, knight, archer), patrols and outpost spawns, specials for each archetype (hammer slam, spear lunge…), throwing any weapon, mounted lance, cut/blunt/chop vs armor. | Per feature. |
 | **M7** Multiplayer | Client prediction and reconciliation, lag compensation, latency tolerance config. Lower priority because PvE singleplayer runs at ~0 latency. | Co-op PvE at 150 ms simulated latency (clumsy) still allows reliable parries. |
 | **M8** Release | Config polish, compat matrix, wiki and in-game tutorial (the dummy), Modrinth/CurseForge pages, CI artifacts. | Public beta. |
 
