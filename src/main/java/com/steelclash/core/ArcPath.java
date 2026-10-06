@@ -59,7 +59,8 @@ public record ArcPath(List<Keyframe> keyframes) {
             case SLASH -> horizontal(140);
             case OVERHEAD -> vertical();
             case STAB -> thrust();
-            case KICK -> kick();
+            case KICK, THROW -> kick();
+            case SPECIAL -> thrust();
         };
     }
 

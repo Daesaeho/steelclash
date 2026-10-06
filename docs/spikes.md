@@ -96,3 +96,8 @@ The plan said "author animations in Blockbench, extract the arcs from them". Cha
 - **Variant and side are chosen by whoever predicts the attack.** Players' clients pick them (random variant; side from turning direction, combo alternation, or the last side used) and send them in `AttackInputPayload`. The server wraps the variant to the profile's count and traces that exact arc. Mobs pick on the server. Queued attacks carry their choice too, so prediction and server never disagree.
 - **Profiles now accept keyframe arcs** (`"keyframes": [[t, yaw, pitch, extension], ...]`) and per-attack `variants`; presets still work. Mirroring negates keyframe yaw (`ArcPath#mirrored`).
 - **"Does every variant hit?" isn't enough to prove mirroring works:** a slash hits a target in front from either side. `mirroredSlashReachesTheRightSideLater` checks *when* a side target is reached, and fails if mirroring is ignored (verified by mutation).
+
+## M6c-1 findings (2026-10-06)
+- **Mob armour only counts after the mob ticks:** equipment attribute modifiers (armour, damage) are applied in the entity tick, so armour equipped in the same tick reads `getArmorValue() == 0`, for vanilla's reduction and our damage types alike. Tests must wait a few ticks after equipping (as must any code reading armour right after spawning gear).
+- **GameTest zombies burn in daylight** (`onFire` damage) unless they wear a helmet, which can make "was it hurt?" checks pass for the wrong reason over multi-tick tests. Long-running tests should helmet their zombies *and* assert the damage source.
+- Thrown weapons reuse vanilla `ThrowableItemProjectile` + `ThrownItemRenderer`. Damage is the item's own `ATTACK_DAMAGE` modifiers plus 1 (bare hand), ×1.2.

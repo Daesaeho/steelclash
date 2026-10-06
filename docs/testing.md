@@ -140,3 +140,37 @@ Use `/steelclash_debug` to see the arcs.
 | 7 | Mobs | They also use all variants and both sides (random), and alternate sides on combos. |
 | 8 | Spam right-click | After each parry ends (caught a hit, released, or timed out) there's a short pause (5 ticks, `parryCooldownTicks` in the common config) before you can parry again. No parrying while lowering the guard. |
 | 9 | Fight 2–3 zombies (or two Attack-mode dummies) and hold a parry as they swing together | One parry catches several hits while it's up (each costs stamina). After the first catch, the timing bar turns white (riposte window) and attacking ripostes straight out of the guard. A parry that caught something drops without the guard-recovery delay. |
+
+## Manual in-game checklist (M6c-1: specials, throwing, damage types, lance)
+New keys: **R = weapon special**, **G = throw weapon** (Controls → Steel Clash). Hover a weapon to see its tooltip.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Hover any weapon | A gold line like `Sword · Cut · Special: Lunge (R)`. |
+| 2 | R with a sword, dagger, rapier or spear | **Lunge:** you dash forward with a long stab that out-reaches a normal stab. |
+| 3 | R with a mace, hammer or axe | **Slam:** a big overhead; on impact everyone within ~2.5 blocks of the impact point is knocked back, staggered and drained (guarding or not). Dust and a heavy thud. |
+| 4 | R with a greatsword, halberd/glaive or quarterstaff | **Sweep:** a very wide slash that can hit up to 5 enemies. |
+| 5 | R again immediately | Nothing happens: specials have a cooldown (4–7 s depending on the weapon). |
+| 6 | G with any weapon | A short overarm windup, then the weapon flies, hits for about 1.2× its melee damage, and drops where it lands so you can pick it up. Creative mode keeps the weapon in hand. |
+| 7 | Sword vs a zombie in full diamond, then a mace vs the same | The mace does relatively much better: blunt beats plate, cuts glance off it. Stabs count as pierce (good against armour gaps). `damageTypes = false` in the common config turns it off. |
+| 8 | Ride a horse with a spear or lance (Spartan) and stab while galloping | Much harder hits, scaling with the horse's speed (up to 2.5×). |
+| 9 | Armed mobs (Normal/Hard) | Now and then they open with their weapon's special. |
+
+## Parry key (added 2026-10-06)
+| # | Check | Expected |
+|---|---|---|
+| 1 | Controls → Steel Clash | A **Parry (weapon guard)** binding, default right click, not shown as conflicting with vanilla "Use Item". |
+| 2 | Leave it on right click | Exactly as before: right click parries with a weapon; doors, chests, villagers, sneaking and shields still use vanilla right click. |
+| 3 | Rebind Parry to Left Alt (keyboard) | Hold Left Alt to parry (release to lower). Right click goes back to vanilla "use" (eat, place, interact) even while holding a sword. |
+| 4 | Rebind Parry to a side mouse button | That button parries; right click is vanilla again. |
+
+## Slash keys (added 2026-10-06)
+Default controls are now: **left click = slash right→left, right click = slash left→right** (both hold for a heavy), **middle click = parry / raise shield**, Mouse 5 / scroll up = overhead, Mouse 4 / scroll down = stab, X feint, Z kick, R special, G throw. All are rebindable under Controls → Steel Clash. A parry you already rebound (e.g. to Left Alt) keeps your binding.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Left click / right click with a sword (`/steelclash_debug` on) | Left click swings right→left, right click swings left→right. Holding either makes a heavy. |
+| 2 | Right click on a door, chest, villager or horse, or while sneaking, or holding a bow/trident | Vanilla behaviour, no slash. |
+| 3 | Parry key with a sword | Weapon parry while held. |
+| 4 | Parry key with a shield in the offhand | Raises the shield while held (right click no longer does, since it slashes). |
+| 5 | Overheads and stabs | Side still follows your turning / alternates on combos. |

@@ -7,7 +7,11 @@ public enum AttackType {
     OVERHEAD,
     STAB,
     /** Built in, not defined by weapon profiles: breaks guards. Becomes a shield bash with a bash-capable shield. */
-    KICK;
+    KICK,
+    /** The weapon's special (lunge, slam or sweep), defined by its profile, on a cooldown. */
+    SPECIAL,
+    /** Built in: throw the held weapon. */
+    THROW;
 
     private static final AttackType[] VALUES = values();
 

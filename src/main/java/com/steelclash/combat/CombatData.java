@@ -44,6 +44,8 @@ public class CombatData {
     public boolean lunge;
     /** Current attack is an overhead started in mid-air. */
     public boolean jumpAttack;
+    /** Game time when the weapon special is off cooldown. */
+    public long specialReadyAt;
     /** Weapon unusable until this game time (HOLSTER disarm mode for mobs). */
     public long holsteredUntil;
     public float lastSentStamina = -1;

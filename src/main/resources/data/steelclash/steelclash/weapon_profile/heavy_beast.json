@@ -99,5 +99,6 @@
       ]
     }
   },
-  "hyper_armor_on_heavy": true
+  "hyper_armor_on_heavy": true,
+  "damage_type": "blunt"
 }

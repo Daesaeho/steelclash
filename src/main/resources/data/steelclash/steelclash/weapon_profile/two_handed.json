@@ -157,7 +157,8 @@
             ]
           ]
         }
-      ]
+      ],
+      "damage_type": "pierce"
     }
   },
   "guard": {
@@ -167,5 +168,24 @@
     "stamina_mult": 0.8
   },
   "riposte_windup_mult": 0.6,
-  "hyper_armor_on_heavy": true
+  "hyper_armor_on_heavy": true,
+  "damage_type": "cut",
+  "special": {
+    "kind": "sweep",
+    "attack": {
+      "windup": 14,
+      "release": 7,
+      "recovery": 14,
+      "damage": 1.1,
+      "arc": {
+        "shape": "horizontal",
+        "width": 240
+      },
+      "max_targets": 5,
+      "stamina_damage": 35,
+      "stamina_cost": 10.5,
+      "reach_bonus": 0.4
+    },
+    "cooldown": 140
+  }
 }

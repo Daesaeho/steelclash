@@ -155,7 +155,8 @@
             ]
           ]
         }
-      ]
+      ],
+      "damage_type": "pierce"
     }
   },
   "guard": {
@@ -165,5 +166,22 @@
     "stamina_mult": 0.9
   },
   "riposte_windup_mult": 0.6,
-  "hyper_armor_on_heavy": true
+  "hyper_armor_on_heavy": true,
+  "damage_type": "blunt",
+  "special": {
+    "kind": "slam",
+    "attack": {
+      "windup": 15,
+      "release": 5,
+      "recovery": 16,
+      "damage": 1.4,
+      "arc": {
+        "shape": "vertical"
+      },
+      "max_targets": 1,
+      "stamina_damage": 40,
+      "stamina_cost": 12.0
+    },
+    "cooldown": 120
+  }
 }

@@ -25,6 +25,13 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .build("training_dummy"));
 
+    public static final Supplier<EntityType<ThrownWeapon>> THROWN_WEAPON = ENTITY_TYPES.register("thrown_weapon",
+            () -> EntityType.Builder.<ThrownWeapon>of(ThrownWeapon::new, MobCategory.MISC)
+                    .sized(0.4f, 0.4f)
+                    .clientTrackingRange(6)
+                    .updateInterval(10)
+                    .build("thrown_weapon"));
+
     public static final DeferredItem<DeferredSpawnEggItem> TRAINING_DUMMY_SPAWN_EGG = ITEMS.register("training_dummy_spawn_egg",
             () -> new DeferredSpawnEggItem(TRAINING_DUMMY, 0xC8A165, 0x5B3A1E, new Item.Properties()));
 

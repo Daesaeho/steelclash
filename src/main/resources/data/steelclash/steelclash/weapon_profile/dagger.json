@@ -157,7 +157,8 @@
             ]
           ]
         }
-      ]
+      ],
+      "damage_type": "pierce"
     }
   },
   "guard": {
@@ -166,5 +167,23 @@
     "cone": 120,
     "stamina_mult": 1.3
   },
-  "riposte_windup_mult": 0.6
+  "riposte_windup_mult": 0.6,
+  "damage_type": "cut",
+  "special": {
+    "kind": "lunge",
+    "attack": {
+      "windup": 7,
+      "release": 4,
+      "recovery": 10,
+      "damage": 1.1,
+      "arc": {
+        "shape": "thrust"
+      },
+      "max_targets": 1,
+      "stamina_damage": 15,
+      "stamina_cost": 4.5,
+      "reach_bonus": 1.0
+    },
+    "cooldown": 80
+  }
 }

@@ -312,6 +312,11 @@ public final class ClashBrain {
         List<AttackType> options = new ArrayList<>(profile.attacks().keySet());
         options.sort(null);
         AttackType type = options.get(random.nextInt(options.size()));
+        // Now and then, open with the weapon's special when it's off cooldown.
+        if (profile.special().isPresent() && random.nextDouble() < 0.12
+                && mob.getData(ModAttachments.COMBAT).specialReadyAt <= mob.level().getGameTime()) {
+            type = AttackType.SPECIAL;
+        }
         Combat.requestAttack(mob, type);
         CombatData data = mob.getData(ModAttachments.COMBAT);
         if (data.machine.phase() != Phase.WINDUP) {

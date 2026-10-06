@@ -59,10 +59,11 @@ Out of scope for v1: objectives/teams game mode, dismemberment beyond SW's `DECA
 
 | Action | Default | Notes |
 |---|---|---|
-| Slash | LMB | Hold for heavy. |
+| Slash right→left | LMB | Hold for heavy. |
+| Slash left→right | RMB | Hold for heavy. Right click on doors/chests/villagers/mounts, while sneaking, or with a bow/trident stays vanilla. (Changed 2026-10-06 at the user's request; parry moved off RMB.) |
 | Overhead | Scroll up / Mouse 5 | While holding a combat weapon, scrolling triggers attacks instead of switching hotbar slots (config toggle). Number keys still switch slots. |
 | Stab | Scroll down / Mouse 4 | |
-| Block / Parry | RMB | Always block for anything you can melee with, including SW throwables. Their vanilla right-click throw moves to the throw key. |
+| Block / Parry | Middle click (rebindable; also raises an offhand shield) — was RMB | Always block for anything you can melee with, including SW throwables. Their vanilla right-click throw moves to the throw key. |
 | Bow / crossbow | LMB hold to draw, release to fire. RMB cancels the draw. | Implemented by sending LMB to the vanilla use action while holding a ranged weapon, so SW longbows and heavy crossbows keep their own logic. |
 | Feint | X | Not Q, because Q is vanilla drop. |
 | Kick | Z | Uses a shield bash when a bash-capable shield is in the offhand. |
@@ -295,7 +296,7 @@ Each milestone has a hard exit test.
 | **M3** Mind games *(built 2026-10-06; automated tests pass, in-game checklist pending)* | Heavies, feint, morph, combo, flinch, hyper armor, kick and shield bash, counter, environment clank, sprint lunge, jump attack. | Scripted GameTests pass for each interaction, run against the dummy. |
 | **M4** Feel and first person *(built 2026-10-06 with a changed approach, see docs/spikes.md "M4"; in-game look check pending)* | Blockbench animations (first and third person) with the arc-extraction script, retargeted to humanoid mobs, plus sounds, particles, hit-stop and camera sway. | Side-by-side comparison against Chiv 2 reference clips for each archetype. A playtester can predict which attack is coming from the windup alone. |
 | **M5** Bot brain *(built 2026-10-06; automated tests pass, in-game feel check pending)* | `ClashBrain`: spacing, parry reaction by difficulty, feints and morphs, ripostes, kicking turtles, adapting to the player, attack tokens for groups. | 1v1 a Hard vindicator with a SW halberd and it feels like a Chiv 2 bot. A 1v4 zombie fight stays readable. |
-| **M6** PvE content *(split: **M6a** built 2026-10-06 = timing HUD §7.6, armed mobs §7.4, mob movement §7.5; **M6b** built 2026-10-06 = attack variants, mirrored/alternating/turn-directed swings, heavy windup clips, two-handed swords; **M6c** the rest)* | **Timing HUD for heavies, parries and other timed actions** (see §7.6), **mobs spawn with gear far more often** (see §7.4), **more varied mob movement and attack variants** (see §7.5), soldier mobs (footman, knight, archer), patrols and outpost spawns, specials for each archetype (hammer slam, spear lunge…), throwing any weapon, mounted lance, cut/blunt/chop vs armor. | Per feature. |
+| **M6** PvE content *(split: **M6a** built 2026-10-06 = timing HUD §7.6, armed mobs §7.4, mob movement §7.5; **M6b** built 2026-10-06 = attack variants, mirrored/alternating/turn-directed swings, heavy windup clips, two-handed swords; **M6c-1** built 2026-10-06 = specials (lunge/slam/sweep), throwing any weapon, damage types vs armour, mounted lance, tooltips; **M6c-2** next = soldier mobs, patrols, outposts; **M6c** the rest)* | **Timing HUD for heavies, parries and other timed actions** (see §7.6), **mobs spawn with gear far more often** (see §7.4), **more varied mob movement and attack variants** (see §7.5), soldier mobs (footman, knight, archer), patrols and outpost spawns, specials for each archetype (hammer slam, spear lunge…), throwing any weapon, mounted lance, cut/blunt/chop vs armor. | Per feature. |
 | **M7** Multiplayer | Client prediction and reconciliation, lag compensation, latency tolerance config. Lower priority because PvE singleplayer runs at ~0 latency. | Co-op PvE at 150 ms simulated latency (clumsy) still allows reliable parries. |
 | **M8** Release | Config polish, compat matrix, wiki and in-game tutorial (the dummy), Modrinth/CurseForge pages, CI artifacts. | Public beta. |
 

@@ -6,6 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.DamageType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -22,10 +23,13 @@ import java.util.Optional;
  * @param riposteWindupMult    windup multiplier for an attack started right after a successful parry
  * @param heavy                how holding the attack input changes it
  * @param hyperArmorOnHeavy    heavy attacks can't be flinched (two-handers, maces, big beasts)
+ * @param damageType           cut, chop, blunt or pierce (versus armour weight); attacks may override it
+ * @param special              the weapon's special attack (key R), if it has one
  */
 public record WeaponProfile(String archetype, float referenceAttackSpeed, float speedScaling,
                             Map<AttackType, AttackSpec> attacks, Optional<GuardSpec> guard,
-                            float riposteWindupMult, HeavySpec heavy, boolean hyperArmorOnHeavy) {
+                            float riposteWindupMult, HeavySpec heavy, boolean hyperArmorOnHeavy,
+                            DamageType damageType, Optional<SpecialSpec> special) {
 
     public static final Codec<AttackType> ATTACK_TYPE_CODEC = Codec.STRING.comapFlatMap(
             name -> Arrays.stream(AttackType.values())
@@ -35,6 +39,14 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                     .orElseGet(() -> DataResult.error(() -> "Unknown attack type: " + name)),
             AttackType::serializedName);
 
+    public static final Codec<DamageType> DAMAGE_TYPE_CODEC = Codec.STRING.comapFlatMap(
+            name -> Arrays.stream(DamageType.values())
+                    .filter(t -> t.serializedName().equals(name))
+                    .findFirst()
+                    .map(DataResult::success)
+                    .orElseGet(() -> DataResult.error(() -> "Unknown damage type: " + name)),
+            DamageType::serializedName);
+
     public static final Codec<WeaponProfile> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("archetype").forGetter(WeaponProfile::archetype),
             Codec.floatRange(0.01f, 100f).fieldOf("reference_attack_speed").forGetter(WeaponProfile::referenceAttackSpeed),
@@ -43,8 +55,47 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
             GuardSpec.CODEC.optionalFieldOf("guard").forGetter(WeaponProfile::guard),
             Codec.floatRange(0.1f, 1f).optionalFieldOf("riposte_windup_mult", 0.6f).forGetter(WeaponProfile::riposteWindupMult),
             HeavySpec.CODEC.optionalFieldOf("heavy", HeavySpec.DEFAULT).forGetter(WeaponProfile::heavy),
-            Codec.BOOL.optionalFieldOf("hyper_armor_on_heavy", false).forGetter(WeaponProfile::hyperArmorOnHeavy)
+            Codec.BOOL.optionalFieldOf("hyper_armor_on_heavy", false).forGetter(WeaponProfile::hyperArmorOnHeavy),
+            DAMAGE_TYPE_CODEC.optionalFieldOf("damage_type", DamageType.CUT).forGetter(WeaponProfile::damageType),
+            SpecialSpec.CODEC.optionalFieldOf("special").forGetter(WeaponProfile::special)
     ).apply(i, WeaponProfile::new));
+
+    /** The attack spec used for an attack type (profile attacks, or the special). */
+    public Optional<AttackSpec> spec(AttackType type) {
+        return type == AttackType.SPECIAL ? special.map(SpecialSpec::attack) : attack(type);
+    }
+
+    /** Damage type of an attack: its own override, else the weapon's. */
+    public DamageType damageTypeOf(AttackSpec spec) {
+        return spec.damageType().orElse(damageType);
+    }
+
+    /**
+     * A weapon's special (key R).
+     *
+     * @param kind     lunge (dash forward with a long stab), slam (ground impact that staggers and drains stamina
+     *                 around it), or sweep (a wide arc that hits many)
+     * @param cooldown ticks before it can be used again
+     */
+    public record SpecialSpec(Kind kind, AttackSpec attack, int cooldown) {
+        public enum Kind {
+            LUNGE, SLAM, SWEEP;
+
+            static final Codec<Kind> CODEC = Codec.STRING.comapFlatMap(
+                    name -> Arrays.stream(values())
+                            .filter(k -> k.name().toLowerCase(Locale.ROOT).equals(name))
+                            .findFirst()
+                            .map(DataResult::success)
+                            .orElseGet(() -> DataResult.error(() -> "Unknown special: " + name)),
+                    k -> k.name().toLowerCase(Locale.ROOT));
+        }
+
+        public static final Codec<SpecialSpec> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Kind.CODEC.fieldOf("kind").forGetter(SpecialSpec::kind),
+                AttackSpec.CODEC.fieldOf("attack").forGetter(SpecialSpec::attack),
+                Codec.intRange(0, 6000).optionalFieldOf("cooldown", 100).forGetter(SpecialSpec::cooldown)
+        ).apply(i, SpecialSpec::new));
+    }
 
     public Optional<AttackSpec> attack(AttackType type) {
         return Optional.ofNullable(attacks.get(type));
@@ -84,10 +135,12 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
      * @param staminaCost   stamina the attacker loses when the attack hits nothing (whiff)
      */
     public record AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
-                             float reachBonus, float staminaDamage, float staminaCost, List<ArcSpec> variants) {
+                             float reachBonus, float staminaDamage, float staminaCost, List<ArcSpec> variants,
+                             Optional<DamageType> damageType) {
         public AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
                           float reachBonus, float staminaDamage, float staminaCost) {
-            this(windup, release, recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, List.of());
+            this(windup, release, recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, List.of(),
+                    Optional.empty());
         }
 
         /** How many different arcs this attack can be swung along (the main arc plus its variants). */
@@ -110,7 +163,8 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                 Codec.floatRange(-3f, 5f).optionalFieldOf("reach_bonus", 0f).forGetter(AttackSpec::reachBonus),
                 Codec.floatRange(0f, 1000f).optionalFieldOf("stamina_damage", 15f).forGetter(AttackSpec::staminaDamage),
                 Codec.floatRange(0f, 1000f).optionalFieldOf("stamina_cost", 6f).forGetter(AttackSpec::staminaCost),
-                ArcSpec.CODEC.listOf().optionalFieldOf("variants", List.of()).forGetter(AttackSpec::variants)
+                ArcSpec.CODEC.listOf().optionalFieldOf("variants", List.of()).forGetter(AttackSpec::variants),
+                DAMAGE_TYPE_CODEC.optionalFieldOf("damage_type").forGetter(AttackSpec::damageType)
         ).apply(i, AttackSpec::new));
 
         public AttackTimings timings() {

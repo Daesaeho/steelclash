@@ -8,7 +8,10 @@ import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Phase;
 import com.steelclash.net.CombatStatePayload;
 import com.steelclash.net.StaminaPayload;
+import com.steelclash.core.DamageType;
+import com.steelclash.entity.ThrownWeapon;
 import com.steelclash.profile.Kicks;
+import com.steelclash.profile.Throws;
 import com.steelclash.profile.WeaponProfile;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.Optional;
@@ -52,8 +55,17 @@ public final class Combat {
         AttackTimings timings;
         if (type == AttackType.KICK) {
             timings = Kicks.forEntity(entity).timings();
+        } else if (type == AttackType.THROW) {
+            if (resolved.isEmpty() || entity.getMainHandItem().isEmpty()) {
+                return false; // throw what you're fighting with
+            }
+            timings = Throws.spec().timings();
         } else {
-            Optional<WeaponProfile.AttackSpec> spec = resolved.flatMap(r -> r.profile().attack(type));
+            if (type == AttackType.SPECIAL && (data.specialReadyAt > entity.level().getGameTime()
+                    || resolved.flatMap(r -> r.profile().special()).isEmpty())) {
+                return false; // no special, or still on cooldown
+            }
+            Optional<WeaponProfile.AttackSpec> spec = resolved.flatMap(r -> r.profile().spec(type));
             if (spec.isEmpty()) {
                 return false;
             }
@@ -65,12 +77,16 @@ public final class Combat {
                         timings.release(), timings.recovery());
             }
         }
-        if (type == AttackType.KICK) {
+        if (type == AttackType.KICK || type == AttackType.THROW) {
             variant = 0;
             mirrored = false;
         }
         if (!data.machine.startAttack(type, timings, variant, mirrored)) {
             return false;
+        }
+        if (type == AttackType.SPECIAL) {
+            data.specialReadyAt = entity.level().getGameTime()
+                    + resolved.flatMap(r -> r.profile().special()).map(WeaponProfile.SpecialSpec::cooldown).orElse(0);
         }
         data.profileKey = resolved.map(WeaponProfiles.Resolved::key).orElse(null);
         data.weapon = entity.getMainHandItem().copy();
@@ -86,7 +102,9 @@ public final class Combat {
 
     /** Holding the attack turns the windup into a heavy. */
     public static boolean makeHeavy(LivingEntity entity, CombatData data) {
-        if (data.machine.phase() != Phase.WINDUP || data.machine.type() == AttackType.KICK) {
+        AttackType current = data.machine.type();
+        if (data.machine.phase() != Phase.WINDUP || current == AttackType.KICK || current == AttackType.THROW
+                || current == AttackType.SPECIAL) {
             return false;
         }
         Optional<WeaponProfile> profile = currentProfile(entity, data);
@@ -110,7 +128,7 @@ public final class Combat {
     }
 
     public static boolean morph(LivingEntity entity, CombatData data, AttackType newType, int variant, boolean mirrored) {
-        if (data.machine.phase() != Phase.WINDUP || newType == AttackType.KICK || data.machine.type() == AttackType.KICK) {
+        if (data.machine.phase() != Phase.WINDUP || !isWeaponAttack(newType) || !isWeaponAttack(data.machine.type())) {
             return false;
         }
         Optional<WeaponProfile> profile = currentProfile(entity, data);
@@ -246,6 +264,13 @@ public final class Combat {
             if (sweep.from() == 0) {
                 onReleaseStarted(entity, data);
             }
+            if (machine.type() == AttackType.THROW) {
+                if (sweep.from() == 0) {
+                    throwWeapon(entity, data);
+                }
+                finishTick(entity, data, before);
+                return;
+            }
             SwingTracer.Result result = SwingTracer.trace(entity, data, spec.get(), sweep);
             boolean landed = false;
             for (LivingEntity target : result.hits()) {
@@ -269,7 +294,17 @@ public final class Combat {
             if (before == Phase.RELEASE && machine.phase() == Phase.RECOVERY && data.hitThisSwing.isEmpty()) {
                 spend(entity, data, spec.get().staminaCost()); // whiffing costs stamina
             }
+            if (before == Phase.RELEASE && machine.phase() == Phase.RECOVERY && machine.type() == AttackType.SPECIAL
+                    && specialKind(entity, data) == WeaponProfile.SpecialSpec.Kind.SLAM) {
+                Specials.slam(entity, spec.get());
+            }
         }
+        finishTick(entity, data, before);
+    }
+
+    /** End of a server tick: remember the view for next tick's sweep, start buffered attacks, sync phase changes. */
+    private static void finishTick(LivingEntity entity, CombatData data, Phase before) {
+        CombatStateMachine machine = data.machine;
         data.prevYaw = CombatMath.viewYaw(entity);
         data.prevPitch = entity.getXRot();
         data.prevPivot = CombatMath.pivot(entity, 1f);
@@ -316,7 +351,19 @@ public final class Combat {
         if (data.machine.type() == AttackType.KICK) {
             return Optional.of(Kicks.forEntity(entity));
         }
-        return currentProfile(entity, data).flatMap(profile -> profile.attack(data.machine.type()));
+        if (data.machine.type() == AttackType.THROW) {
+            return Optional.of(Throws.spec());
+        }
+        return currentProfile(entity, data).flatMap(profile -> profile.spec(data.machine.type()));
+    }
+
+    /** Slash, overhead or stab (the attacks that can be morphed between). */
+    public static boolean isWeaponAttack(AttackType type) {
+        return type == AttackType.SLASH || type == AttackType.OVERHEAD || type == AttackType.STAB;
+    }
+
+    public static WeaponProfile.SpecialSpec.Kind specialKind(LivingEntity entity, CombatData data) {
+        return currentProfile(entity, data).flatMap(WeaponProfile::special).map(WeaponProfile.SpecialSpec::kind).orElse(null);
     }
 
     /** Buffers an attack input to start the moment the fighter is free. */
@@ -385,6 +432,13 @@ public final class Combat {
         if (data.jumpAttack) {
             damageMult *= Config.JUMP_ATTACK_DAMAGE_MULT.get().floatValue();
         }
+        if (Config.DAMAGE_TYPES.get() && profile.isPresent()) {
+            damageMult *= (float) profile.get().damageTypeOf(spec).multiplierFor(target.getArmorValue());
+        }
+        // Couched lance: stabs and lunges from a moving mount hit harder the faster it goes.
+        if (attacker.getVehicle() != null && (type == AttackType.STAB || type == AttackType.SPECIAL)) {
+            damageMult *= (float) DamageType.mountedChargeMultiplier(attacker.getVehicle().getDeltaMovement().horizontalDistance());
+        }
         SwingContext.run(attacker, type, spec, damageMult, staminaDamage, () -> {
             // Our swings hit each target at most once, so vanilla i-frames would only eat legitimate hits.
             target.invulnerableTime = 0;
@@ -428,6 +482,21 @@ public final class Combat {
         target.hurtMarked = true;
     }
 
+    /** The weapon leaves the hand: a {@link ThrownWeapon} flies along the view. Creative players keep theirs. */
+    private static void throwWeapon(LivingEntity entity, CombatData data) {
+        ItemStack weapon = entity.getMainHandItem();
+        if (weapon.isEmpty()) {
+            return;
+        }
+        ThrownWeapon projectile = new ThrownWeapon(entity.level(), entity, weapon);
+        projectile.shootFromRotation(entity, entity.getXRot(), CombatMath.viewYaw(entity), 0f, ThrownWeapon.SPEED, 1.0f);
+        entity.level().addFreshEntity(projectile);
+        if (!(entity instanceof Player player && player.getAbilities().instabuild)) {
+            weapon.shrink(1);
+        }
+        data.weapon = entity.getMainHandItem().copy(); // the hand changed on purpose: don't cancel the recovery
+    }
+
     /** The blade hit a wall: the swing stops and the attacker reels. */
     private static void clank(LivingEntity entity, CombatData data, Vec3 where) {
         stagger(entity, data, Config.CLANK_STAGGER_TICKS.get(), true);
@@ -449,6 +518,11 @@ public final class Combat {
 
     private static void onReleaseStarted(LivingEntity entity, CombatData data) {
         Feedback.swing(entity, data.machine.isHeavy());
+        if (data.machine.type() == AttackType.SPECIAL && specialKind(entity, data) == WeaponProfile.SpecialSpec.Kind.LUNGE) {
+            Vec3 look = entity.getLookAngle();
+            entity.setDeltaMovement(entity.getDeltaMovement().add(look.x * 0.9, 0.1, look.z * 0.9));
+            entity.hurtMarked = true;
+        }
         if (data.lunge) {
             Vec3 look = entity.getLookAngle();
             entity.setDeltaMovement(entity.getDeltaMovement().add(look.x * 0.6, 0.05, look.z * 0.6));

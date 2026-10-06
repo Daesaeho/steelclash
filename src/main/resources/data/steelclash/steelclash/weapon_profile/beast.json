@@ -121,5 +121,6 @@
         }
       ]
     }
-  }
+  },
+  "damage_type": "pierce"
 }

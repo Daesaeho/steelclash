@@ -79,6 +79,8 @@ public final class EnemyTelegraphRenderer {
             case OVERHEAD -> "OVERHEAD";
             case STAB -> "STAB";
             case KICK -> "KICK";
+            case SPECIAL -> "SPECIAL";
+            case THROW -> "THROW";
         };
         return heavy ? "HEAVY " + name : name;
     }

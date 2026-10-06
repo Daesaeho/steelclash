@@ -110,6 +110,9 @@ public class Config {
             .defineInRange("lungeReachBonus", 0.7, 0.0, 5.0);
     public static final ModConfigSpec.DoubleValue LUNGE_DAMAGE_MULT = BUILDER
             .defineInRange("lungeDamageMult", 1.15, 0.0, 10.0);
+    public static final ModConfigSpec.BooleanValue DAMAGE_TYPES = BUILDER
+            .comment("Cut/chop/blunt/pierce damage versus armour weight (blunt beats plate, cuts beat cloth)")
+            .define("damageTypes", true);
     public static final ModConfigSpec.BooleanValue BLOOD_PARTICLES = BUILDER
             .comment("Red particles where swings connect")
             .define("bloodParticles", true);
