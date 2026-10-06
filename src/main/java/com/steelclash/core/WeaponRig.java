@@ -30,8 +30,6 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
     public static final Vec RIGHT_SHOULDER = new Vec(-5, 2, 0);
     public static final Vec LEFT_SHOULDER = new Vec(5, 2, 0);
     public static final double HAND_DISTANCE = 10;
-    /** The off hand holds the grip this far behind the weapon hand, toward the pommel (pixels). */
-    public static final double SECOND_HAND_GAP = 2.5;
     /** Furthest the off shoulder slides toward the grip (pixels). */
     public static final double MAX_SHOULDER_REACH = 4;
 
@@ -48,6 +46,12 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
      */
     public static WeaponRig solve(double bladeYaw, double bladePitch, double gripDegrees, double twistDegrees, TwistAxis twistAxis,
                                   double[] body, double relax) {
+        return solve(bladeYaw, bladePitch, gripDegrees, twistDegrees, twistAxis, body, relax, AnimationSet.DEFAULT_GRIP_GAP);
+    }
+
+    /** @param gripGap pixels between the hands on a two-handed grip, the off hand toward the pommel */
+    public static WeaponRig solve(double bladeYaw, double bladePitch, double gripDegrees, double twistDegrees, TwistAxis twistAxis,
+                                  double[] body, double relax, double gripGap) {
         Mat3 straight = armToward(bladeYaw, bladePitch);
         double gx = Math.toRadians(gripDegrees), gy = 0, gz = 0;
         double twist = Math.toRadians(twistDegrees);
@@ -73,7 +77,7 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
         // Off hand: on the grip behind the weapon hand, in the body's own (rotated) frame like the arms.
         Vec bladeInBody = bodyRot.transpose().apply(bladeDir);
         Vec weaponHand = RIGHT_SHOULDER.add(arm.apply(new Vec(0, HAND_DISTANCE, 0)));
-        Vec grip = weaponHand.subtract(bladeInBody.scale(SECOND_HAND_GAP));
+        Vec grip = weaponHand.subtract(bladeInBody.scale(gripGap));
         Vec toGrip = grip.subtract(LEFT_SHOULDER);
         double shortBy = toGrip.length() - HAND_DISTANCE;
         Vec shoulder = shortBy > 0 ? toGrip.scale(Math.min(shortBy, MAX_SHOULDER_REACH) / toGrip.length()) : Vec.ZERO;

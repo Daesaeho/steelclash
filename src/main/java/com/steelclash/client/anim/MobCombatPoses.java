@@ -15,6 +15,8 @@ import org.jetbrains.annotations.Nullable;
  * to put the blade itself on the arc.
  */
 public final class MobCombatPoses {
+    private static final float MOB_BODY_SHARE = 0.5f;
+
     private MobCombatPoses() {
     }
 
@@ -47,7 +49,11 @@ public final class MobCombatPoses {
         add(parts.leftLeg, pose, "leftLeg");
         add(parts.head, pose, "head");
         if (parts.body != null) {
-            add(parts.body, pose, "body");
+            // A mob's body part is just the torso (arms and head don't turn with it, unlike the player's whole-body
+            // bone), so it takes half the clip's turn rather than twisting away from its own shoulders.
+            parts.body.xRot += pose.offset("body", 0) * MOB_BODY_SHARE;
+            parts.body.yRot += pose.offset("body", 1) * MOB_BODY_SHARE;
+            parts.body.zRot += pose.offset("body", 2) * MOB_BODY_SHARE;
         }
     }
 

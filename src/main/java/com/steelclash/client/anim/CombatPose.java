@@ -32,9 +32,10 @@ import net.minecraft.world.entity.LivingEntity;
  * @param twoHanded   the off hand grips the weapon
  * @param kick        the legs, not the weapon arm, do the attacking
  * @param bladeTwist  degrees to roll the weapon around its length so the edge leads the cut (see {@link ArcPath#edgeAngle})
+ * @param gripGap     pixels between the hands on a two-handed grip
  */
 public record CombatPose(Phase phase, double weight, double aimYaw, double aimPitch, Map<String, double[]> offsets,
-                         boolean twoHanded, boolean kick, double bladeTwist) {
+                         boolean twoHanded, boolean kick, double bladeTwist, double gripGap) {
     /** How far the weapon hand is drawn in from the blade's line toward the chest (0 = arm and blade in one line). */
     private static final double WRIST_RELAX = 0.45;
     private static final double[] NO_OFFSET = {0, 0, 0};
@@ -74,7 +75,7 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
         double aimYaw = headYaw + pose.yaw();
         double aimPitch = Mth.clamp(entity.getViewXRot(partialTick) + pose.pitch(), -90, 90);
         return Optional.of(new CombatPose(pose.phase(), pose.weight(), aimYaw, aimPitch, offsets,
-                twoHanded, pose.type() == AttackType.KICK && pose.phase().isAttack(), bladeTwist(data, pose)));
+                twoHanded, pose.type() == AttackType.KICK && pose.phase().isAttack(), bladeTwist(data, pose), animation.gripGap()));
     }
 
     /** Edge into the cut for the whole attack: set during the windup, follows the arc, held through recovery. */
@@ -122,7 +123,7 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
     public WeaponRig rig(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis) {
         double[] body = offsets.getOrDefault("body", NO_OFFSET);
         double[] weightedBody = {body[0] * weight, body[1] * weight, body[2] * weight};
-        return WeaponRig.solve(aimYaw, aimPitch, gripDegrees, bladeTwist * twistScale, twistAxis, weightedBody, WRIST_RELAX);
+        return WeaponRig.solve(aimYaw, aimPitch, gripDegrees, bladeTwist * twistScale, twistAxis, weightedBody, WRIST_RELAX, gripGap);
     }
 
     /** Weapon arm rotation (radians) that puts an un-rotated held blade on the arc (mobs). */
@@ -134,7 +135,7 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
     public double[] gripArm(double[] weaponArm) {
         Vec hand = WeaponRig.RIGHT_SHOULDER.add(Mat3.zyx(weaponArm[0], weaponArm[1], weaponArm[2])
                 .apply(new Vec(0, WeaponRig.HAND_DISTANCE, 0)));
-        Vec grip = hand.subtract(ArmAim.modelDirection(aimYaw, aimPitch).scale(WeaponRig.SECOND_HAND_GAP));
+        Vec grip = hand.subtract(ArmAim.modelDirection(aimYaw, aimPitch).scale(gripGap));
         return WeaponRig.reach(WeaponRig.LEFT_SHOULDER, grip);
     }
 }

@@ -34,7 +34,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
  * <ul>
  *     <li>{@code steelclash.poseSheet}: attacks to photograph ({@code slash}, {@code slash_mirrored}, {@code overhead},
  *     {@code stab}, {@code parry}, any with {@code _heavy});</li>
- *     <li>{@code steelclash.poseSheetItem}: item id to hold (default iron sword);</li>
+ *     <li>{@code steelclash.poseSheetItem}: item ids to hold, comma-separated (default iron sword); with several,
+ *     every attack is shot with each and the file names start with the item's path ({@code pose_iron_axe_slash_...});</li>
  *     <li>{@code steelclash.poseSheetDebug}: draw the traced blade too ({@code /steelclash_debug}), to check that the
  *     rendered weapon lies on it;</li>
  *     <li>{@code steelclash.poseSheetQuit}: close the game when done.</li>
@@ -53,7 +54,8 @@ public final class PoseSheet {
             {0, 0.5}, {0, 0.95}, {1, 0.0}, {1, 0.35}, {1, 0.7}, {1, 0.99}, {2, 0.3}};
     private static final CameraType[] VIEWS = {CameraType.THIRD_PERSON_BACK, CameraType.THIRD_PERSON_FRONT, CameraType.FIRST_PERSON};
 
-    private record Shot(AttackType type, boolean heavy, boolean mirrored, Phase phase, double progress, CameraType view, String name) {
+    private record Shot(String item, AttackType type, boolean heavy, boolean mirrored, Phase phase, double progress, CameraType view,
+                        String name) {
     }
 
     private static List<Shot> shots;
@@ -113,7 +115,7 @@ public final class PoseSheet {
      * third-person camera never bumps into terrain. Needs a world with cheats on (the dev world has them).
      */
     private static void buildStage(LocalPlayer player) {
-        String item = System.getProperty("steelclash.poseSheetItem", "minecraft:iron_sword");
+        String item = items().get(0);
         for (String command : new String[]{
                 "gamerule doDaylightCycle false", "gamerule doWeatherCycle false", "time set noon", "weather clear",
                 "fill ~-3 300 ~-3 ~3 300 ~3 minecraft:polished_andesite", "tp @s ~ 301 ~ 0 0",
@@ -122,8 +124,27 @@ public final class PoseSheet {
         }
     }
 
+    private static List<String> items() {
+        List<String> out = new ArrayList<>();
+        for (String raw : System.getProperty("steelclash.poseSheetItem", "minecraft:iron_sword").split(",")) {
+            if (!raw.isBlank()) {
+                out.add(raw.trim());
+            }
+        }
+        return out.isEmpty() ? List.of("minecraft:iron_sword") : out;
+    }
+
     private static List<Shot> plan() {
         List<Shot> out = new ArrayList<>();
+        List<String> items = items();
+        for (String item : items) {
+            String prefix = items.size() > 1 ? ResourceLocation.parse(item).getPath() + "_" : "";
+            plan(out, item, prefix);
+        }
+        return out;
+    }
+
+    private static void plan(List<Shot> out, String item, String prefix) {
         for (String raw : SPEC.split(",")) {
             String entry = raw.trim().toLowerCase(Locale.ROOT);
             if (entry.isEmpty()) {
@@ -134,19 +155,18 @@ public final class PoseSheet {
             String base = entry.replace("_heavy", "").replace("_mirrored", "");
             for (CameraType view : VIEWS) {
                 if (base.equals("parry")) {
-                    out.add(new Shot(AttackType.SLASH, false, false, Phase.PARRY, 1.0, view, "parry_" + viewName(view)));
+                    out.add(new Shot(item, AttackType.SLASH, false, false, Phase.PARRY, 1.0, view, prefix + "parry_" + viewName(view)));
                     continue;
                 }
                 AttackType type = AttackType.valueOf(base.toUpperCase(Locale.ROOT));
                 for (double[] point : POINTS) {
                     Phase phase = point[0] == 0 ? Phase.WINDUP : point[0] == 1 ? Phase.RELEASE : Phase.RECOVERY;
-                    String name = String.format(Locale.ROOT, "%s_%s_%03d_%s", entry, phase.name().toLowerCase(Locale.ROOT),
+                    String name = prefix + String.format(Locale.ROOT, "%s_%s_%03d_%s", entry, phase.name().toLowerCase(Locale.ROOT),
                             Math.round(point[1] * 100), viewName(view));
-                    out.add(new Shot(type, heavy, mirrored, phase, point[1], view, name));
+                    out.add(new Shot(item, type, heavy, mirrored, phase, point[1], view, name));
                 }
             }
         }
-        return out;
     }
 
     private static String viewName(CameraType view) {
@@ -158,8 +178,10 @@ public final class PoseSheet {
     }
 
     private static void setUp(Minecraft mc, LocalPlayer player, Shot shot) {
-        String itemId = System.getProperty("steelclash.poseSheetItem", "minecraft:iron_sword");
-        ItemStack item = new ItemStack(BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(itemId)).orElse(Items.IRON_SWORD));
+        ItemStack item = new ItemStack(BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(shot.item())).orElseGet(() -> {
+            SteelClash.LOGGER.warn("Pose sheet: unknown item {}, using an iron sword", shot.item());
+            return Items.IRON_SWORD;
+        }));
         if (!ItemStack.isSameItem(player.getMainHandItem(), item)) {
             player.getInventory().setItem(player.getInventory().selected, item); // client-side only: just for the picture
         }

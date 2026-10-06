@@ -151,7 +151,7 @@ The weapon arm used to point straight along the blade, so arm and sword formed o
 - **The arm is free:** the hand is drawn 45% of the way toward a point in front of the chest (`CombatPose.WRIST_RELAX`), so the wrist shows a cocked angle. The arm also counters the whole-body rotation, and the held item is rotated in the hand to bring the blade back onto the arc.
 - **Whole-body rotation in model space** is `Rz(z)·Ry(-y)·Rx(-x)` of the clip's `body` angles: the renderer applies it in entity space, before the model flips X and Y. A pose sheet with `-PposeSheetDebug` confirms the blade runs parallel to the traced line in every slash, overhead and stab shot. The hilt sits a little in front of the trace's pivot, because the hand is drawn in.
 - **Legs take back half the body's turn** (`ProceduralSwingAnimation.HIP_LAG`), so the shoulders twist over the hips instead of the fighter pivoting on the spot.
-- **Sword slash clips re-authored:** a 45° wind-up turn with weight on the back foot, square and leaning in mid-cut with a front-foot step, and a 50° follow-through that settles before recovering. Other archetypes keep their clips but get the rig (wrist and arc lock) for free.
+- **Sword slash clips re-authored** (step E later gave every archetype the same treatment): a 45° wind-up turn with weight on the back foot, square and leaning in mid-cut with a front-foot step, and a 50° follow-through that settles before recovering. Other archetypes keep their clips but get the rig (wrist and arc lock) for free.
 - **Mobs are unchanged** (`weaponArmForFixedItem`); their model hook can't rotate the held item.
 
 ## First person and the two-hand grip (step D, 2026-10-07)
@@ -160,3 +160,17 @@ Checked on pose sheets (slash, mirrored slash, overhead, stab, parry; all three 
 - **First-person arm offset:** in the first-person pass only, both arms sit 4 px forward and 1.5 px down (`ProceduralSwingAnimation.FIRST_PERSON_FORWARD`/`_DOWN`), the usual first-person trick. Before this, a raised overhead or parry put both arms across the whole lower half of the screen. Now the weapon reads clearly in every wind-up. The blade's direction is unchanged.
 - **Tried and dropped:** less wrist bend in first person (0.15). It brought the raised arms right up to the eye (overhead, parry) and pushed slash wind-ups off screen.
 - **Still as designed:** the backhand (mirrored) wind-up shows the blade large on the left, because it passes close to the head. The slash follow-through ends low and centre-left, which is where the traced blade really is from eye height.
+
+## Every archetype's body motion (step E, 2026-10-07)
+- **Before:** every archetype except the sword had a scaled copy of the default clip set.
+- **Now:** slash, overhead and stab clips (plus heavy wind-ups) for sword, dagger, rapier, axe, blunt, two_handed, polearm, spear and staff all share one structure:
+  - wind-up (turned or reared back, weight on the back foot);
+  - mid-cut (square, leaning in, front foot stepping);
+  - follow-through (carried round, or over the front foot);
+  - a settle at 30% of recovery.
+
+  Per-archetype styles vary twist, lean, step, overhead rear-back and chop, the thrust's side-on turn and lunge, and the off-arm pose. Examples: daggers are compact and leaning in; axes and blunt weapons swing wide and chop deep; rapiers turn side-on for long lunges with the off arm hanging back; spears lunge far. Kick, parry, stagger, special and throw clips are unchanged. `default` and `claw` (mobs, unmapped items) are unchanged.
+- **Grip width:** `grip_gap` in an animation file sets the pixels between the hands on a two-handed grip (default 2.5). Staff 8, polearm 7, spear 6, two_handed 3.5, so long weapons are held with the hands spread along the shaft (`AnimationSet.gripGap`, checked by `AnimationFilesTest`).
+- **Mobs take half the body turn** (`MobCombatPoses.MOB_BODY_SHARE`): a mob's body part is only the torso, whose arms and head don't turn with it, so the bigger twists would otherwise pull the torso away from its shoulders. This hasn't been checked on screen: the pose sheet only photographs the player.
+- **Pose sheet:** it now takes several items (`-PposeSheetItem=a,b,c`, file names prefixed with the item's path) and warns about unknown ids instead of quietly using a sword. Spartan Weaponry's namespace is `spartan_weaponry_unofficial`.
+- **Checked on pose sheets:** iron axe, mace, trident, and the Spartan dagger, rapier, greatsword, halberd, quarterstaff and spear, for slash, overhead and stab, in all three views.

@@ -42,6 +42,10 @@ class AnimationFilesTest {
                 assertFalse(animation.clip(type.serializedName() + ".heavy_windup").isEmpty(),
                         file.getFileName() + " is missing " + type.serializedName() + ".heavy_windup");
             }
+            assertTrue(animation.gripGap() > 0 && animation.gripGap() <= 10, file.getFileName() + ": grip gap " + animation.gripGap());
+            if (file.getFileName().toString().equals("staff.json")) {
+                assertTrue(animation.gripGap() > AnimationSet.DEFAULT_GRIP_GAP, "a staff is held with the hands wide apart");
+            }
             if (file.getFileName().toString().equals("two_handed.json")) {
                 assertTrue(animation.twoHanded(), "two_handed grips with both hands");
             }

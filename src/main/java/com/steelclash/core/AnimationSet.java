@@ -13,18 +13,21 @@ import java.util.Map;
  *
  * @param twoHanded        the off hand grips the weapon too
  * @param heavyWindupScale how much more exaggerated a heavy's windup pose is
+ * @param gripGap          two-handed grip: pixels between the hands along the weapon (wide for staves and polearms)
  */
-public record AnimationSet(boolean twoHanded, double heavyWindupScale, Map<String, PoseClip> clips) {
-    public static final AnimationSet NONE = new AnimationSet(false, 1, Map.of());
+public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gripGap, Map<String, PoseClip> clips) {
+    public static final double DEFAULT_GRIP_GAP = 2.5;
+    public static final AnimationSet NONE = new AnimationSet(false, 1, DEFAULT_GRIP_GAP, Map.of());
 
     public PoseClip clip(String key) {
         return clips.getOrDefault(key, PoseClip.EMPTY);
     }
 
-    /** Parses the JSON format: {@code {"grip": "two_handed", "heavy_windup_scale": 1.35, "clips": {"slash.windup": [{"t": 0, "body": [x, y, z]}, ...]}}}. */
+    /** Parses the JSON format: {@code {"grip": "two_handed", "grip_gap": 7, "heavy_windup_scale": 1.35, "clips": {"slash.windup": [{"t": 0, "body": [x, y, z]}, ...]}}}. */
     public static AnimationSet parse(JsonObject json) {
         boolean twoHanded = json.has("grip") && json.get("grip").getAsString().equals("two_handed");
         double heavyScale = json.has("heavy_windup_scale") ? json.get("heavy_windup_scale").getAsDouble() : 1.35;
+        double gripGap = json.has("grip_gap") ? json.get("grip_gap").getAsDouble() : DEFAULT_GRIP_GAP;
         Map<String, PoseClip> clips = new HashMap<>();
         JsonObject clipsJson = json.getAsJsonObject("clips");
         if (clipsJson != null) {
@@ -45,7 +48,7 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, Map<Strin
                 clips.put(clip.getKey(), new PoseClip(keyframes));
             }
         }
-        return new AnimationSet(twoHanded, heavyScale, Map.copyOf(clips));
+        return new AnimationSet(twoHanded, heavyScale, gripGap, Map.copyOf(clips));
     }
 
     /** Clip key for a phase: "slash.windup", "kick.release", "parry", "stagger", ... */
