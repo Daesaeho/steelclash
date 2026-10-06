@@ -39,6 +39,18 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    // Player Animation Library (and its bundled math library)
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Redlance"
+                url = "https://repo.redlance.org/public"
+            }
+        }
+        filter {
+            includeGroupByRegex 'com\\.zigythebird.*'
+        }
+    }
 }
 
 base {
@@ -66,6 +78,21 @@ neoForge {
         client {
             client()
             programArguments.addAll '--username', 'Dev1'
+            // Optional dev switches: -PclientMemory=1536M (heap cap), -PquickPlay="New World" (load straight into a
+            // world), -PposeSheet=slash,overhead,stab (photograph frozen combat poses, then quit; see client/dev/PoseSheet)
+            if (project.hasProperty('clientMemory')) {
+                jvmArgument "-Xmx${project.property('clientMemory')}"
+            }
+            if (project.hasProperty('quickPlay')) {
+                programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay').toString()
+            }
+            if (project.hasProperty('poseSheet')) {
+                systemProperty 'steelclash.poseSheet', project.property('poseSheet').toString()
+                systemProperty 'steelclash.poseSheetQuit', 'true'
+                if (project.hasProperty('poseSheetItem')) {
+                    systemProperty 'steelclash.poseSheetItem', project.property('poseSheetItem').toString()
+                }
+            }
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
@@ -138,8 +165,12 @@ configurations {
 }
 
 dependencies {
-    // Required: player animation library
-    implementation "maven.modrinth:playeranimator:${player_animator_version}"
+    // Required: Player Animation Library (player model animation)
+    // Not transitive: the jar already contains PAL's core classes and bundles its own libraries (jar-in-jar), and its
+    // published gson 2.11 would clash with the gson NeoForge pins.
+    implementation("com.zigythebird.playeranim:PlayerAnimationLibNeo:${player_animation_library_version}") {
+        transitive = false
+    }
 
     // Optional integrations: compile against them, run with them in dev, but don't publish a dependency
     compileOnly "maven.modrinth:spartan-weaponry-unofficial:${spartan_weaponry_version}"

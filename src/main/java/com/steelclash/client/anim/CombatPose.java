@@ -18,7 +18,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * One frame of a fighter's combat pose, shared by the player animation layer (playerAnimator) and the mob model
+ * One frame of a fighter's combat pose, shared by the player animation layer (Player Animation Library) and the mob model
  * hook. The weapon arm is solved from the same arc the server traces; everything else comes from the archetype's
  * pose clips.
  *

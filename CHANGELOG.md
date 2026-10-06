@@ -20,7 +20,7 @@ First public beta.
 - Brigand footmen, knights and archers: night spawns, patrols led by a knight, and brigand camps with loot.
 
 **Feel**
-- Procedural first- and third-person swing animation (playerAnimator), animated mob arms, sounds, particles, hit-stop and camera sway (adjustable).
+- Procedural first- and third-person swing animation (Player Animation Library), animated mob arms, sounds, particles, hit-stop and camera sway (adjustable).
 - Stamina HUD and timing bar (heavy charge, windows, parry, riposte), weapon tooltips, optional enemy telegraph labels.
 
 **Multiplayer**

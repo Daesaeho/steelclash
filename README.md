@@ -10,7 +10,7 @@ Chivalry 2-style melee combat for Minecraft 1.21.1 (NeoForge). Attacks have a wi
 |---|---|
 | Minecraft | 1.21.1 |
 | Loader | NeoForge 21.1.252+ |
-| Required | [playerAnimator](https://modrinth.com/mod/playeranimator) 2.0.4+ |
+| Required | [Player Animation Library](https://modrinth.com/mod/player-animation-library) 1.1.6+ |
 | Optional | [Spartan Weaponry (Unofficial)](https://modrinth.com/mod/spartan-weaponry-unofficial) 1.2.3+, [Spartan Shields (Unofficial)](https://modrinth.com/mod/spartan-shields-unofficial) 1.0.0+ |
 | Incompatible | Better Combat, Epic Fight (both replace melee) |
 

@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Applies Steel Clash combat poses to mob models right after their own {@code setupAnim}, so zombie-arm and illager
- * poses can't overwrite them. Players are animated through playerAnimator instead. See docs/mixin-risk.md.
+ * poses can't overwrite them. Players are animated through Player Animation Library instead. See docs/mixin-risk.md.
  */
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extends EntityModel<T>> {

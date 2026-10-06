@@ -209,7 +209,7 @@ Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2`
 | 3 | Pick up a hay bale in survival, open the recipe book | Training Dummy recipe unlocked; crafting it gives the dummy, which places like a spawn egg. |
 | 4 | Mods → Steel Clash → Config | Readable names for every option and section, with descriptions on hover; changing one takes effect. |
 | 5 | `./gradlew runClient -PnoCompat` | Boots and plays without Spartan Weaponry/Shields; vanilla swords, axes, the mace and the trident all have movesets. |
-| 6 | Drop `build/libs/steelclash-0.1.0-beta.jar` and playerAnimator into a normal NeoForge 21.1 instance | Loads outside the dev environment; the mod list shows MIT, 0.1.0-beta, the author and the credits. |
+| 6 | Drop `build/libs/steelclash-0.1.0-beta.jar` and Player Animation Library 1.1.6 into a normal NeoForge 21.1 instance | Loads outside the dev environment; the mod list shows MIT, 0.1.0-beta, the author and the credits. |
 
 ## Control schemes and gesture attacks (added 2026-10-06)
 Client config (Mods → Steel Clash → Config → client).
@@ -260,3 +260,15 @@ Sword, dummy in Parry mode, then Attack mode; `/steelclash_debug` on.
 | 3 | Dummy in Attack mode: crouch as its slash comes | The level slash passes over you. |
 | 4 | Second player (or a footman) slashes while you crouch, then looks down and slashes | The level slash misses; aimed low, it hits. Overheads always hit. |
 | 5 | Take some damage, then step away | After about 5 s health refills at half a heart per second, even when hungry. `healthRegen = false` turns it off. |
+
+## Player Animation Library parity (added 2026-10-06)
+The swing animations now run on Player Animation Library instead of playerAnimator. They should look **the same as before**. A pixel comparison with the pose sheet confirmed this for third person and nearly so for first person (docs/spikes.md); these checks cover what screenshots can't (motion, other players, reload).
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Third person (F5): slash both ways, overhead, stab, heavy, kick | Same arm paths and body lean as before; no twisted torso, no backwards lean (whole-body sign). |
+| 2 | Sword grip and blade twist | The blade lies along the arm as before (grip −80), and the edge leads slashes. If the weapon now points the wrong way, report it (the item-axis conversion is the suspect). |
+| 3 | First person, one-handed and two-handed sword | Arms and weapon visible during attacks, a single weapon, no left-hand duplicate. |
+| 4 | Second player (runClient2) watching you | Your swings animate for them too. |
+| 5 | F3+T | Pose clips still reload. |
+| 6 | Mobs swinging | Unchanged (they don't use PAL). |

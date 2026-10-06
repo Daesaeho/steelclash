@@ -6,7 +6,7 @@ Steel Clash 0.1.0-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **bo
 
 | Mod | Status | Notes |
 |---|---|---|
-| playerAnimator 2.0.4+ | **Required** | Swing animations in first and third person. |
+| Player Animation Library 1.1.6+ | **Required** | Swing animations in first and third person. Other mods animating the player through it layer cleanly with ours. |
 | Spartan Weaponry (Unofficial) 1.2.3+ | Optional, integrated | Each Spartan weapon type maps to an archetype (table below). Its traits (armour piercing, backstab, reach and so on) still apply, because hits go through vanilla attack code. Its weapons join mob gear pools and the brigand loot. Tested by GameTests with and without it. |
 | Spartan Shields (Unofficial) 1.0.0+ | Optional, integrated | Basic shields block in a 150° cone and tower shields in a 180° cone; towers stop arrows from the front only. The parry key raises them. Tested with and without it. |
 | Better Combat | **Incompatible** | Both replace melee attacks; the game refuses to load with both. |
@@ -14,7 +14,7 @@ Steel Clash 0.1.0-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **bo
 | Other weapon mods | Works, unmapped | Items without a weapon profile keep vanilla combat. Add a profile through the item data map (below). |
 | Other shield mods | Usually works | Anything that performs `ItemAbilities.SHIELD_BLOCK` gets the basic shield cone and stamina rules. |
 | Mob AI mods | Case by case | Mobs in `#steelclash:fighters` get a spacing goal and the bot brain on top of their goals. Mods that replace a mob's melee goal may fight it; take the mob out of the tag. |
-| Shaders / Sodium-likes | Expected to work | Steel Clash renders through playerAnimator and vanilla model hooks. One mixin, on `LivingEntityRenderer` (after `setupAnim`), poses mob arms. |
+| Shaders / Sodium-likes | Expected to work | Steel Clash renders through Player Animation Library and vanilla model hooks. One mixin, on `LivingEntityRenderer` (after `setupAnim`), poses mob arms. |
 
 ### Weapon archetypes
 

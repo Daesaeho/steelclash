@@ -51,7 +51,7 @@ jobs:
           game-versions: 1.21.1
           java: 21
           dependencies: |
-            playeranimator(required)
+            player-animation-library(required)
             spartan-weaponry-unofficial(optional)
             spartan-shields-unofficial(optional)
             better-combat(incompatible)

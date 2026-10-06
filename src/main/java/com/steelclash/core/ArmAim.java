@@ -7,7 +7,7 @@ package com.steelclash.core;
  * <p>
  * Vanilla holds a handheld item with its blade roughly perpendicular to the arm (pointing forward when the arm hangs),
  * {@link #BLADE_TO_ARM_DEGREES} short of the arm's axis. To put the <em>blade</em> on the arc either the item is
- * rotated by that much in the hand ({@link #aimArm}, players via playerAnimator) or, where the item can't be rotated,
+ * rotated by that much in the hand ({@link #aimArm}, players via Player Animation Library) or, where the item can't be rotated,
  * the arm is pitched below the aim by that much ({@link #aimArmForBlade}, mobs).
  */
 public final class ArmAim {

@@ -13,7 +13,7 @@ Drafts to paste when creating the projects. Nothing here is published automatica
 | Environment | Client: required. Server: required. |
 | Loader / versions | NeoForge, 1.21.1 |
 | License | MIT |
-| Dependencies | playerAnimator (required); Spartan Weaponry Unofficial, Spartan Shields Unofficial (optional); Better Combat, Epic Fight (incompatible) |
+| Dependencies | Player Animation Library (required); Spartan Weaponry Unofficial, Spartan Shields Unofficial (optional); Better Combat, Epic Fight (incompatible) |
 | Release channel | Beta (0.1.0-beta) |
 | Source / issues | Link the GitHub repo once it's public. |
 

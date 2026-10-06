@@ -87,7 +87,7 @@ steelclash/
   profile/         WeaponProfile codec, datapack registry, data map, SW auto-mapping
   net/             CustomPacketPayload records + StreamCodecs
   client/          input interception, key mappings, prediction, HUD layers,
-                   animation bridge (playerAnimator), debug renderer
+                   animation bridge (Player Animation Library; playerAnimator until 2026-10-06), debug renderer
   compat/spartanweaponry/   loaded only if ModList.isLoaded(...)
   compat/spartanshields/
   compat/shouldersurfing/   optional camera niceties

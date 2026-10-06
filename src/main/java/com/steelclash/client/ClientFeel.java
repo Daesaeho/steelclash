@@ -3,6 +3,7 @@ package com.steelclash.client;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.client.anim.CombatPose;
+import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.net.FeedbackPayload;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
@@ -63,6 +64,9 @@ public final class ClientFeel {
     public static float animationPartialTick(LivingEntity entity, float partialTick) {
         if (entity != Minecraft.getInstance().player) {
             return partialTick;
+        }
+        if (PoseSheet.running()) {
+            return 0f; // the pose sheet pins exact poses
         }
         if (System.nanoTime() < freezeUntilNanos) {
             if (!frozen) {

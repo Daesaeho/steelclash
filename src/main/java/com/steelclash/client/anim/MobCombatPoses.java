@@ -20,7 +20,7 @@ public final class MobCombatPoses {
 
     public static void apply(LivingEntity entity, EntityModel<?> model, float partialTick) {
         if (entity instanceof Player) {
-            return; // players use the playerAnimator layer
+            return; // players use the Player Animation Library layer
         }
         Parts parts = parts(model);
         if (parts == null) {

@@ -2,7 +2,6 @@ package com.steelclash;
 
 import com.steelclash.client.ClientInput;
 import com.steelclash.client.ControlSchemes;
-import com.steelclash.client.ProceduralSwingAnimation;
 import com.steelclash.client.StaminaHud;
 import com.steelclash.client.SoldierRenderer;
 import com.steelclash.client.TrainingDummyRenderer;
@@ -12,7 +11,6 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraft.client.renderer.entity.ThrownItemRenderer;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
@@ -24,16 +22,11 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 public class SteelClashClient {
     public SteelClashClient(IEventBus modEventBus, ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
-        modEventBus.addListener(this::clientSetup);
         modEventBus.addListener(ClientInput::registerKeys);
         modEventBus.addListener(ControlSchemes::onConfigReloaded);
         modEventBus.addListener(StaminaHud::register);
         modEventBus.addListener(SteelClashClient::registerRenderers);
         modEventBus.addListener(SteelClashClient::registerReloadListeners);
-    }
-
-    private void clientSetup(FMLClientSetupEvent event) {
-        ProceduralSwingAnimation.register();
     }
 
     private static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
