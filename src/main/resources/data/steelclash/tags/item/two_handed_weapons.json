@@ -1,0 +1,40 @@
+{
+  "values": [
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/greatswords",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/halberds",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/pikes",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/glaives",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/scythes",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/spears",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/quarterstaves",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/battle_hammers",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:weapons/lances",
+      "required": false
+    }
+  ]
+}

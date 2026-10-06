@@ -53,5 +53,11 @@
   "steelclash.tooltip.archetype.heavy_beast": "Heavy Beast",
   "key.steelclash.parry": "Parry / Raise Shield",
   "key.steelclash.slash_right_to_left": "Slash (right to left)",
-  "key.steelclash.slash_left_to_right": "Slash (left to right)"
+  "key.steelclash.slash_left_to_right": "Slash (left to right)",
+  "entity.steelclash.footman": "Brigand Footman",
+  "entity.steelclash.knight": "Brigand Knight",
+  "entity.steelclash.archer": "Brigand Archer",
+  "item.steelclash.footman_spawn_egg": "Brigand Footman Spawn Egg",
+  "item.steelclash.knight_spawn_egg": "Brigand Knight Spawn Egg",
+  "item.steelclash.archer_spawn_egg": "Brigand Archer Spawn Egg"
 }

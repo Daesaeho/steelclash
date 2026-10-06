@@ -1,0 +1,18 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "exclusion_zone": {
+      "chunk_count": 6,
+      "other_set": "minecraft:villages"
+    },
+    "salt": 482911736,
+    "separation": 12,
+    "spacing": 36
+  },
+  "structures": [
+    {
+      "structure": "steelclash:brigand_camp",
+      "weight": 1
+    }
+  ]
+}

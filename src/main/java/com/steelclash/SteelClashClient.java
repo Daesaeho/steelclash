@@ -3,6 +3,7 @@ package com.steelclash;
 import com.steelclash.client.ClientInput;
 import com.steelclash.client.ProceduralSwingAnimation;
 import com.steelclash.client.StaminaHud;
+import com.steelclash.client.SoldierRenderer;
 import com.steelclash.client.TrainingDummyRenderer;
 import com.steelclash.client.anim.AnimationLibrary;
 import com.steelclash.entity.ModEntities;
@@ -40,5 +41,8 @@ public class SteelClashClient {
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.TRAINING_DUMMY.get(), TrainingDummyRenderer::new);
         event.registerEntityRenderer(ModEntities.THROWN_WEAPON.get(), context -> new ThrownItemRenderer<>(context, 1.0f, true));
+        event.registerEntityRenderer(ModEntities.FOOTMAN.get(), context -> new SoldierRenderer(context, "footman"));
+        event.registerEntityRenderer(ModEntities.KNIGHT.get(), context -> new SoldierRenderer(context, "knight"));
+        event.registerEntityRenderer(ModEntities.ARCHER.get(), context -> new SoldierRenderer(context, "archer"));
     }
 }

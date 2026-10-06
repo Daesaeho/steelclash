@@ -59,6 +59,15 @@
     },
     "steelclash:training_dummy": {
       "profile": "steelclash:claw"
+    },
+    "steelclash:footman": {
+      "profile": "steelclash:claw"
+    },
+    "steelclash:knight": {
+      "profile": "steelclash:claw"
+    },
+    "steelclash:archer": {
+      "profile": "steelclash:claw"
     }
   }
 }

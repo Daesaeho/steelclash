@@ -174,3 +174,16 @@ Default controls are now: **left click = slash right→left, right click = slash
 | 3 | Parry key with a sword | Weapon parry while held. |
 | 4 | Parry key with a shield in the offhand | Raises the shield while held (right click no longer does, since it slashes). |
 | 5 | Overheads and stabs | Side still follows your turning / alternates on combos. |
+
+## Manual in-game checklist (M6c-2: brigand soldiers, patrols, camps)
+Spawn eggs: **Brigand Footman / Knight / Archer** (Spawn Eggs tab). Survival, Normal or Hard.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Spawn one of each | Footman: red tabard, mail, helmet, a sword/axe/Spartan weapon, sometimes a shield. Knight: blue tabard with a gold cross, full iron (some diamond on Hard), a heavier weapon, often a shield. Archer: green hood, leather, a bow. |
+| 2 | Fight a footman and a knight | They fight like the other bots (spacing, telegraphed swings, parries, shields, feints, specials). Knights rush and lunge in. |
+| 3 | Stand back from an archer | It draws its bow (arm raised) and shoots; it keeps its distance. |
+| 4 | Play a few in-game days in the overworld (or set `soldierPatrolIntervalTicks` low and `soldierPatrolChance = 1.0` in the common config) | A **patrol** appears 24–48 blocks away: a knight leading footmen and archers, walking toward you. Never inside villages. `doPatrolSpawning false` or `soldierPatrols = false` stops them. |
+| 5 | Night time in plains/forest/taiga | Soldiers occasionally spawn among the zombies and skeletons (rarer). |
+| 6 | `/locate structure steelclash:brigand_camp` in a new world, then go there | A camp: two tents, a campfire with log seats, hay, a barrel, a red banner, and a loot chest (food, arrows, iron, emeralds, sometimes a weapon), guarded by a knight, two footmen and an archer. More soldiers spawn there at night. |
+| 7 | Kill soldiers | Small chance to drop their gear. |

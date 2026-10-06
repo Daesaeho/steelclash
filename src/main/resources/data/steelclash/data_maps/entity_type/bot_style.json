@@ -59,6 +59,15 @@
     },
     "steelclash:training_dummy": {
       "style": "duelist"
+    },
+    "steelclash:footman": {
+      "style": "duelist"
+    },
+    "steelclash:knight": {
+      "style": "rusher"
+    },
+    "steelclash:archer": {
+      "style": "skirmisher"
     }
   }
 }

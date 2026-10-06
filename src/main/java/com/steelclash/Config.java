@@ -148,6 +148,15 @@ public class Config {
     public static final ModConfigSpec.DoubleValue ARMED_HELMET_CHANCE = BUILDER
             .comment("Chance an armed mob also gets a helmet (scaled up with difficulty; also stops daylight burning)")
             .defineInRange("armedHelmetChance", 0.30, 0.0, 1.0);
+    public static final ModConfigSpec.BooleanValue SOLDIER_PATROLS = BUILDER
+            .comment("Brigand patrols (a knight leading footmen and archers) roam toward players, like pillager patrols")
+            .define("soldierPatrols", true);
+    public static final ModConfigSpec.IntValue SOLDIER_PATROL_INTERVAL_TICKS = BUILDER
+            .comment("Ticks between patrol spawn attempts (12000 = half a day, like vanilla patrols)")
+            .defineInRange("soldierPatrolIntervalTicks", 12000, 200, 1_000_000);
+    public static final ModConfigSpec.DoubleValue SOLDIER_PATROL_CHANCE = BUILDER
+            .comment("Chance a patrol spawns at each attempt")
+            .defineInRange("soldierPatrolChance", 0.3, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue MOB_HEAVY_CHANCE = BUILDER
             .comment("Chance a mob's telegraphed attack is a heavy")
             .defineInRange("heavyChance", 0.25, 0.0, 1.0);

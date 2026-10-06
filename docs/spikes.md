@@ -101,3 +101,11 @@ The plan said "author animations in Blockbench, extract the arcs from them". Cha
 - **Mob armour only counts after the mob ticks:** equipment attribute modifiers (armour, damage) are applied in the entity tick, so armour equipped in the same tick reads `getArmorValue() == 0`, for vanilla's reduction and our damage types alike. Tests must wait a few ticks after equipping (as must any code reading armour right after spawning gear).
 - **GameTest zombies burn in daylight** (`onFire` damage) unless they wear a helmet, which can make "was it hurt?" checks pass for the wrong reason over multi-tick tests. Long-running tests should helmet their zombies *and* assert the damage source.
 - Thrown weapons reuse vanilla `ThrowableItemProjectile` + `ThrownItemRenderer`. Damage is the item's own `ATTACK_DAMAGE` modifiers plus 1 (bare hand), ×1.2.
+
+## M6c-2 findings (2026-10-06)
+- **`Mob`'s constructor calls `registerGoals()` before the subclass constructor body runs.** A field assigned in the subclass constructor (like a soldier's rank) is still unset while goals are chosen; every soldier, archers included, got the melee goal. Derive such things from `getType()` instead. Caught by the `archerShoots` GameTest: the archer meleed the dummy and never drew its bow.
+- **1.21.1 jigsaw structures require `use_expansion_hack`** (no default). Missing it fails registry loading for the whole world ("Unbound values in registry ... worldgen/structure"). The skill's worldgen validator checks references but not codecs, so a real server load (GameTests) is the actual test; `campWorldgenDataLoads` checks every worldgen entry is registered.
+- The worldgen validator rejects inline `"processors": {"processors": []}` (which vanilla itself uses). `"processors": "minecraft:empty"` is equivalent and passes both.
+- Entities saved in a jigsaw template are finalized on placement (`SinglePoolElement` sets `setFinalizeEntities(true)` → `finalizeSpawn(STRUCTURE)`), so camp soldiers equip themselves.
+- Vanilla `PatrollingMonster#finalizeSpawn` puts the illager banner on patrol leaders; `Soldier` restores its helmet afterwards.
+- Soldier skins are generated procedurally (PIL, 64×64 player layout) as placeholders; replace them in `assets/steelclash/textures/entity/soldier/`.

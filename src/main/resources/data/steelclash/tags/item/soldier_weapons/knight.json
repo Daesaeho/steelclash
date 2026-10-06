@@ -1,0 +1,16 @@
+{
+  "values": [
+    "minecraft:iron_sword",
+    "minecraft:iron_axe",
+    "minecraft:diamond_sword",
+    "minecraft:mace",
+    {
+      "id": "#spartan_weaponry_unofficial:iron_weapons",
+      "required": false
+    },
+    {
+      "id": "#spartan_weaponry_unofficial:diamond_weapons",
+      "required": false
+    }
+  ]
+}

@@ -18,6 +18,8 @@
     "minecraft:ravager",
     "minecraft:hoglin",
     "minecraft:zoglin",
-    "minecraft:iron_golem"
+    "minecraft:iron_golem",
+    "steelclash:footman",
+    "steelclash:knight"
   ]
 }
