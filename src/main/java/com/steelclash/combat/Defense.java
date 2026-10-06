@@ -7,15 +7,11 @@ import com.steelclash.core.Guard;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
 import java.util.Optional;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -65,7 +61,7 @@ public final class Defense {
 
         float staminaDamage = swing != null ? swing.staminaDamage() : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
         boolean exhausted = data.stamina.spend(staminaDamage * guard.get().staminaMult());
-        clashEffects(defender, attacker);
+        Feedback.parry(defender, attacker);
         if (exhausted) {
             Disarm.disarm(defender);
             Combat.stagger(defender, data, Config.GUARD_BREAK_STAGGER_TICKS.get(), false);
@@ -98,7 +94,7 @@ public final class Defense {
         data.stamina.spend(swing.staminaDamage() * guard.get().staminaMult() * 0.5f);
         data.machine.counter(Config.COUNTER_RELEASE_TICKS.get());
         Combat.sync(defender, data, true);
-        clashEffects(defender, attacker);
+        Feedback.parry(defender, attacker);
         Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);
         return true;
     }
@@ -135,6 +131,9 @@ public final class Defense {
             breakShieldGuard(blocker, data, shield);
         }
 
+        if (source.getEntity() != null) {
+            Feedback.shieldBlock(blocker, source.getEntity());
+        }
         int bounce = Config.SHIELD_BOUNCE_STAGGER_TICKS.get();
         if (swing != null && bounce > 0 && source.getEntity() instanceof LivingEntity attacker) {
             Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), bounce, true);
@@ -146,17 +145,8 @@ public final class Defense {
         if (blocker instanceof Player player && !shield.isEmpty()) {
             player.getCooldowns().addCooldown(shield.getItem(), Config.SHIELD_BREAK_COOLDOWN_TICKS.get());
         }
-        blocker.level().playSound(null, blocker.getX(), blocker.getY(), blocker.getZ(),
-                SoundEvents.SHIELD_BREAK, blocker.getSoundSource(), 1f, 0.9f);
+        Feedback.guardBreak(blocker);
         Combat.stagger(blocker, data, Config.GUARD_BREAK_STAGGER_TICKS.get(), false);
         SteelClash.LOGGER.debug("{} guard broken", blocker);
-    }
-
-    private static void clashEffects(LivingEntity defender, Entity attacker) {
-        Vec3 mid = defender.getEyePosition().add(attacker.getEyePosition()).scale(0.5);
-        defender.level().playSound(null, mid.x, mid.y, mid.z, SoundEvents.ANVIL_PLACE, defender.getSoundSource(), 0.35f, 1.8f);
-        if (defender.level() instanceof ServerLevel level) {
-            level.sendParticles(ParticleTypes.CRIT, mid.x, mid.y, mid.z, 12, 0.15, 0.15, 0.15, 0.4);
-        }
     }
 }

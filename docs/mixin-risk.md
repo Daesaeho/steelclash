@@ -1,0 +1,9 @@
+# Mixins
+
+Steel Clash prefers NeoForge events. Every mixin is listed here with why it exists and what it could conflict with.
+
+| Mixin | Target | Why | Conflict risk |
+|---|---|---|---|
+| `client.LivingEntityRendererMixin` | `LivingEntityRenderer#render`, injected right **after** the call to `EntityModel#setupAnim` | Pose mob models (zombies, skeletons, piglins, vindicators, the training dummy) from their combat state. It has to run after each model's own `setupAnim`: zombie, skeleton and illager models set their arms *after* `HumanoidModel.setupAnim`, so an inject inside `HumanoidModel` would be overwritten. There's no NeoForge event between `setupAnim` and rendering. | **Low–medium.** Client only, read-only on game state. Only changes model part rotations for non-player entities whose combat state is busy. Mods that replace mob renderers entirely (GeckoLib mobs, Fresh Animations-style models) won't use these arms and simply won't show our poses. Mods that also pose arms after `setupAnim` (e.g. some combat-animation mods) would fight over the same parts; whichever runs last wins. |
+
+Access transformers (`META-INF/accesstransformer.cfg`): `LivingEntity#attackStrengthTicker` (full-strength hits through vanilla `Player#attack`), and `IllagerModel` arm/leg parts (posing vindicators).

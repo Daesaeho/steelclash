@@ -4,6 +4,8 @@ Chivalry 2-style melee combat for Minecraft **1.21.1 / NeoForge 21.1.x / Java 21
 
 - Design and milestones: `docs/PLAN.md`. Read the "Decisions locked in" section before changing behavior.
 - Verified facts about NeoForge and the Spartan mods: `docs/spikes.md`. Add new findings there.
+- Animation clips: `src/main/resources/assets/steelclash/steelclash_animations/*.json` (client, F3+T reload; parsed by `core/AnimationSet`). The weapon arm is solved from the arc in `core/ArmAim`, not authored.
+- Mixins: `docs/mixin-risk.md` (currently one client mixin, `LivingEntityRendererMixin`).
 - Weapon tuning: `src/main/resources/data/steelclash/steelclash/weapon_profile/*.json` (timings in ticks); item → profile mapping: `data/steelclash/data_maps/item/weapon_profile.json`, then Spartan weapon type (`compat/SpartanWeaponryCompat`), then `#minecraft:swords`/`#minecraft:axes`.
 - Use the `minecraft-modding` and `minecraft-testing` skills for loader and test patterns. Their 1.21.x references apply; ignore the 26.x sections.
 

@@ -148,6 +148,8 @@ dependencies {
     // Plain JUnit for the Minecraft-free combat core
     testImplementation "org.junit.jupiter:junit-jupiter:${junit_version}"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    // The core parses animation JSON with Gson; Minecraft provides it at runtime but isn't on the plain test classpath
+    testImplementation "com.google.code.gson:gson:2.11.0"
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

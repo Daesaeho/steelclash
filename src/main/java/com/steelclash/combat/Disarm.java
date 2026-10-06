@@ -3,7 +3,6 @@ package com.steelclash.combat;
 import com.steelclash.Config;
 import java.util.List;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -48,8 +47,7 @@ public final class Disarm {
         drop.setThrower(victim);
         drop.getPersistentData().putBoolean(DISARMED_TAG, true);
         victim.level().addFreshEntity(drop);
-        victim.level().playSound(null, victim.getX(), victim.getY(), victim.getZ(),
-                SoundEvents.ITEM_BREAK, victim.getSoundSource(), 0.8f, 1.2f);
+        Feedback.disarm(victim);
     }
 
     /** Lets players (never mobs) pick up disarmed weapons, straight into an empty main hand when possible. */

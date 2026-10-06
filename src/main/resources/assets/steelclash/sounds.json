@@ -1,0 +1,283 @@
+{
+  "windup": {
+    "sounds": [
+      {
+        "name": "minecraft:item/armor/equip_chain1",
+        "pitch": 1.35,
+        "volume": 0.55
+      },
+      {
+        "name": "minecraft:item/armor/equip_chain2",
+        "pitch": 1.35,
+        "volume": 0.55
+      },
+      {
+        "name": "minecraft:item/armor/equip_chain3",
+        "pitch": 1.35,
+        "volume": 0.55
+      },
+      {
+        "name": "minecraft:item/armor/equip_chain4",
+        "pitch": 1.35,
+        "volume": 0.55
+      },
+      {
+        "name": "minecraft:item/armor/equip_chain5",
+        "pitch": 1.35,
+        "volume": 0.55
+      },
+      {
+        "name": "minecraft:item/armor/equip_chain6",
+        "pitch": 1.35,
+        "volume": 0.55
+      }
+    ],
+    "subtitle": "subtitles.steelclash.windup"
+  },
+  "swing_light": {
+    "sounds": [
+      {
+        "name": "minecraft:entity/player/attack/sweep1",
+        "pitch": 1.15,
+        "volume": 0.7
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep2",
+        "pitch": 1.15,
+        "volume": 0.7
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep3",
+        "pitch": 1.15,
+        "volume": 0.7
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep4",
+        "pitch": 1.15,
+        "volume": 0.7
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep5",
+        "pitch": 1.15,
+        "volume": 0.7
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep6",
+        "pitch": 1.15,
+        "volume": 0.7
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep7",
+        "pitch": 1.15,
+        "volume": 0.7
+      }
+    ],
+    "subtitle": "subtitles.steelclash.swing_light"
+  },
+  "swing_heavy": {
+    "sounds": [
+      {
+        "name": "minecraft:entity/player/attack/sweep1",
+        "pitch": 0.75,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep2",
+        "pitch": 0.75,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep3",
+        "pitch": 0.75,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep4",
+        "pitch": 0.75,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep5",
+        "pitch": 0.75,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep6",
+        "pitch": 0.75,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/sweep7",
+        "pitch": 0.75,
+        "volume": 0.9
+      }
+    ],
+    "subtitle": "subtitles.steelclash.swing_heavy"
+  },
+  "hit": {
+    "sounds": [
+      {
+        "name": "minecraft:entity/player/attack/strong1",
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/strong2",
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/strong3",
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/strong4",
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/strong5",
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:entity/player/attack/strong6",
+        "volume": 0.9
+      }
+    ],
+    "subtitle": "subtitles.steelclash.hit"
+  },
+  "parry": {
+    "sounds": [
+      {
+        "name": "minecraft:random/anvil_land",
+        "pitch": 1.8,
+        "volume": 0.3
+      },
+      {
+        "name": "minecraft:item/shield/block1",
+        "pitch": 1.3,
+        "volume": 0.8
+      },
+      {
+        "name": "minecraft:item/shield/block2",
+        "pitch": 1.3,
+        "volume": 0.8
+      },
+      {
+        "name": "minecraft:item/shield/block3",
+        "pitch": 1.3,
+        "volume": 0.8
+      },
+      {
+        "name": "minecraft:item/shield/block4",
+        "pitch": 1.3,
+        "volume": 0.8
+      },
+      {
+        "name": "minecraft:item/shield/block5",
+        "pitch": 1.3,
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitles.steelclash.parry"
+  },
+  "block": {
+    "sounds": [
+      {
+        "name": "minecraft:item/shield/block1"
+      },
+      {
+        "name": "minecraft:item/shield/block2"
+      },
+      {
+        "name": "minecraft:item/shield/block3"
+      },
+      {
+        "name": "minecraft:item/shield/block4"
+      },
+      {
+        "name": "minecraft:item/shield/block5"
+      }
+    ],
+    "subtitle": "subtitles.steelclash.block"
+  },
+  "clank": {
+    "sounds": [
+      {
+        "name": "minecraft:random/anvil_land",
+        "pitch": 1.9,
+        "volume": 0.25
+      }
+    ],
+    "subtitle": "subtitles.steelclash.clank"
+  },
+  "kick": {
+    "sounds": [
+      {
+        "name": "minecraft:entity/player/attack/knockback1"
+      },
+      {
+        "name": "minecraft:entity/player/attack/knockback2"
+      },
+      {
+        "name": "minecraft:entity/player/attack/knockback3"
+      },
+      {
+        "name": "minecraft:entity/player/attack/knockback4"
+      }
+    ],
+    "subtitle": "subtitles.steelclash.kick"
+  },
+  "feint": {
+    "sounds": [
+      {
+        "name": "minecraft:item/armor/equip_leather1",
+        "pitch": 1.6,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:item/armor/equip_leather2",
+        "pitch": 1.6,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:item/armor/equip_leather3",
+        "pitch": 1.6,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:item/armor/equip_leather4",
+        "pitch": 1.6,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:item/armor/equip_leather5",
+        "pitch": 1.6,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:item/armor/equip_leather6",
+        "pitch": 1.6,
+        "volume": 0.6
+      }
+    ],
+    "subtitle": "subtitles.steelclash.feint"
+  },
+  "disarm": {
+    "sounds": [
+      {
+        "name": "minecraft:random/break",
+        "pitch": 1.2,
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitles.steelclash.disarm"
+  },
+  "guard_break": {
+    "sounds": [
+      {
+        "name": "minecraft:random/break",
+        "pitch": 0.8,
+        "volume": 1.0
+      }
+    ],
+    "subtitle": "subtitles.steelclash.guard_break"
+  }
+}

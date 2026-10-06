@@ -5,7 +5,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class ModNetwork {
-    private static final String PROTOCOL_VERSION = "3";
+    private static final String PROTOCOL_VERSION = "4";
 
     private ModNetwork() {
     }
@@ -21,5 +21,7 @@ public final class ModNetwork {
                 (payload, context) -> ClientPayloadHandler.handleCombatState(payload, context));
         registrar.playToClient(StaminaPayload.TYPE, StaminaPayload.STREAM_CODEC,
                 (payload, context) -> ClientPayloadHandler.handleStamina(payload, context));
+        registrar.playToClient(FeedbackPayload.TYPE, FeedbackPayload.STREAM_CODEC,
+                (payload, context) -> ClientPayloadHandler.handleFeedback(payload, context));
     }
 }

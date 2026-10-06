@@ -67,3 +67,21 @@ New keys (Controls → Steel Clash): **Feint = X**, **Kick / Shield Bash = Z**. 
 | 12 | Sprint and attack | Lunge: you surge forward and reach farther. |
 | 13 | Jump and overhead | Extra damage. |
 | 14 | Zombies/vindicators on Normal/Hard | About 1 in 4 of their attacks is a slower heavy. |
+
+## Manual in-game checklist (M4: feel)
+This milestone is mostly *looks and feel*, so it can only be judged by eye. Try each archetype (sword, dagger, Spartan rapier, greatsword, halberd, spear, mace, quarterstaff) in first **and** third person (F5).
+
+| # | Check | What to look for / report |
+|---|---|---|
+| 1 | Swing a sword in third person, with `/steelclash_debug` on | **Most important:** does the rendered sword lie along the red debug blade during the release? Verified: `weaponGripPitch = -80` (now the default). |
+| 2 | Slash / overhead / stab in third person | Torso twists into slashes, leans back then chops on overheads, steps forward on stabs. The off arm counterbalances. |
+| 3 | Greatsword / halberd / spear / staff | **Both hands** on the weapon. In first person, both arms are visible. |
+| 4 | Hold for a heavy | Bigger, slower draw-back than a light. |
+| 5 | Kick (Z) | The right leg kicks; the weapon arm stays put. |
+| 6 | Parry / get parried / get kicked | Guard pose; reel back on stagger. |
+| 7 | Land a hit | A brief freeze of your swing (hit-stop), a small camera shake, red particles, a fleshy hit sound. |
+| 8 | Get parried / clank on a wall | A stronger shake and freeze. Sparks. |
+| 9 | Swing in first person | The view rolls slightly into the swing. `cameraMotion = 0` turns all camera effects off; `hitStopMillis = 0` turns off hit-stop. |
+| 10 | Zombie, husk, skeleton with a sword, vindicator, piglin, training dummy attacking you | **Their arms now wind up visibly.** Can you tell slash from overhead from stab before it lands? That's the M4 goal. |
+| 11 | F3+T after editing `src/main/resources/assets/steelclash/steelclash_animations/sword.json` (or a resource pack copy) | Pose changes apply without restarting. |
+| 12 | Sounds | Windup rustle, swing whoosh (deeper for heavies), hit, parry clang, clank, kick, feint. Subtitles show for each. |

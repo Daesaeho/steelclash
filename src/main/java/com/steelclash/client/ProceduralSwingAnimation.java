@@ -1,8 +1,8 @@
 package com.steelclash.client;
 
+import com.steelclash.Config;
 import com.steelclash.SteelClash;
-import com.steelclash.combat.ModAttachments;
-import com.steelclash.core.AttackType;
+import com.steelclash.client.anim.CombatPose;
 import dev.kosmx.playerAnim.api.TransformType;
 import dev.kosmx.playerAnim.api.firstPerson.FirstPersonConfiguration;
 import dev.kosmx.playerAnim.api.firstPerson.FirstPersonMode;
@@ -15,18 +15,19 @@ import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Placeholder attack animation (M1): points the right arm along the live arc, so what you see is what the server
- * traces. Also renders the arm in first person. Replaced by authored Blockbench animations in M4.
+ * The player's combat animation layer. The weapon arm follows the live arc (what you see is what the server traces)
+ * and the held weapon is rotated in the hand to line up with it; torso, head, legs and off arm come from the
+ * archetype's pose clips ({@code assets/steelclash/steelclash_animations}). Also renders the arms in first person.
  */
 public class ProceduralSwingAnimation implements IAnimation {
     public static final ResourceLocation LAYER_ID = SteelClash.id("swing");
-    private static final FirstPersonConfiguration FIRST_PERSON = new FirstPersonConfiguration(true, false, true, false);
+    private static final FirstPersonConfiguration FIRST_PERSON_ONE_HAND = new FirstPersonConfiguration(true, false, true, false);
+    private static final FirstPersonConfiguration FIRST_PERSON_TWO_HANDS = new FirstPersonConfiguration(true, true, true, false);
 
     private final AbstractClientPlayer player;
     @Nullable
-    private SwingPose pose;
-    private float armYaw;
-    private float armPitch;
+    private CombatPose pose;
+    private double[] weaponArm = {0, 0, 0};
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -38,53 +39,65 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public boolean isActive() {
-        return player.hasData(ModAttachments.COMBAT) && player.getData(ModAttachments.COMBAT).machine.isBusy();
+        return pose != null || CombatPose.of(player, 0f).isPresent();
     }
 
     @Override
     public void setupAnim(float tickDelta) {
-        pose = player.hasData(ModAttachments.COMBAT)
-                ? SwingPose.of(player, player.getData(ModAttachments.COMBAT), tickDelta).orElse(null)
-                : null;
+        pose = CombatPose.of(player, ClientFeel.animationPartialTick(player, tickDelta)).orElse(null);
         if (pose != null) {
-            // Arm angles are relative to the body, the arc is relative to the view: add the head's turn on the body.
-            float headYaw = Mth.wrapDegrees(player.getViewYRot(tickDelta) - Mth.rotLerp(tickDelta, player.yBodyRotO, player.yBodyRot));
-            armYaw = (float) Math.toRadians(headYaw + pose.yaw());
-            armPitch = (float) Math.toRadians(Mth.clamp(player.getViewXRot(tickDelta) + pose.pitch(), -90, 90));
+            weaponArm = pose.weaponArmForRotatedItem();
         }
     }
 
     @Override
-    public Vec3f get3DTransform(String modelName, TransformType type, float tickDelta, Vec3f value) {
-        if (pose == null || type != TransformType.ROTATION) {
+    public Vec3f get3DTransform(String part, TransformType type, float tickDelta, Vec3f value) {
+        if (pose == null) {
             return value;
         }
         float w = (float) pose.weight();
-        if (pose.type() == AttackType.KICK && pose.phase().isAttack()) {
-            // Kick: swing the right leg forward instead of the arm.
-            return modelName.equals("rightLeg")
-                    ? new Vec3f(Mth.lerp(w, value.getX(), -1.4f), value.getY(), value.getZ())
-                    : value;
+        if (type == TransformType.BEND) {
+            return switch (part) {
+                case "rightArm" -> new Vec3f(0f, pose.offset("rightArmBend", 0), 0f);
+                case "leftArm" -> new Vec3f(0f, pose.offset("leftArmBend", 0), 0f);
+                default -> value;
+            };
         }
-        return switch (modelName) {
-            // Same convention vanilla uses for aiming a bow: -90° points the arm along the view.
-            case "rightArm" -> new Vec3f(
-                    Mth.lerp(w, value.getX(), -Mth.HALF_PI + armPitch),
-                    Mth.lerp(w, value.getY(), armYaw),
-                    Mth.lerp(w, value.getZ(), 0f));
-            // Twist the torso into the swing.
-            case "body" -> new Vec3f(value.getX(), Mth.lerp(w, value.getY(), (float) Math.toRadians(pose.yaw() * 0.3)), value.getZ());
+        if (type != TransformType.ROTATION) {
+            return value;
+        }
+        return switch (part) {
+            case "rightArm" -> pose.kick() ? add(value, part) : new Vec3f(
+                    Mth.lerp(w, value.getX(), (float) weaponArm[0]) + pose.offset("rightArm", 0),
+                    Mth.lerp(w, value.getY(), (float) weaponArm[1]) + pose.offset("rightArm", 1),
+                    Mth.lerp(w, value.getZ(), (float) weaponArm[2]) + pose.offset("rightArm", 2));
+            case "leftArm" -> {
+                if (pose.twoHanded() && !pose.kick()) {
+                    double[] grip = pose.gripArm(weaponArm);
+                    yield new Vec3f(Mth.lerp(w, value.getX(), (float) grip[0]), Mth.lerp(w, value.getY(), (float) grip[1]),
+                            Mth.lerp(w, value.getZ(), (float) grip[2]));
+                }
+                yield add(value, part);
+            }
+            // Turn the held weapon so its blade lies along the arm, i.e. along the arc.
+            case "rightItem" -> pose.kick() ? value : new Vec3f(
+                    value.getX() + (float) Math.toRadians(Config.Client.WEAPON_GRIP_PITCH.get()) * w, value.getY(), value.getZ());
+            case "body", "torso", "head", "rightLeg", "leftLeg" -> add(value, part);
             default -> value;
         };
     }
 
+    private Vec3f add(Vec3f value, String part) {
+        return new Vec3f(value.getX() + pose.offset(part, 0), value.getY() + pose.offset(part, 1), value.getZ() + pose.offset(part, 2));
+    }
+
     @Override
     public FirstPersonMode getFirstPersonMode(float tickDelta) {
-        return isActive() ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
+        return pose != null ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
     }
 
     @Override
     public FirstPersonConfiguration getFirstPersonConfiguration(float tickDelta) {
-        return FIRST_PERSON;
+        return pose != null && pose.twoHanded() ? FIRST_PERSON_TWO_HANDS : FIRST_PERSON_ONE_HAND;
     }
 }

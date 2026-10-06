@@ -16,5 +16,16 @@
   "entity.steelclash.training_dummy.mode.spar": "Training Dummy [Spar]",
   "item.steelclash.training_dummy_spawn_egg": "Training Dummy Spawn Egg",
   "key.steelclash.feint": "Feint",
-  "key.steelclash.kick": "Kick / Shield Bash"
+  "key.steelclash.kick": "Kick / Shield Bash",
+  "subtitles.steelclash.windup": "Weapon readied",
+  "subtitles.steelclash.swing_light": "Weapon swings",
+  "subtitles.steelclash.swing_heavy": "Heavy swing",
+  "subtitles.steelclash.hit": "Weapon hits",
+  "subtitles.steelclash.parry": "Parry",
+  "subtitles.steelclash.block": "Shield blocks",
+  "subtitles.steelclash.clank": "Blade strikes wall",
+  "subtitles.steelclash.kick": "Kick",
+  "subtitles.steelclash.feint": "Feint",
+  "subtitles.steelclash.disarm": "Weapon knocked away",
+  "subtitles.steelclash.guard_break": "Guard breaks"
 }

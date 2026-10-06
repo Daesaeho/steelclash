@@ -3,6 +3,7 @@ package com.steelclash.client;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.net.CombatStatePayload;
+import com.steelclash.net.FeedbackPayload;
 import com.steelclash.net.StaminaPayload;
 import com.steelclash.profile.WeaponProfiles;
 import net.minecraft.client.Minecraft;
@@ -36,6 +37,10 @@ public final class ClientPayloadHandler {
                 data.queuedAttack = null;
             }
         });
+    }
+
+    public static void handleFeedback(FeedbackPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ClientFeel.onFeedback(payload));
     }
 
     public static void handleStamina(StaminaPayload payload, IPayloadContext context) {

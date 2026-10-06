@@ -7,6 +7,7 @@ import com.steelclash.compat.SpartanWeaponryCompat;
 import com.steelclash.entity.ModEntities;
 import com.steelclash.net.ModNetwork;
 import com.steelclash.profile.WeaponProfiles;
+import com.steelclash.sound.ModSounds;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -27,6 +28,7 @@ public class SteelClash {
         modEventBus.addListener(ModNetwork::register);
         ModAttachments.register(modEventBus);
         ModEntities.register(modEventBus);
+        ModSounds.register(modEventBus);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         modContainer.registerConfig(ModConfig.Type.CLIENT, Config.Client.SPEC);

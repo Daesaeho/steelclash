@@ -106,6 +106,9 @@ public class Config {
             .defineInRange("lungeReachBonus", 0.7, 0.0, 5.0);
     public static final ModConfigSpec.DoubleValue LUNGE_DAMAGE_MULT = BUILDER
             .defineInRange("lungeDamageMult", 1.15, 0.0, 10.0);
+    public static final ModConfigSpec.BooleanValue BLOOD_PARTICLES = BUILDER
+            .comment("Red particles where swings connect")
+            .define("bloodParticles", true);
     public static final ModConfigSpec.DoubleValue JUMP_ATTACK_DAMAGE_MULT = BUILDER
             .comment("Damage multiplier for overheads started in mid-air")
             .defineInRange("jumpAttackDamageMult", 1.2, 0.0, 10.0);
@@ -141,6 +144,17 @@ public class Config {
                 .comment("While holding a weapon, scroll up = overhead and scroll down = stab (as in Chivalry 2).",
                         "Number keys still switch hotbar slots. Turn off to keep vanilla scroll-to-switch.")
                 .define("scrollAttacks", true);
+
+        public static final ModConfigSpec.DoubleValue CAMERA_MOTION = BUILDER
+                .comment("Scale of camera sway during swings and shake on hits/parries. 0 turns it off (motion sensitivity).")
+                .defineInRange("cameraMotion", 1.0, 0.0, 2.0);
+        public static final ModConfigSpec.IntValue HIT_STOP_MILLIS = BUILDER
+                .comment("How long your swing animation freezes when it connects (impact feel). 0 = off.")
+                .defineInRange("hitStopMillis", 70, 0, 300);
+        public static final ModConfigSpec.DoubleValue WEAPON_GRIP_PITCH = BUILDER
+                .comment("Degrees the held weapon is rotated in your hand so its blade follows the swing.",
+                        "-80 verified in game (2026-10-06); only change this if a weapon model is held unusually.")
+                .defineInRange("weaponGripPitch", -80.0, -180.0, 180.0);
 
         static final ModConfigSpec SPEC = BUILDER.build();
 

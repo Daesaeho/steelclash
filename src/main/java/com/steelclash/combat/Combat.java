@@ -11,10 +11,7 @@ import com.steelclash.profile.Kicks;
 import com.steelclash.profile.WeaponProfile;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.Optional;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -172,8 +169,7 @@ public final class Combat {
     public static void requestFeint(LivingEntity entity) {
         CombatData data = entity.getData(ModAttachments.COMBAT);
         if (feint(entity, data)) {
-            entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-                    SoundEvents.ARMOR_EQUIP_LEATHER.value(), entity.getSoundSource(), 0.6f, 1.6f);
+            Feedback.feint(entity);
             sync(entity, data, false);
         }
     }
@@ -223,11 +219,15 @@ public final class Combat {
             SwingTracer.Result result = SwingTracer.trace(entity, data, spec.get(), sweep);
             boolean landed = false;
             for (LivingEntity target : result.hits()) {
+                float healthBefore = target.getHealth();
                 applyHit(entity, data, target, spec.get());
                 if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
                     break; // parried, countered or blocked: the swing stops here
                 }
                 landed = true;
+                if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
+                    Feedback.hit(entity, target, machine.isHeavy());
+                }
             }
             if (landed && !machine.isComboAllowed()) {
                 machine.allowCombo();
@@ -369,9 +369,9 @@ public final class Combat {
             }
             targetData.stamina.spend(spec.staminaDamage());
             stagger(target, targetData, Config.KICK_GUARD_BREAK_TICKS.get(), false);
-            target.level().playSound(null, target.getX(), target.getY(), target.getZ(),
-                    SoundEvents.SHIELD_BLOCK, target.getSoundSource(), 1f, 0.6f);
+            Feedback.kick(target, true);
         } else {
+            Feedback.kick(target, false);
             stagger(target, targetData, Config.KICK_STAGGER_TICKS.get(), true);
             DamageSource source = attacker instanceof Player player
                     ? attacker.damageSources().playerAttack(player)
@@ -388,18 +388,14 @@ public final class Combat {
     /** The blade hit a wall: the swing stops and the attacker reels. */
     private static void clank(LivingEntity entity, CombatData data, Vec3 where) {
         stagger(entity, data, Config.CLANK_STAGGER_TICKS.get(), true);
-        entity.level().playSound(null, where.x, where.y, where.z, SoundEvents.ANVIL_LAND, entity.getSoundSource(), 0.25f, 1.9f);
-        if (entity.level() instanceof ServerLevel level) {
-            level.sendParticles(ParticleTypes.CRIT, where.x, where.y, where.z, 8, 0.05, 0.05, 0.05, 0.25);
-        }
+        Feedback.clank(entity, where);
     }
 
     // ---------------------------------------------------------------- feedback & sync
 
     /** Telegraph: an audible cue at the start of every windup, so attacks from off-screen can still be read. */
     private static void onAttackStarted(LivingEntity entity, CombatData data) {
-        entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-                SoundEvents.ARMOR_EQUIP_CHAIN.value(), entity.getSoundSource(), 0.6f, 1.4f);
+        Feedback.windup(entity);
         if (data.machine.type() == AttackType.KICK) {
             spend(entity, data, Config.KICK_STAMINA_COST.get());
             if (entity.isUsingItem()) {
@@ -409,8 +405,7 @@ public final class Combat {
     }
 
     private static void onReleaseStarted(LivingEntity entity, CombatData data) {
-        entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-                SoundEvents.PLAYER_ATTACK_SWEEP, entity.getSoundSource(), 0.7f, data.machine.isHeavy() ? 0.8f : 1.1f);
+        Feedback.swing(entity, data.machine.isHeavy());
         if (data.lunge) {
             Vec3 look = entity.getLookAngle();
             entity.setDeltaMovement(entity.getDeltaMovement().add(look.x * 0.6, 0.05, look.z * 0.6));
