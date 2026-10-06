@@ -252,6 +252,13 @@ Vanilla `MeleeAttackGoal` hits instantly when in range, which makes reactive par
 - **Soldier mobs** (M6): a humanoid footman, knight and archer that spawn on patrols and at pillager outposts, equipped from SW/SS tags. Without SW they use vanilla gear. They're the closest thing to Chiv 2 bots and the best showcase for the system.
 - **Disarming works both ways:** draining a knight's stamina knocks its sword away, and you can pick it up.
 
+### 7.4 Armed mobs (planned for M6, requested 2026-10-06)
+Vanilla zombies almost never carry weapons, and Spartan Weaponry's own rates are low (`zombie_with_melee_spawn_chance_normal = 0.05`, `_hard = 0.25`). The bot brain shines when mobs fight with real weapons, so fighter mobs should spawn armed much more often:
+- On `MobSpawnEvent.FinalizeSpawn`, give `#steelclash:fighters` humanoids a weapon with a configurable chance per difficulty (proposed: Easy 30%, Normal 50%, Hard 70%), and sometimes a shield and armor pieces too.
+- Weapons come from data-driven loot pools (item tags or loot tables per mob type and difficulty), so packs can tune them. With Spartan Weaponry installed, the pools use its tags (`#spartan_weaponry_unofficial:weapons/longswords`, `.../spears`, ...); otherwise vanilla swords and axes. Material scales with difficulty (wood/stone → iron → diamond).
+- Respect mobs that already got gear from vanilla or Spartan Weaponry (don't overwrite). Keep the vanilla drop chance for spawned gear low, so it isn't a loot fountain.
+- Shields in the offhand make mobs block with them (M2 shield rules already apply to mobs).
+
 ## 8. Milestones
 
 Each milestone has a hard exit test.
@@ -263,8 +270,8 @@ Each milestone has a hard exit test.
 | **M2** Defense and telegraphed mobs *(built 2026-10-06; automated tests pass, in-game checklist pending)* | Stamina attachment and HUD, weapon parry, riposte, directional cone, SS basic and tower shields, disarm, training dummy. **`ClashMeleeGoal` v1:** vanilla melee mobs wind up, then release, and can be parried. | Parry a zombie's telegraphed swing → riposte is faster. A tower shield blocks a skeleton's arrow from the front but not from the back. Draining a mob's stamina disarms it. |
 | **M3** Mind games *(built 2026-10-06; automated tests pass, in-game checklist pending)* | Heavies, feint, morph, combo, flinch, hyper armor, kick and shield bash, counter, environment clank, sprint lunge, jump attack. | Scripted GameTests pass for each interaction, run against the dummy. |
 | **M4** Feel and first person *(built 2026-10-06 with a changed approach, see docs/spikes.md "M4"; in-game look check pending)* | Blockbench animations (first and third person) with the arc-extraction script, retargeted to humanoid mobs, plus sounds, particles, hit-stop and camera sway. | Side-by-side comparison against Chiv 2 reference clips for each archetype. A playtester can predict which attack is coming from the windup alone. |
-| **M5** Bot brain | `ClashBrain`: spacing, parry reaction by difficulty, feints and morphs, ripostes, kicking turtles, adapting to the player, attack tokens for groups. | 1v1 a Hard vindicator with a SW halberd and it feels like a Chiv 2 bot. A 1v4 zombie fight stays readable. |
-| **M6** PvE content | Soldier mobs (footman, knight, archer), patrols and outpost spawns, specials for each archetype (hammer slam, spear lunge…), throwing any weapon, mounted lance, cut/blunt/chop vs armor. | Per feature. |
+| **M5** Bot brain *(built 2026-10-06; automated tests pass, in-game feel check pending)* | `ClashBrain`: spacing, parry reaction by difficulty, feints and morphs, ripostes, kicking turtles, adapting to the player, attack tokens for groups. | 1v1 a Hard vindicator with a SW halberd and it feels like a Chiv 2 bot. A 1v4 zombie fight stays readable. |
+| **M6** PvE content | **Mobs spawn with gear far more often** (see §7.4), soldier mobs (footman, knight, archer), patrols and outpost spawns, specials for each archetype (hammer slam, spear lunge…), throwing any weapon, mounted lance, cut/blunt/chop vs armor. | Per feature. |
 | **M7** Multiplayer | Client prediction and reconciliation, lag compensation, latency tolerance config. Lower priority because PvE singleplayer runs at ~0 latency. | Co-op PvE at 150 ms simulated latency (clumsy) still allows reliable parries. |
 | **M8** Release | Config polish, compat matrix, wiki and in-game tutorial (the dummy), Modrinth/CurseForge pages, CI artifacts. | Public beta. |
 

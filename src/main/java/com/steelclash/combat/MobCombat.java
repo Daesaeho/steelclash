@@ -1,6 +1,7 @@
 package com.steelclash.combat;
 
 import com.steelclash.Config;
+import com.steelclash.ai.ClashBrain;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Guard;
@@ -50,6 +51,9 @@ public final class MobCombat {
         Optional<WeaponProfiles.Resolved> profile = WeaponProfiles.resolveFor(mob);
         if (profile.isEmpty() || profile.get().profile().attacks().isEmpty()) {
             return false; // nothing to telegraph with: let vanilla hit
+        }
+        if (ClashBrain.manages(mob)) {
+            return true; // the bot brain decides when to attack; just swallow the instant vanilla hit
         }
         CombatData data = mob.getData(ModAttachments.COMBAT);
         if (!data.machine.isBusy()) {

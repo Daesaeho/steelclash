@@ -85,3 +85,27 @@ This milestone is mostly *looks and feel*, so it can only be judged by eye. Try 
 | 10 | Zombie, husk, skeleton with a sword, vindicator, piglin, training dummy attacking you | **Their arms now wind up visibly.** Can you tell slash from overhead from stab before it lands? That's the M4 goal. |
 | 11 | F3+T after editing `src/main/resources/assets/steelclash/steelclash_animations/sword.json` (or a resource pack copy) | Pose changes apply without restarting. |
 | 12 | Sounds | Windup rustle, swing whoosh (deeper for heavies), hit, parry clang, clank, kick, feint. Subtitles show for each. |
+
+## Manual in-game checklist (M5: bot brain)
+Play in survival. Test on **Easy, Normal and Hard** (`/difficulty`). Turn on `/steelclash_debug` to see every swing.
+
+Useful summons (the helmet stops zombies burning in daylight):
+```
+/summon zombie ~3 ~ ~ {HandItems:[{id:"minecraft:iron_sword",count:1},{}],ArmorItems:[{},{},{},{id:"minecraft:iron_helmet",count:1}]}
+/summon zombie ~3 ~ ~ {HandItems:[{id:"spartan_weaponry_unofficial:iron_halberd",count:1},{}],ArmorItems:[{},{},{},{id:"minecraft:iron_helmet",count:1}]}
+/summon vindicator ~3 ~ ~
+/summon zombie ~3 ~ ~ {NoAI:1b,HandItems:[{id:"minecraft:iron_sword",count:1},{}]}
+```
+The last one stands still, which is useful for looking at poses. It won't fight back.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | 1v1 an armed zombie or vindicator on Hard | It keeps just outside your reach, circles, steps in to attack, backs off afterwards. It mixes slashes, overheads, stabs and heavies, sometimes feints (the windup stops early) and sometimes morphs. |
+| 2 | Parry its attack | It ripostes immediately if *it* parried you; if you parried it, your riposte should usually land. |
+| 3 | Same attack type over and over (e.g. only stabs) on Normal/Hard | After a few it starts **countering** (answering with the same attack). |
+| 4 | Feint repeatedly | It stops biting: it parries later, and only the real attack. |
+| 5 | Hold your shield/parry up and wait | On Normal/Hard it **kicks** you (about 1.5 s of turtling on Hard, 2 s on Normal). Easy bots never kick. |
+| 6 | Attack fast with a dagger on Easy | Easy bots can't parry 7-tick windups (reaction 8 ticks); Hard bots can (4 ticks). |
+| 7 | 1v4 zombies | Only 1 (Easy) / 2 (Normal) / 3 (Hard) swing at you at a time; the rest circle at a distance and take turns. It should feel hard but readable. |
+| 8 | Group of zombies near each other | They no longer hit each other with wide swings (no infighting). |
+| 9 | `botBrain = false` in the common config | Mobs fall back to the M2 behaviour (telegraphed attacks plus reactive parries, no spacing). |

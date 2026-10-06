@@ -117,6 +117,16 @@ public class Config {
         BUILDER.pop().push("mobs");
     }
 
+    public static final ModConfigSpec.BooleanValue BOT_BRAIN = BUILDER
+            .comment("Fighter mobs use the Chivalry 2-style bot brain: spacing, attack turns, feints, counters, kicks")
+            .define("botBrain", true);
+    public static final ModConfigSpec.IntValue MAX_ATTACKERS_EASY = BUILDER
+            .comment("How many mobs may swing at the same target at once (the rest circle and wait)")
+            .defineInRange("maxAttackersEasy", 1, 1, 64);
+    public static final ModConfigSpec.IntValue MAX_ATTACKERS_NORMAL = BUILDER
+            .defineInRange("maxAttackersNormal", 2, 1, 64);
+    public static final ModConfigSpec.IntValue MAX_ATTACKERS_HARD = BUILDER
+            .defineInRange("maxAttackersHard", 3, 1, 64);
     public static final ModConfigSpec.DoubleValue MOB_HEAVY_CHANCE = BUILDER
             .comment("Chance a mob's telegraphed attack is a heavy")
             .defineInRange("heavyChance", 0.25, 0.0, 1.0);

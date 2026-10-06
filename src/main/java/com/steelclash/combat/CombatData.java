@@ -1,6 +1,7 @@
 package com.steelclash.combat;
 
 import com.steelclash.Config;
+import com.steelclash.ai.BrainState;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Stamina;
@@ -46,6 +47,10 @@ public class CombatData {
     public float lastSentStamina = -1;
 
     // ---- mob decision making ----
+    /** Bot brain state (spacing, plans, opponent memory); created on first use. */
+    @Nullable
+    public BrainState brain;
+
     /** The attack (attacker id + serial) this mob already decided how to answer, so it rolls once per attack. */
     public int reactedAttackerId = -1;
     public int reactedSerial = -1;

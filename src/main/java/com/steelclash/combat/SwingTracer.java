@@ -13,6 +13,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
@@ -125,6 +127,11 @@ public final class SwingTracer {
             return false;
         }
         if (attacker.isPassengerOfSameVehicle(target) || attacker.isAlliedTo(target)) {
+            return false;
+        }
+        // Monsters don't cut each other down (vanilla mobs never melee each other either): a hostile mob's arc only
+        // hurts other hostiles if that's who it's actually fighting. Otherwise a horde would brawl among itself.
+        if (attacker instanceof Enemy && target instanceof Enemy && attacker instanceof Mob mob && mob.getTarget() != target) {
             return false;
         }
         // Don't cut down your own pets.

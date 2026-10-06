@@ -2,6 +2,8 @@ package com.steelclash.combat;
 
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
+import com.steelclash.ai.ClashBrain;
+import com.steelclash.ai.ClashSpacingGoal;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import com.steelclash.profile.WeaponProfiles;
@@ -9,6 +11,9 @@ import java.util.Set;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PathfinderMob;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -43,7 +48,9 @@ public final class CombatEvents {
         if (entity instanceof ServerPlayer player && player.tickCount % 4 == 0) {
             Disarm.tryPickUp(player);
         }
-        if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy) && mob.getTarget() != null) {
+        if (entity instanceof PathfinderMob pathfinder && !(entity instanceof TrainingDummy) && ClashBrain.manages(pathfinder)) {
+            ClashBrain.tick(pathfinder, pathfinder.getData(ModAttachments.COMBAT));
+        } else if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy) && mob.getTarget() != null) {
             MobCombat.tickDefense(mob, mob.getData(ModAttachments.COMBAT), MobCombat.parryChance(mob));
         }
         if (entity.hasData(ModAttachments.COMBAT)) {
@@ -87,6 +94,24 @@ public final class CombatEvents {
     @SubscribeEvent
     static void onShieldBlock(LivingShieldBlockEvent event) {
         Defense.onShieldBlock(event);
+    }
+
+    /** Fighter mobs get the spacing goal the bot brain uses to hold back and circle. */
+    @SubscribeEvent
+    static void onJoinLevel(EntityJoinLevelEvent event) {
+        if (event.getLevel().isClientSide() || !(event.getEntity() instanceof PathfinderMob mob)
+                || mob instanceof TrainingDummy || !MobCombat.isFighter(mob)) {
+            return;
+        }
+        boolean installed = mob.goalSelector.getAvailableGoals().stream().anyMatch(g -> g.getGoal() instanceof ClashSpacingGoal);
+        if (!installed) {
+            mob.goalSelector.addGoal(1, new ClashSpacingGoal(mob));
+        }
+    }
+
+    @SubscribeEvent
+    static void onServerStopped(ServerStoppedEvent event) {
+        ClashBrain.TOKENS.clear();
     }
 
     /** Two-handed weapons need both hands: no raising a shield in the offhand. */

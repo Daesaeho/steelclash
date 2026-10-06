@@ -78,3 +78,9 @@ The plan said "author animations in Blockbench, extract the arcs from them". Cha
 - playerAnimator part names (from the jar): `head`, `body` (upper body), `torso` (whole body), `rightArm`, `leftArm`, `rightLeg`, `leftLeg`, `rightItem`, `leftItem`. ROTATION is radians; `BEND` is `Vec3f(axis, angle, _)`.
 - **Mobs** are posed by one client mixin on `LivingEntityRenderer#render` after `setupAnim` (see docs/mixin-risk.md). It coexists with playerAnimator's own mixin on that class (verified in the debug log).
 - **Sounds** are our own events (`assets/steelclash/sounds.json`) mapped to vanilla files, so resource packs can swap in real recordings.
+
+## M5 findings (2026-10-06)
+- **The brain is layered on vanilla AI, not a replacement.** Vanilla goals still path toward the target. `ai/ClashSpacingGoal` (priority 1, MOVE+LOOK flags) interrupts the vanilla melee goal only while `BrainState.wantsSpace` is set, holding range and strafing with `MoveControl#strafe`. For managed mobs the brain starts attacks itself, and the vanilla `doHurtTarget` hit is just cancelled. Brain-AI mobs (piglins, hoglins) have no `getTarget()`, so they keep the M2 behaviour.
+- **Monster infighting:** with wide arcs, zombies cut each other, and vanilla hurt-by-target retaliation then split the horde across targets, which defeated per-target attack tokens. Fix: a hostile mob's swing only hurts another hostile mob if that's its target (`SwingTracer.isValidTarget`).
+- **`GameTestHelper.spawnWithNoFreeWill` removes *all* goals**, including ones added in `EntityJoinLevelEvent`. Use `spawn` when a test needs AI goals.
+- Circling bots broke an M2 test that pinned the defender's facing. Defenders in AI tests should turn to face their attacker.

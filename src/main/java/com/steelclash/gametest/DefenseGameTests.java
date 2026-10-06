@@ -179,7 +179,8 @@ public final class DefenseGameTests {
         zombie.setTarget(target);
         AtomicBoolean zombieStaggered = new AtomicBoolean();
         helper.onEachTick(() -> {
-            face(target, FACING_NEGATIVE_X);
+            // Bots circle (M5), so the defender turns to keep the zombie in front, like a player would.
+            face(target, (float) (Math.toDegrees(Math.atan2(zombie.getZ() - target.getZ(), zombie.getX() - target.getX())) - 90));
             if (zombie.hasData(ModAttachments.COMBAT) && data(zombie).machine.phase() == Phase.STAGGER) {
                 zombieStaggered.set(true);
             }
