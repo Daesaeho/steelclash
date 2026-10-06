@@ -47,3 +47,23 @@ Use **survival** for stamina (creative works too). Get a **Training Dummy Spawn 
 | 12 | Vindicator / armed zombie, Normal or Hard difficulty | Sometimes parries your attacks (35% / 55%). |
 | 13 | Right-click a door, chest, villager or horse with a sword | Opens/trades/mounts as normal (no parry). Sneak + right-click always interacts. |
 | 14 | Trident / bow / Spartan javelin: right-click | Vanilla behavior (throw key comes later). |
+
+## Manual in-game checklist (M3)
+New keys (Controls → Steel Clash): **Feint = X**, **Kick / Shield Bash = Z**. Use the training dummy (Parry / Attack / Spar modes) and `/steelclash_debug`.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Hold left-click (or Mouse 4/5) instead of tapping | Heavy: the weapon draws back further, the windup is longer, the swing sound is lower, it hits harder and drains more stamina when parried. Scroll attacks are always light. |
+| 2 | Tap X during a windup | Feint: the attack cancels and costs stamina. The Parry dummy raises its guard, then gets punished. |
+| 3 | Right-click during a windup | Cancels straight into a parry (costs stamina). |
+| 4 | Start a slash, then scroll down/up before it releases | Morph into a stab/overhead. Works once per swing. |
+| 5 | Hit something, then attack again during recovery | Combo: the next attack starts at once. After a **miss**, the next attack waits for the recovery to end. |
+| 6 | Hit the Attack-mode dummy while it winds up | Its attack is interrupted (flinch). |
+| 7 | Give the dummy a mace or Spartan greatsword, then hit it during a *heavy* | It keeps swinging (hyper armor). |
+| 8 | Z at a shield-blocking or parrying dummy | Guard broken: shield drops, dummy staggered, stamina drained, no damage. With a shield in your offhand, Z is a stronger shield bash. |
+| 9 | Z at an unguarded dummy/zombie | Short stagger, a little damage, a shove. |
+| 10 | Attack-mode dummy slashes at you: slash back early | Counter: its slash is parried and yours lands first. Stab vs slash doesn't counter. |
+| 11 | Slash next to a wall or tree | Clank: sparks, sound, short stagger. Overheads into the ground and swinging under a 3-block ceiling don't clank. |
+| 12 | Sprint and attack | Lunge: you surge forward and reach farther. |
+| 13 | Jump and overhead | Extra damage. |
+| 14 | Zombies/vindicators on Normal/Hard | About 1 in 4 of their attacks is a slower heavy. |

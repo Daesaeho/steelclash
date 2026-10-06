@@ -7,10 +7,15 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Marks "this damage comes from a Steel Clash swing" while we call vanilla attack code, so our event listeners
- * can decide parries/blocks, disable vanilla crits/sweeps and apply the attack's multipliers. Server thread only.
+ * can decide parries/counters/blocks, disable vanilla crits/sweeps and apply the swing's multipliers.
+ * Server thread only.
+ *
+ * @param damageMult    final damage multiplier (attack × heavy × lunge × jump)
+ * @param staminaDamage stamina a parrying/blocking defender loses (attack × heavy)
  */
 public final class SwingContext {
-    public record Active(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec) {
+    public record Active(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
+                         float staminaDamage) {
     }
 
     @Nullable
@@ -19,9 +24,10 @@ public final class SwingContext {
     private SwingContext() {
     }
 
-    public static void run(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, Runnable action) {
+    public static void run(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
+                           float staminaDamage, Runnable action) {
         Active previous = current;
-        current = new Active(attacker, type, spec);
+        current = new Active(attacker, type, spec, damageMult, staminaDamage);
         try {
             action.run();
         } finally {

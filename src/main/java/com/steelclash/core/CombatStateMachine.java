@@ -6,9 +6,11 @@ import org.jetbrains.annotations.Nullable;
  * The combat lifecycle shared by players and mobs.
  * <pre>
  * attack:  IDLE → WINDUP → RELEASE → RECOVERY → IDLE
+ *            WINDUP: feint → IDLE, morph → WINDUP (other type), heavy → longer WINDUP, counter → shorter WINDUP
+ *            RECOVERY after a landed hit: attack again immediately (combo)
  * parry:   IDLE/RECOVERY → PARRY → (success) IDLE + riposte window
  *                                → (release/timeout) GUARD_RECOVERY → IDLE
- * stagger: any → STAGGER → IDLE   (parried, shield-blocked, guard broken)
+ * stagger: any → STAGGER → IDLE   (parried, shield-blocked, flinched, kicked, clanked, guard broken)
  * </pre>
  * Ticked once per game tick on the server (authoritative) and on clients (for visuals and prediction). During
  * RELEASE each tick yields a {@link Sweep}: the slice of release progress the blade moved through that tick.
@@ -27,17 +29,76 @@ public final class CombatStateMachine {
     private boolean staggerAllowsParry;
     private int riposteTicks;
     private int attackSerial;
+    private boolean heavy;
+    private boolean morphed;
+    private boolean comboAllowed;
+
+    public boolean canStartAttack() {
+        return phase == Phase.IDLE || (phase == Phase.RECOVERY && comboAllowed);
+    }
 
     public boolean startAttack(AttackType attackType, AttackTimings attackTimings) {
-        if (phase != Phase.IDLE) {
+        if (!canStartAttack()) {
             return false;
         }
         this.type = attackType;
         this.timings = attackTimings;
         this.riposteTicks = 0;
         this.attackSerial++;
+        this.heavy = false;
+        this.morphed = false;
+        this.comboAllowed = false;
         enter(Phase.WINDUP, attackTimings.windup());
         return true;
+    }
+
+    /** Turns the current windup into a heavy attack with the given total windup length. */
+    public boolean makeHeavy(int heavyWindup) {
+        if (phase != Phase.WINDUP || heavy) {
+            return false;
+        }
+        heavy = true;
+        timings = new AttackTimings(heavyWindup, timings.release(), timings.recovery());
+        phaseDuration = Math.max(phaseTick + 1, heavyWindup);
+        return true;
+    }
+
+    /** Cancels a windup (Chivalry 2 feint). */
+    public boolean feint() {
+        if (phase != Phase.WINDUP) {
+            return false;
+        }
+        enter(Phase.IDLE, 0);
+        return true;
+    }
+
+    /** Switches the windup to a different attack, once per swing. The new attack winds up from the start. */
+    public boolean morph(AttackType newType, AttackTimings newTimings) {
+        if (phase != Phase.WINDUP || morphed || newType == type) {
+            return false;
+        }
+        type = newType;
+        timings = newTimings;
+        morphed = true;
+        heavy = false;
+        enter(Phase.WINDUP, newTimings.windup());
+        return true;
+    }
+
+    /** The windup countered an incoming attack: it releases after at most {@code ticksLeft} more ticks. */
+    public boolean counter(int ticksLeft) {
+        if (phase != Phase.WINDUP) {
+            return false;
+        }
+        phaseDuration = Math.min(phaseDuration, phaseTick + Math.max(1, ticksLeft));
+        return true;
+    }
+
+    /** The current swing landed a clean hit: attacking during recovery may skip it. */
+    public void allowCombo() {
+        if (phase == Phase.RELEASE || phase == Phase.RECOVERY) {
+            comboAllowed = true;
+        }
     }
 
     public boolean canParry() {
@@ -126,13 +187,25 @@ public final class CombatStateMachine {
 
     /** Overwrites local state with an authoritative snapshot (client sync). */
     public void apply(Phase newPhase, AttackType newType, int newPhaseTick, int newPhaseDuration,
-                      AttackTimings newTimings, int newRiposteTicks) {
+                      AttackTimings newTimings, int newRiposteTicks, boolean newHeavy, boolean newMorphed,
+                      boolean newComboAllowed) {
         this.phase = newPhase;
         this.type = newType;
         this.phaseTick = newPhaseTick;
         this.phaseDuration = newPhaseDuration;
         this.timings = newTimings;
         this.riposteTicks = newRiposteTicks;
+        this.heavy = newHeavy;
+        this.morphed = newMorphed;
+        this.comboAllowed = newComboAllowed;
+    }
+
+    /** Merges server-decided windows (combo, riposte) without disturbing the locally predicted phase. */
+    public void applyWindows(int newRiposteTicks, boolean newComboAllowed) {
+        this.riposteTicks = newRiposteTicks;
+        if (newComboAllowed) {
+            allowCombo();
+        }
     }
 
     /** Progress through the current phase in [0, 1], interpolated within the tick. */
@@ -188,6 +261,18 @@ public final class CombatStateMachine {
 
     public int riposteTicks() {
         return riposteTicks;
+    }
+
+    public boolean isHeavy() {
+        return heavy;
+    }
+
+    public boolean isMorphed() {
+        return morphed;
+    }
+
+    public boolean isComboAllowed() {
+        return comboAllowed;
     }
 
     /** Increments with every attack started; lets observers react once per attack. */

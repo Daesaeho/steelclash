@@ -37,6 +37,10 @@ public class CombatData {
     public float prevYaw;
     public float prevPitch;
     public Vec3 prevPivot = Vec3.ZERO;
+    /** Current attack was started while sprinting (extra reach and damage, forward push). */
+    public boolean lunge;
+    /** Current attack is an overhead started in mid-air. */
+    public boolean jumpAttack;
     /** Weapon unusable until this game time (HOLSTER disarm mode for mobs). */
     public long holsteredUntil;
     public float lastSentStamina = -1;

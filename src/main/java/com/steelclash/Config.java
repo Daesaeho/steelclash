@@ -66,8 +66,57 @@ public class Config {
             .defineInRange("towerShieldStaminaMult", 0.5, 0.0, 10.0);
 
     static {
+        BUILDER.pop().push("offense");
+    }
+
+    public static final ModConfigSpec.DoubleValue FEINT_STAMINA_COST = BUILDER
+            .defineInRange("feintStaminaCost", 10.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue MORPH_STAMINA_COST = BUILDER
+            .defineInRange("morphStaminaCost", 8.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue PARRY_CANCEL_STAMINA_COST = BUILDER
+            .comment("Cancelling a windup straight into a parry")
+            .defineInRange("parryCancelStaminaCost", 10.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue KICK_STAMINA_COST = BUILDER
+            .defineInRange("kickStaminaCost", 10.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue KICK_STAMINA_DAMAGE = BUILDER
+            .comment("Stamina a guarding target loses when kicked (shield bash: x1.2)")
+            .defineInRange("kickStaminaDamage", 25.0, 0.0, 1000.0);
+    public static final ModConfigSpec.IntValue KICK_GUARD_BREAK_TICKS = BUILDER
+            .comment("Stagger for a target whose parry or shield guard was kicked")
+            .defineInRange("kickGuardBreakTicks", 20, 1, 200);
+    public static final ModConfigSpec.IntValue KICK_STAGGER_TICKS = BUILDER
+            .comment("Stagger for an unguarded target that was kicked")
+            .defineInRange("kickStaggerTicks", 12, 1, 200);
+    public static final ModConfigSpec.IntValue FLINCH_TICKS = BUILDER
+            .comment("Stagger when hit during your own windup (heavy attacks with hyper armor ignore this)")
+            .defineInRange("flinchTicks", 8, 0, 100);
+    public static final ModConfigSpec.IntValue COUNTER_WINDOW_TICKS = BUILDER
+            .comment("Starting the same attack type within this many ticks before an incoming attack lands counters it")
+            .defineInRange("counterWindowTicks", 7, 0, 40);
+    public static final ModConfigSpec.IntValue COUNTER_RELEASE_TICKS = BUILDER
+            .comment("After a counter, your attack releases within this many ticks")
+            .defineInRange("counterReleaseTicks", 3, 1, 40);
+    public static final ModConfigSpec.BooleanValue ENVIRONMENT_CLANK = BUILDER
+            .comment("Blades that hit walls/obstacles (not floors) stop and stagger the attacker")
+            .define("environmentClank", true);
+    public static final ModConfigSpec.IntValue CLANK_STAGGER_TICKS = BUILDER
+            .defineInRange("clankStaggerTicks", 10, 0, 100);
+    public static final ModConfigSpec.DoubleValue LUNGE_REACH_BONUS = BUILDER
+            .comment("Extra reach for attacks started while sprinting")
+            .defineInRange("lungeReachBonus", 0.7, 0.0, 5.0);
+    public static final ModConfigSpec.DoubleValue LUNGE_DAMAGE_MULT = BUILDER
+            .defineInRange("lungeDamageMult", 1.15, 0.0, 10.0);
+    public static final ModConfigSpec.DoubleValue JUMP_ATTACK_DAMAGE_MULT = BUILDER
+            .comment("Damage multiplier for overheads started in mid-air")
+            .defineInRange("jumpAttackDamageMult", 1.2, 0.0, 10.0);
+
+    static {
         BUILDER.pop().push("mobs");
     }
+
+    public static final ModConfigSpec.DoubleValue MOB_HEAVY_CHANCE = BUILDER
+            .comment("Chance a mob's telegraphed attack is a heavy")
+            .defineInRange("heavyChance", 0.25, 0.0, 1.0);
 
     public static final ModConfigSpec.BooleanValue TELEGRAPH_MOB_ATTACKS = BUILDER
             .comment("Mobs in #steelclash:fighters wind up their melee attacks instead of hitting instantly")

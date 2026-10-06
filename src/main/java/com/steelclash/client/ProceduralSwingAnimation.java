@@ -2,6 +2,7 @@ package com.steelclash.client;
 
 import com.steelclash.SteelClash;
 import com.steelclash.combat.ModAttachments;
+import com.steelclash.core.AttackType;
 import dev.kosmx.playerAnim.api.TransformType;
 import dev.kosmx.playerAnim.api.firstPerson.FirstPersonConfiguration;
 import dev.kosmx.playerAnim.api.firstPerson.FirstPersonMode;
@@ -59,6 +60,12 @@ public class ProceduralSwingAnimation implements IAnimation {
             return value;
         }
         float w = (float) pose.weight();
+        if (pose.type() == AttackType.KICK && pose.phase().isAttack()) {
+            // Kick: swing the right leg forward instead of the arm.
+            return modelName.equals("rightLeg")
+                    ? new Vec3f(Mth.lerp(w, value.getX(), -1.4f), value.getY(), value.getZ())
+                    : value;
+        }
         return switch (modelName) {
             // Same convention vanilla uses for aiming a bow: -90° points the arm along the view.
             case "rightArm" -> new Vec3f(

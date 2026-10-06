@@ -8,6 +8,7 @@ import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
+import com.steelclash.net.ActionPayload;
 import com.steelclash.net.AttackInputPayload;
 import com.steelclash.net.BlockInputPayload;
 import com.steelclash.profile.WeaponProfiles;
@@ -53,6 +54,18 @@ public final class ClientInput {
             InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_5, CATEGORY);
     public static final KeyMapping STAB = new KeyMapping("key.steelclash.stab",
             InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_4, CATEGORY);
+    public static final KeyMapping FEINT = new KeyMapping("key.steelclash.feint",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY);
+    public static final KeyMapping KICK = new KeyMapping("key.steelclash.kick",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
+
+    /** Which held input started the current windup; still holding it past {@link Combat#HEAVY_HOLD_TICKS} = heavy. */
+    private enum Hold {
+        NONE, ATTACK_BUTTON, OVERHEAD_KEY, STAB_KEY
+    }
+
+    private static Hold hold = Hold.NONE;
+    private static boolean attackButtonDown;
 
     /** Whether we swallowed the attack button's press, so we also swallow its release. */
     private static boolean suppressedAttackRelease;
@@ -66,6 +79,8 @@ public final class ClientInput {
     public static void registerKeys(RegisterKeyMappingsEvent event) {
         event.register(OVERHEAD);
         event.register(STAB);
+        event.register(FEINT);
+        event.register(KICK);
     }
 
     @SubscribeEvent
@@ -79,6 +94,7 @@ public final class ClientInput {
             return;
         }
         if (event.getAction() == GLFW.GLFW_RELEASE) {
+            attackButtonDown = false;
             if (suppressedAttackRelease) {
                 suppressedAttackRelease = false;
                 event.setCanceled(true);
@@ -91,7 +107,8 @@ public final class ClientInput {
         if (mc.player.isShiftKeyDown() && mc.hitResult != null && mc.hitResult.getType() == HitResult.Type.BLOCK) {
             return; // let vanilla mine
         }
-        tryAttack(mc.player, AttackType.SLASH);
+        tryAttack(mc.player, AttackType.SLASH, Hold.ATTACK_BUTTON);
+        attackButtonDown = true;
         suppressedAttackRelease = true;
         event.setCanceled(true);
     }
@@ -164,7 +181,7 @@ public final class ClientInput {
         if (!Config.Client.SCROLL_ATTACKS.get() || !inGame(mc) || !holdsWeapon(mc.player) || event.getScrollDeltaY() == 0) {
             return;
         }
-        tryAttack(mc.player, event.getScrollDeltaY() > 0 ? AttackType.OVERHEAD : AttackType.STAB);
+        tryAttack(mc.player, event.getScrollDeltaY() > 0 ? AttackType.OVERHEAD : AttackType.STAB, Hold.NONE);
         event.setCanceled(true);
     }
 
@@ -173,30 +190,72 @@ public final class ClientInput {
         Minecraft mc = Minecraft.getInstance();
         while (OVERHEAD.consumeClick()) {
             if (inGame(mc) && holdsWeapon(mc.player)) {
-                tryAttack(mc.player, AttackType.OVERHEAD);
+                tryAttack(mc.player, AttackType.OVERHEAD, Hold.OVERHEAD_KEY);
             }
         }
         while (STAB.consumeClick()) {
             if (inGame(mc) && holdsWeapon(mc.player)) {
-                tryAttack(mc.player, AttackType.STAB);
+                tryAttack(mc.player, AttackType.STAB, Hold.STAB_KEY);
             }
+        }
+        while (KICK.consumeClick()) {
+            if (inGame(mc)) {
+                tryAttack(mc.player, AttackType.KICK, Hold.NONE);
+            }
+        }
+        LocalPlayer player = mc.player;
+        if (player == null || !player.hasData(ModAttachments.COMBAT)) {
+            return;
+        }
+        CombatData data = player.getData(ModAttachments.COMBAT);
+        while (FEINT.consumeClick()) {
+            if (inGame(mc) && Combat.feint(player, data)) {
+                hold = Hold.NONE;
+                PacketDistributor.sendToServer(new ActionPayload(ActionPayload.Action.FEINT));
+            }
+        }
+        // Still holding the attack that started this windup: it becomes a heavy.
+        if (data.machine.phase() != Phase.WINDUP) {
+            hold = Hold.NONE;
+        } else if (hold != Hold.NONE && !data.machine.isHeavy() && data.machine.phaseTick() >= Combat.HEAVY_HOLD_TICKS) {
+            if (isHeld(hold) && Combat.makeHeavy(player, data)) {
+                PacketDistributor.sendToServer(new ActionPayload(ActionPayload.Action.HEAVY));
+            }
+            hold = Hold.NONE;
         }
     }
 
+    private static boolean isHeld(Hold source) {
+        return switch (source) {
+            case ATTACK_BUTTON -> attackButtonDown;
+            case OVERHEAD_KEY -> OVERHEAD.isDown();
+            case STAB_KEY -> STAB.isDown();
+            case NONE -> false;
+        };
+    }
+
     /**
-     * Predicts the attack locally and tells the server. Input during recovery is buffered (both here and on the
-     * server); input during windup or release is ignored until feints and morphs arrive in M3.
+     * Predicts the attack locally and tells the server. A different attack during a windup is a morph; during recovery
+     * the input starts a combo after a landed hit, otherwise it's buffered (both here and on the server).
      */
-    private static void tryAttack(LocalPlayer player, AttackType type) {
+    private static void tryAttack(LocalPlayer player, AttackType type, Hold source) {
         CombatData data = player.getData(ModAttachments.COMBAT);
         Phase phase = data.machine.phase();
-        if (!data.machine.isBusy()) {
+        if (phase == Phase.WINDUP) {
+            if (type != data.machine.type() && Combat.morph(player, data, type)) {
+                hold = source;
+                PacketDistributor.sendToServer(new AttackInputPayload(type));
+            }
+            return;
+        }
+        if (data.machine.canStartAttack()) {
             if (player.isUsingItem()) {
                 player.stopUsingItem();
             }
             if (!Combat.start(player, data, type)) {
                 return;
             }
+            hold = source;
         } else if (phase == Phase.RECOVERY || phase == Phase.GUARD_RECOVERY) {
             data.queuedAttack = type;
         } else {

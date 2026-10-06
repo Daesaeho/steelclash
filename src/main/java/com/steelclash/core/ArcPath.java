@@ -46,11 +46,20 @@ public record ArcPath(List<Keyframe> keyframes) {
                 new Keyframe(1.0, 0, 0, 1.0)));
     }
 
+    /** A low, short push: kicks and shield bashes aim at the body. */
+    public static ArcPath kick() {
+        return new ArcPath(List.of(
+                new Keyframe(0.0, 0, 25, 0.5),
+                new Keyframe(0.5, 0, 20, 1.0),
+                new Keyframe(1.0, 0, 20, 1.0)));
+    }
+
     public static ArcPath defaultFor(AttackType type) {
         return switch (type) {
             case SLASH -> horizontal(140);
             case OVERHEAD -> vertical();
             case STAB -> thrust();
+            case KICK -> kick();
         };
     }
 

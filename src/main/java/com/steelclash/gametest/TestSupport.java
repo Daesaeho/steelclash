@@ -34,8 +34,13 @@ final class TestSupport {
     }
 
     static Player swordsman(GameTestHelper helper, ItemStack weapon, float yaw) {
+        return swordsman(helper, weapon, yaw, 4);
+    }
+
+    /** A mock player standing at (1.5, 2, z + 0.5). */
+    static Player swordsman(GameTestHelper helper, ItemStack weapon, float yaw, int z) {
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
-        Vec3 pos = helper.absoluteVec(new Vec3(1.5, 2, 4.5));
+        Vec3 pos = helper.absoluteVec(new Vec3(1.5, 2, z + 0.5));
         player.moveTo(pos.x, pos.y, pos.z, yaw, 0);
         player.setYHeadRot(yaw);
         player.setItemInHand(InteractionHand.MAIN_HAND, weapon);
@@ -68,6 +73,22 @@ final class TestSupport {
         CombatData data = attacker.getData(ModAttachments.COMBAT);
         Combat.requestAttack(attacker, type);
         for (int tick = 0; tick < 200 && data.machine.isAttacking(); tick++) {
+            Combat.tickServer(attacker, data);
+        }
+    }
+
+    /** Runs the current attack to completion. */
+    static void finish(LivingEntity attacker) {
+        CombatData data = attacker.getData(ModAttachments.COMBAT);
+        for (int tick = 0; tick < 200 && data.machine.isAttacking(); tick++) {
+            Combat.tickServer(attacker, data);
+        }
+    }
+
+    /** Ticks the attacker's combat state {@code ticks} times. */
+    static void advance(LivingEntity attacker, int ticks) {
+        CombatData data = attacker.getData(ModAttachments.COMBAT);
+        for (int tick = 0; tick < ticks; tick++) {
             Combat.tickServer(attacker, data);
         }
     }

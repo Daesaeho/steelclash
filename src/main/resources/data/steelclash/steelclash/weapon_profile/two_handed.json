@@ -50,5 +50,6 @@
     "cone": 150,
     "stamina_mult": 0.8
   },
-  "riposte_windup_mult": 0.6
+  "riposte_windup_mult": 0.6,
+  "hyper_armor_on_heavy": true
 }

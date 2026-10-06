@@ -2,6 +2,7 @@ package com.steelclash.combat;
 
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
+import com.steelclash.core.AttackType;
 import com.steelclash.core.Guard;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
@@ -41,7 +42,13 @@ public final class Defense {
         if (!defender.hasData(ModAttachments.COMBAT)) {
             return false;
         }
+        if (swing != null && swing.type() == AttackType.KICK) {
+            return false; // kicks break guards, they're never parried
+        }
         CombatData data = defender.getData(ModAttachments.COMBAT);
+        if (swing != null && tryCounter(defender, data, swing)) {
+            return true;
+        }
         if (data.machine.phase() != Phase.PARRY || !(source.getEntity() instanceof LivingEntity attacker)) {
             return false;
         }
@@ -56,7 +63,7 @@ public final class Defense {
             return false;
         }
 
-        float staminaDamage = swing != null ? swing.spec().staminaDamage() : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
+        float staminaDamage = swing != null ? swing.staminaDamage() : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
         boolean exhausted = data.stamina.spend(staminaDamage * guard.get().staminaMult());
         clashEffects(defender, attacker);
         if (exhausted) {
@@ -70,6 +77,29 @@ public final class Defense {
             // The parried attacker reels back; they may still parry the coming riposte.
             Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);
         }
+        return true;
+    }
+
+    /**
+     * Chivalry 2 counter: answering an incoming attack with the same attack type, started shortly before it lands,
+     * parries it and fast-forwards your own swing so it lands first.
+     */
+    private static boolean tryCounter(LivingEntity defender, CombatData data, SwingContext.Active swing) {
+        if (data.machine.phase() != Phase.WINDUP || data.machine.type() != swing.type()
+                || data.machine.phaseTick() > Config.COUNTER_WINDOW_TICKS.get()
+                || !(swing.attacker() instanceof LivingEntity attacker)) {
+            return false;
+        }
+        Optional<WeaponProfile.GuardSpec> guard = Combat.currentProfile(defender, data).flatMap(WeaponProfile::guard);
+        if (guard.isEmpty() || !Guard.inCone(CombatMath.viewYaw(defender), defender.getX(), defender.getZ(),
+                attacker.getX(), attacker.getZ(), guard.get().cone())) {
+            return false;
+        }
+        data.stamina.spend(swing.staminaDamage() * guard.get().staminaMult() * 0.5f);
+        data.machine.counter(Config.COUNTER_RELEASE_TICKS.get());
+        Combat.sync(defender, data, true);
+        clashEffects(defender, attacker);
+        Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);
         return true;
     }
 
@@ -96,7 +126,7 @@ public final class Defense {
         }
 
         SwingContext.Active swing = SwingContext.forAttacker(source.getEntity());
-        float base = swing != null ? swing.spec().staminaDamage()
+        float base = swing != null ? swing.staminaDamage()
                 : source.is(DamageTypeTags.IS_PROJECTILE) ? Config.PROJECTILE_STAMINA_DAMAGE.get().floatValue()
                 : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
         double mult = tower ? Config.TOWER_SHIELD_STAMINA_MULT.get() : Config.BASIC_SHIELD_STAMINA_MULT.get();

@@ -28,5 +28,6 @@
       "stamina_damage": 40,
       "stamina_cost": 0
     }
-  }
+  },
+  "hyper_armor_on_heavy": true
 }

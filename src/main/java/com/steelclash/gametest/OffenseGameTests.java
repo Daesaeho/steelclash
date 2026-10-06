@@ -1,0 +1,249 @@
+package com.steelclash.gametest;
+
+import static com.steelclash.gametest.TestSupport.FACING_NEGATIVE_X;
+import static com.steelclash.gametest.TestSupport.FACING_POSITIVE_X;
+import static com.steelclash.gametest.TestSupport.advance;
+import static com.steelclash.gametest.TestSupport.check;
+import static com.steelclash.gametest.TestSupport.data;
+import static com.steelclash.gametest.TestSupport.dummy;
+import static com.steelclash.gametest.TestSupport.finish;
+import static com.steelclash.gametest.TestSupport.isHurt;
+import static com.steelclash.gametest.TestSupport.swing;
+import static com.steelclash.gametest.TestSupport.swordsman;
+
+import com.steelclash.SteelClash;
+import com.steelclash.combat.Combat;
+import com.steelclash.combat.CombatData;
+import com.steelclash.core.AttackType;
+import com.steelclash.core.Phase;
+import com.steelclash.entity.TrainingDummy;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+
+/** M3: heavies, feints, morphs, combos, flinches, kicks, counters, clanks and lunges. */
+@GameTestHolder(SteelClash.MOD_ID)
+@PrefixGameTestTemplate(false)
+public final class OffenseGameTests {
+    private static final String ARENA = "arena";
+
+    private OffenseGameTests() {
+    }
+
+    @GameTest(template = ARENA)
+    public static void heavyWindsUpLongerAndHitsHarder(GameTestHelper helper) {
+        Player light = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 2);
+        Player heavy = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 6);
+        Zombie lightTarget = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 2);
+        Zombie heavyTarget = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 6);
+
+        Combat.requestAttack(light, AttackType.STAB);
+        int lightWindup = data(light).machine.phaseDuration();
+        finish(light);
+
+        Combat.requestAttack(heavy, AttackType.STAB);
+        Combat.requestHeavy(heavy);
+        int heavyWindup = data(heavy).machine.phaseDuration();
+        check(helper, data(heavy).machine.isHeavy(), "should be a heavy");
+        finish(heavy);
+
+        float lightDamage = lightTarget.getMaxHealth() - lightTarget.getHealth();
+        float heavyDamage = heavyTarget.getMaxHealth() - heavyTarget.getHealth();
+        check(helper, heavyWindup > lightWindup, "heavy windup " + heavyWindup + " should exceed light " + lightWindup);
+        check(helper, lightDamage > 0 && heavyDamage > lightDamage,
+                "heavy damage " + heavyDamage + " should exceed light damage " + lightDamage);
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void feintCancelsTheAttack(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        Combat.requestAttack(player, AttackType.SLASH);
+        advance(player, 2);
+        Combat.requestFeint(player);
+        CombatData d = data(player);
+        check(helper, d.machine.phase() == Phase.IDLE, "feint should return to idle, was " + d.machine.phase());
+        advance(player, 30);
+        check(helper, !isHurt(zombie), "a feinted attack must not hit");
+        check(helper, d.stamina.current() < d.stamina.max(), "feinting costs stamina");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void morphSwitchesTheAttack(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        Zombie front = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        Zombie behind = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 4, 2, 4);
+        Combat.requestAttack(player, AttackType.SLASH);
+        advance(player, 2);
+        Combat.requestAttack(player, AttackType.STAB);
+        check(helper, data(player).machine.type() == AttackType.STAB && data(player).machine.isMorphed(), "should morph into a stab");
+        finish(player);
+        check(helper, isHurt(front) && !isHurt(behind), "the morphed stab should hit only the front zombie");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void landedHitAllowsCombo(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        Combat.requestAttack(player, AttackType.SLASH);
+        CombatData d = data(player);
+        for (int i = 0; i < 100 && d.machine.phase() != Phase.RECOVERY; i++) {
+            Combat.tickServer(player, d);
+        }
+        check(helper, d.machine.isComboAllowed(), "a landed slash should allow a combo");
+        Combat.requestAttack(player, AttackType.OVERHEAD);
+        check(helper, d.machine.phase() == Phase.WINDUP && d.machine.type() == AttackType.OVERHEAD,
+                "the combo should start immediately, was " + d.machine.phase());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void whiffMustSitOutRecovery(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        Combat.requestAttack(player, AttackType.SLASH);
+        CombatData d = data(player);
+        for (int i = 0; i < 100 && d.machine.phase() != Phase.RECOVERY; i++) {
+            Combat.tickServer(player, d);
+        }
+        Combat.requestAttack(player, AttackType.OVERHEAD);
+        check(helper, d.machine.phase() == Phase.RECOVERY, "a whiff can't combo; the next attack waits");
+        check(helper, d.queuedAttack == AttackType.OVERHEAD, "but it is buffered");
+        check(helper, d.stamina.current() < d.stamina.max(), "whiffing costs stamina");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void hitDuringWindupFlinches(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.STAB);
+        check(helper, data(dummy).machine.phase() == Phase.WINDUP, "dummy should be winding up");
+        swing(player, AttackType.OVERHEAD);
+        check(helper, isHurt(dummy), "the overhead should land");
+        check(helper, data(dummy).machine.phase() == Phase.STAGGER, "the dummy's windup should be interrupted");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void heavyHyperArmorIgnoresFlinch(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        dummy.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.MACE)); // blunt: hyper armor on heavies
+        Combat.requestAttack(dummy, AttackType.STAB);
+        Combat.requestHeavy(dummy);
+        swing(player, AttackType.OVERHEAD);
+        check(helper, isHurt(dummy), "the overhead should land");
+        check(helper, data(dummy).machine.phase() == Phase.WINDUP, "a hyper-armored heavy keeps winding up, was "
+                + data(dummy).machine.phase());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void kickBreaksAShieldGuard(GameTestHelper helper) {
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        dummy.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+        dummy.startUsingItem(InteractionHand.OFF_HAND);
+        helper.runAfterDelay(8, () -> {
+            check(helper, dummy.isBlocking(), "dummy should be blocking");
+            Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+            swing(player, AttackType.KICK);
+            check(helper, !dummy.isUsingItem(), "the kick should knock the shield down");
+            check(helper, data(dummy).machine.phase() == Phase.STAGGER, "the kicked guard should stagger");
+            check(helper, data(dummy).stamina.current() < data(dummy).stamina.max(), "kicking a guard drains stamina");
+            check(helper, !isHurt(dummy), "kicking a guard does no damage");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = ARENA)
+    public static void kickBreaksAParry(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestParry(dummy);
+        swing(player, AttackType.KICK);
+        check(helper, data(dummy).machine.phase() == Phase.STAGGER, "the kick should break the parry");
+        check(helper, data(player).machine.phase() != Phase.STAGGER, "a kick is never parried");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void kickStaggersAnUnguardedTarget(GameTestHelper helper) {
+        Player player = swordsman(helper, ItemStack.EMPTY, FACING_POSITIVE_X); // kicks need no weapon
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        swing(player, AttackType.KICK);
+        check(helper, data(dummy).machine.phase() == Phase.STAGGER, "an unguarded kick target should stagger");
+        check(helper, isHurt(dummy), "and take a little damage");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void sameAttackCounters(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.SLASH);
+        int before = data(dummy).machine.phaseDuration();
+        swing(player, AttackType.SLASH);
+        check(helper, !isHurt(dummy), "a counter parries the incoming slash");
+        check(helper, data(player).machine.phase() == Phase.STAGGER, "the countered attacker is staggered");
+        check(helper, data(dummy).machine.phase() == Phase.WINDUP && data(dummy).machine.phaseDuration() < before,
+                "the counter keeps winding up, faster");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void differentAttackDoesNotCounter(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.STAB);
+        swing(player, AttackType.SLASH);
+        check(helper, isHurt(dummy), "a stab doesn't counter a slash");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void bladeClanksOffAWall(GameTestHelper helper) {
+        for (int y = 2; y <= 4; y++) {
+            for (int z = 2; z <= 6; z++) {
+                helper.setBlock(2, y, z, Blocks.STONE);
+            }
+        }
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        swing(player, AttackType.SLASH);
+        check(helper, data(player).machine.phase() == Phase.STAGGER, "slashing into a wall should clank and stagger");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void overheadIntoTheFloorDoesNotClank(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        swing(player, AttackType.OVERHEAD);
+        check(helper, data(player).machine.phase() != Phase.STAGGER, "the floor must not clank");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void sprintLungeReachesFarther(GameTestHelper helper) {
+        Player sprinter = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 2);
+        Player walker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 6);
+        Zombie far1 = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 5, 2, 2);
+        Zombie far2 = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 5, 2, 6);
+        sprinter.setSprinting(true);
+        swing(sprinter, AttackType.STAB);
+        swing(walker, AttackType.STAB);
+        check(helper, isHurt(far1), "a sprinting stab should reach the far zombie");
+        check(helper, !isHurt(far2), "a standing stab should fall short");
+        helper.succeed();
+    }
+}

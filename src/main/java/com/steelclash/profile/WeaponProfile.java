@@ -19,10 +19,12 @@ import java.util.Optional;
  * @param speedScaling         how strongly the wielder's actual attack speed rescales timings (0 = not at all)
  * @param guard                weapon parry; absent for things that can't parry (claws, beasts)
  * @param riposteWindupMult    windup multiplier for an attack started right after a successful parry
+ * @param heavy                how holding the attack input changes it
+ * @param hyperArmorOnHeavy    heavy attacks can't be flinched (two-handers, maces, big beasts)
  */
 public record WeaponProfile(String archetype, float referenceAttackSpeed, float speedScaling,
                             Map<AttackType, AttackSpec> attacks, Optional<GuardSpec> guard,
-                            float riposteWindupMult) {
+                            float riposteWindupMult, HeavySpec heavy, boolean hyperArmorOnHeavy) {
 
     public static final Codec<AttackType> ATTACK_TYPE_CODEC = Codec.STRING.comapFlatMap(
             name -> Arrays.stream(AttackType.values())
@@ -38,11 +40,23 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
             Codec.floatRange(0f, 2f).optionalFieldOf("speed_scaling", 0.5f).forGetter(WeaponProfile::speedScaling),
             Codec.unboundedMap(ATTACK_TYPE_CODEC, AttackSpec.CODEC).fieldOf("attacks").forGetter(WeaponProfile::attacks),
             GuardSpec.CODEC.optionalFieldOf("guard").forGetter(WeaponProfile::guard),
-            Codec.floatRange(0.1f, 1f).optionalFieldOf("riposte_windup_mult", 0.6f).forGetter(WeaponProfile::riposteWindupMult)
+            Codec.floatRange(0.1f, 1f).optionalFieldOf("riposte_windup_mult", 0.6f).forGetter(WeaponProfile::riposteWindupMult),
+            HeavySpec.CODEC.optionalFieldOf("heavy", HeavySpec.DEFAULT).forGetter(WeaponProfile::heavy),
+            Codec.BOOL.optionalFieldOf("hyper_armor_on_heavy", false).forGetter(WeaponProfile::hyperArmorOnHeavy)
     ).apply(i, WeaponProfile::new));
 
     public Optional<AttackSpec> attack(AttackType type) {
         return Optional.ofNullable(attacks.get(type));
+    }
+
+    /** Heavy (held) attack multipliers. */
+    public record HeavySpec(float windupMult, float damageMult, float staminaDamageMult) {
+        public static final HeavySpec DEFAULT = new HeavySpec(1.6f, 1.5f, 1.6f);
+        public static final Codec<HeavySpec> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.floatRange(1f, 5f).optionalFieldOf("windup_mult", DEFAULT.windupMult).forGetter(HeavySpec::windupMult),
+                Codec.floatRange(0f, 10f).optionalFieldOf("damage_mult", DEFAULT.damageMult).forGetter(HeavySpec::damageMult),
+                Codec.floatRange(0f, 10f).optionalFieldOf("stamina_damage_mult", DEFAULT.staminaDamageMult).forGetter(HeavySpec::staminaDamageMult)
+        ).apply(i, HeavySpec::new));
     }
 
     /**
@@ -90,7 +104,7 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
     /** Arc shape. Presets for now; M4 replaces these with keyframes extracted from the attack animations. */
     public record ArcSpec(Shape shape, float width) {
         public enum Shape {
-            HORIZONTAL, VERTICAL, THRUST;
+            HORIZONTAL, VERTICAL, THRUST, KICK;
 
             static final Codec<Shape> CODEC = Codec.STRING.comapFlatMap(
                     name -> Arrays.stream(values())
@@ -111,6 +125,7 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                 case HORIZONTAL -> ArcPath.horizontal(width);
                 case VERTICAL -> ArcPath.vertical();
                 case THRUST -> ArcPath.thrust();
+                case KICK -> ArcPath.kick();
             };
         }
     }

@@ -54,12 +54,16 @@ public final class MobCombat {
         CombatData data = mob.getData(ModAttachments.COMBAT);
         if (!data.machine.isBusy()) {
             Combat.requestAttack(mob, pickAttack(mob, profile.get().profile()));
+            if (mob.getRandom().nextDouble() < Config.MOB_HEAVY_CHANCE.get()) {
+                Combat.requestHeavy(mob);
+            }
         }
         return true;
     }
 
     private static AttackType pickAttack(Mob mob, WeaponProfile profile) {
         List<AttackType> options = new ArrayList<>(profile.attacks().keySet());
+        options.remove(AttackType.KICK);
         options.sort(null);
         return options.get(mob.getRandom().nextInt(options.size()));
     }

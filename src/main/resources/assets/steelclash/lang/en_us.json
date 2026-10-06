@@ -14,5 +14,7 @@
   "entity.steelclash.training_dummy.mode.parry": "Training Dummy [Parry]",
   "entity.steelclash.training_dummy.mode.attack": "Training Dummy [Attack]",
   "entity.steelclash.training_dummy.mode.spar": "Training Dummy [Spar]",
-  "item.steelclash.training_dummy_spawn_egg": "Training Dummy Spawn Egg"
+  "item.steelclash.training_dummy_spawn_egg": "Training Dummy Spawn Egg",
+  "key.steelclash.feint": "Feint",
+  "key.steelclash.kick": "Kick / Shield Bash"
 }

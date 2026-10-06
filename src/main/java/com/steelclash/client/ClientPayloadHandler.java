@@ -20,13 +20,15 @@ public final class ClientPayloadHandler {
             if (mc.level == null || !(mc.level.getEntity(payload.entityId()) instanceof LivingEntity entity)) {
                 return;
             }
-            // The local player predicts its own actions with the same state machine; only accept server overrides.
+            CombatData data = entity.getData(ModAttachments.COMBAT);
+            // The local player predicts its own actions with the same state machine. Non-authoritative updates only
+            // carry windows the server alone can decide (a landed hit allows a combo, a parry opens a riposte).
             if (entity == mc.player && !payload.authoritative()) {
+                data.machine.applyWindows(payload.riposteTicks(), payload.comboAllowed());
                 return;
             }
-            CombatData data = entity.getData(ModAttachments.COMBAT);
             data.machine.apply(payload.phase(), payload.attackType(), payload.phaseTick(), payload.phaseDuration(),
-                    payload.timings(), payload.riposteTicks());
+                    payload.timings(), payload.riposteTicks(), payload.heavy(), payload.morphed(), payload.comboAllowed());
             data.profileKey = payload.profile()
                     .map(location -> ResourceKey.create(WeaponProfiles.REGISTRY_KEY, location))
                     .orElse(null);

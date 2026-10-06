@@ -1,6 +1,8 @@
 package com.steelclash.combat;
 
+import com.steelclash.Config;
 import com.steelclash.SteelClash;
+import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.Set;
@@ -12,6 +14,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
 import net.neoforged.neoforge.event.entity.player.CriticalHitEvent;
@@ -64,7 +67,20 @@ public final class CombatEvents {
             return;
         }
         if (swing != null) {
-            event.setAmount(event.getAmount() * swing.spec().damage());
+            event.setAmount(event.getAmount() * swing.damageMult());
+        }
+    }
+
+    /** Flinch: taking real damage during your own windup interrupts it, unless the heavy has hyper armor. */
+    @SubscribeEvent
+    static void onDamageTaken(LivingDamageEvent.Post event) {
+        LivingEntity entity = event.getEntity();
+        if (event.getNewDamage() <= 0 || !entity.hasData(ModAttachments.COMBAT) || Config.FLINCH_TICKS.get() <= 0) {
+            return;
+        }
+        CombatData data = entity.getData(ModAttachments.COMBAT);
+        if (data.machine.phase() == Phase.WINDUP && !Combat.hasHyperArmor(entity, data)) {
+            Combat.stagger(entity, data, Config.FLINCH_TICKS.get(), true);
         }
     }
 
