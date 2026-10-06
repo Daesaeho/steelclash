@@ -2,6 +2,7 @@ package com.steelclash.client.dev;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.steelclash.SteelClash;
+import com.steelclash.client.CombatDebugRenderer;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackTimings;
@@ -34,6 +35,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
  *     <li>{@code steelclash.poseSheet}: attacks to photograph ({@code slash}, {@code slash_mirrored}, {@code overhead},
  *     {@code stab}, {@code parry}, any with {@code _heavy});</li>
  *     <li>{@code steelclash.poseSheetItem}: item id to hold (default iron sword);</li>
+ *     <li>{@code steelclash.poseSheetDebug}: draw the traced blade too ({@code /steelclash_debug}), to check that the
+ *     rendered weapon lies on it;</li>
  *     <li>{@code steelclash.poseSheetQuit}: close the game when done.</li>
  * </ul>
  * Each pose is frozen on the local player (client-side only) at fixed points of the attack and photographed from
@@ -79,6 +82,7 @@ public final class PoseSheet {
             shots = plan();
             wait = SETTLE_TICKS;
             mc.options.pauseOnLostFocus = false;
+            CombatDebugRenderer.setEnabled(System.getProperty("steelclash.poseSheetDebug") != null);
             buildStage(player);
             SteelClash.LOGGER.info("Pose sheet: {} shots planned", shots.size());
         }

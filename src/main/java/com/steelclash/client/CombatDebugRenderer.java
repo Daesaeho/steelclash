@@ -42,6 +42,11 @@ public final class CombatDebugRenderer {
     private CombatDebugRenderer() {
     }
 
+    /** Dev tools (pose sheet) switch it on to check that the drawn blade sits on the traced one. */
+    public static void setEnabled(boolean on) {
+        enabled = on;
+    }
+
     @SubscribeEvent
     static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("steelclash_debug").executes(context -> {
@@ -85,7 +90,8 @@ public final class CombatDebugRenderer {
                 continue;
             }
             CombatData data = entity.getData(ModAttachments.COMBAT);
-            SwingPose.of(entity, data, partialTick).ifPresent(pose -> {
+            // Same clock as the model (hit-stop freezes it), so the line and the drawn weapon show the same moment.
+            SwingPose.of(entity, data, ClientFeel.animationPartialTick(entity, partialTick)).ifPresent(pose -> {
                 Vec pivot = CombatMath.toVec(CombatMath.pivot(entity, partialTick));
                 double yaw = CombatMath.viewYaw(entity, partialTick);
                 double pitch = entity.getViewXRot(partialTick);

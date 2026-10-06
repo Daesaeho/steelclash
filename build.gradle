@@ -89,6 +89,9 @@ neoForge {
             if (project.hasProperty('poseSheet')) {
                 systemProperty 'steelclash.poseSheet', project.property('poseSheet').toString()
                 systemProperty 'steelclash.poseSheetQuit', 'true'
+                if (project.hasProperty('poseSheetDebug')) {
+                    systemProperty 'steelclash.poseSheetDebug', 'true'
+                }
                 if (project.hasProperty('poseSheetItem')) {
                     systemProperty 'steelclash.poseSheetItem', project.property('poseSheetItem').toString()
                 }

@@ -143,3 +143,20 @@ Verified from the PAL 1.1.6 source (`PlayerAnimationLibrary-1.21.1`) and the pub
 - `-PclientMemory` caps the heap; this machine runs low on RAM with a browser open.
 - `AnimationData.getPartialTick()` replaces playerAnimator's `tickDelta` argument. `getFirstPersonMode()` and `getFirstPersonConfiguration()` take no arguments; `FirstPersonConfiguration(showRightArm, showLeftArm, showRightItem, showLeftItem)` is unchanged.
 - The dedicated GameTest server starts cleanly with PAL present (65/65, with and without the Spartan mods). The layer class is client-only (`@EventBusSubscriber(value = Dist.CLIENT)`).
+- `-PposeSheetDebug` also draws the traced blade (`/steelclash_debug`) on the same animation clock as the model, so each shot shows whether the drawn weapon lies along the arc the server traces. Before the clock was shared, the line ran up to a tick ahead of the model (about 20% of a sword slash's release).
+
+## Weapon rig: body motion under an arc-locked blade (step C, 2026-10-06)
+The weapon arm used to point straight along the blade, so arm and sword formed one straight line, like a spear, and the whole-body twist from the clips swung the arc off the traced one. `core/WeaponRig` now solves both (unit-tested in `WeaponRigTest`, including 2000 random poses):
+- **The blade orientation is fixed first:** it's what the old straight arm gave, so the edge roll and grip are unchanged.
+- **The arm is free:** the hand is drawn 45% of the way toward a point in front of the chest (`CombatPose.WRIST_RELAX`), so the wrist shows a cocked angle. The arm also counters the whole-body rotation, and the held item is rotated in the hand to bring the blade back onto the arc.
+- **Whole-body rotation in model space** is `Rz(z)·Ry(-y)·Rx(-x)` of the clip's `body` angles: the renderer applies it in entity space, before the model flips X and Y. A pose sheet with `-PposeSheetDebug` confirms the blade runs parallel to the traced line in every slash, overhead and stab shot. The hilt sits a little in front of the trace's pivot, because the hand is drawn in.
+- **Legs take back half the body's turn** (`ProceduralSwingAnimation.HIP_LAG`), so the shoulders twist over the hips instead of the fighter pivoting on the spot.
+- **Sword slash clips re-authored:** a 45° wind-up turn with weight on the back foot, square and leaning in mid-cut with a front-foot step, and a 50° follow-through that settles before recovering. Other archetypes keep their clips but get the rig (wrist and arc lock) for free.
+- **Mobs are unchanged** (`weaponArmForFixedItem`); their model hook can't rotate the held item.
+
+## First person and the two-hand grip (step D, 2026-10-07)
+Checked on pose sheets (slash, mirrored slash, overhead, stab, parry; all three views).
+- **Two-hand grip:** the off arm used to copy the weapon arm turned 28° inward, so the off hand floated beside the weapon instead of holding it. In first person it was a loose slab in the lower left. Now the off hand reaches for the grip 2.5 px behind the weapon hand, toward the pommel (`WeaponRig.reach`). The off shoulder slides up to 4 px across the chest when the arm alone is too short, as a real shoulder does. Mobs use the same reach (`CombatPose.gripArm`).
+- **First-person arm offset:** in the first-person pass only, both arms sit 4 px forward and 1.5 px down (`ProceduralSwingAnimation.FIRST_PERSON_FORWARD`/`_DOWN`), the usual first-person trick. Before this, a raised overhead or parry put both arms across the whole lower half of the screen. Now the weapon reads clearly in every wind-up. The blade's direction is unchanged.
+- **Tried and dropped:** less wrist bend in first person (0.15). It brought the raised arms right up to the eye (overhead, parry) and pushed slash wind-ups off screen.
+- **Still as designed:** the backhand (mirrored) wind-up shows the blade large on the left, because it passes close to the head. The slash follow-through ends low and centre-left, which is where the traced blade really is from eye height.

@@ -10,7 +10,10 @@ import com.steelclash.core.ArcPath;
 import com.steelclash.core.ArmAim;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
+import com.steelclash.core.Mat3;
 import com.steelclash.core.PoseClip;
+import com.steelclash.core.Vec;
+import com.steelclash.core.WeaponRig;
 import com.steelclash.profile.WeaponProfile;
 import java.util.Map;
 import java.util.Optional;
@@ -32,8 +35,9 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public record CombatPose(Phase phase, double weight, double aimYaw, double aimPitch, Map<String, double[]> offsets,
                          boolean twoHanded, boolean kick, double bladeTwist) {
-    /** Degrees the off arm is turned toward the weapon hand for a two-handed grip. */
-    private static final double TWO_HAND_CONVERGE = 28;
+    /** How far the weapon hand is drawn in from the blade's line toward the chest (0 = arm and blade in one line). */
+    private static final double WRIST_RELAX = 0.45;
+    private static final double[] NO_OFFSET = {0, 0, 0};
 
     public static Optional<CombatPose> of(LivingEntity entity, float partialTick) {
         if (!entity.hasData(ModAttachments.COMBAT)) {
@@ -108,9 +112,17 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
         return v == null ? 0f : (float) Math.toRadians(v[axis] * weight);
     }
 
-    /** Weapon arm rotation (radians) with the arm itself along the arc; the item is rotated in the hand to match. */
-    public double[] weaponArmForRotatedItem() {
-        return ArmAim.aimArm(aimYaw, aimPitch);
+    /**
+     * Weapon arm and in-hand weapon rotation (players): the blade on the arc, the hand drawn in toward the chest by
+     * {@link #WRIST_RELAX} so the arm and blade don't form one straight line, and the arm countering the
+     * body's twist.
+     *
+     * @param twistScale blade twist setting (1 full, 0 off, -1 reversed)
+     */
+    public WeaponRig rig(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis) {
+        double[] body = offsets.getOrDefault("body", NO_OFFSET);
+        double[] weightedBody = {body[0] * weight, body[1] * weight, body[2] * weight};
+        return WeaponRig.solve(aimYaw, aimPitch, gripDegrees, bladeTwist * twistScale, twistAxis, weightedBody, WRIST_RELAX);
     }
 
     /** Weapon arm rotation (radians) that puts an un-rotated held blade on the arc (mobs). */
@@ -118,9 +130,11 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
         return ArmAim.aimArmForBlade(aimYaw, aimPitch);
     }
 
-    /** Off arm reaching across to the weapon hand. */
+    /** Off arm reaching for the grip just behind the weapon hand (mobs; players get it from {@link #rig}). */
     public double[] gripArm(double[] weaponArm) {
-        // Positive yaw turns an arm toward the body's right, where the weapon hand is.
-        return new double[]{weaponArm[0], weaponArm[1] + Math.toRadians(TWO_HAND_CONVERGE), weaponArm[2]};
+        Vec hand = WeaponRig.RIGHT_SHOULDER.add(Mat3.zyx(weaponArm[0], weaponArm[1], weaponArm[2])
+                .apply(new Vec(0, WeaponRig.HAND_DISTANCE, 0)));
+        Vec grip = hand.subtract(ArmAim.modelDirection(aimYaw, aimPitch).scale(WeaponRig.SECOND_HAND_GAP));
+        return WeaponRig.reach(WeaponRig.LEFT_SHOULDER, grip);
     }
 }
