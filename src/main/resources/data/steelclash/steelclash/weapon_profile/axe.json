@@ -1,0 +1,52 @@
+{
+  "archetype": "axe",
+  "reference_attack_speed": 1.0,
+  "speed_scaling": 0.5,
+  "attacks": {
+    "slash": {
+      "windup": 12,
+      "release": 5,
+      "recovery": 9,
+      "damage": 1.0,
+      "arc": {
+        "shape": "horizontal",
+        "width": 130
+      },
+      "max_targets": 2,
+      "stamina_damage": 28,
+      "stamina_cost": 8.4
+    },
+    "overhead": {
+      "windup": 13,
+      "release": 5,
+      "recovery": 10,
+      "damage": 1.2,
+      "arc": {
+        "shape": "vertical"
+      },
+      "max_targets": 1,
+      "stamina_damage": 33,
+      "stamina_cost": 9.9
+    },
+    "stab": {
+      "windup": 11,
+      "release": 4,
+      "recovery": 9,
+      "damage": 0.8,
+      "arc": {
+        "shape": "thrust"
+      },
+      "max_targets": 1,
+      "reach_bonus": 0.1,
+      "stamina_damage": 18,
+      "stamina_cost": 5.4
+    }
+  },
+  "guard": {
+    "parry_ticks": 12,
+    "recovery": 7,
+    "cone": 130,
+    "stamina_mult": 1.0
+  },
+  "riposte_windup_mult": 0.6
+}

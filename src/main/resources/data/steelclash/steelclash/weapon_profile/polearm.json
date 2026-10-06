@@ -1,0 +1,54 @@
+{
+  "archetype": "polearm",
+  "reference_attack_speed": 1.2,
+  "speed_scaling": 0.5,
+  "attacks": {
+    "slash": {
+      "windup": 14,
+      "release": 6,
+      "recovery": 11,
+      "damage": 1.0,
+      "arc": {
+        "shape": "horizontal",
+        "width": 150
+      },
+      "max_targets": 3,
+      "reach_bonus": 0.6,
+      "stamina_damage": 28,
+      "stamina_cost": 8.4
+    },
+    "overhead": {
+      "windup": 15,
+      "release": 6,
+      "recovery": 12,
+      "damage": 1.25,
+      "arc": {
+        "shape": "vertical"
+      },
+      "max_targets": 2,
+      "reach_bonus": 0.6,
+      "stamina_damage": 34,
+      "stamina_cost": 10.2
+    },
+    "stab": {
+      "windup": 13,
+      "release": 5,
+      "recovery": 11,
+      "damage": 0.95,
+      "arc": {
+        "shape": "thrust"
+      },
+      "max_targets": 1,
+      "reach_bonus": 0.8,
+      "stamina_damage": 20,
+      "stamina_cost": 6.0
+    }
+  },
+  "guard": {
+    "parry_ticks": 14,
+    "recovery": 8,
+    "cone": 150,
+    "stamina_mult": 0.85
+  },
+  "riposte_windup_mult": 0.6
+}

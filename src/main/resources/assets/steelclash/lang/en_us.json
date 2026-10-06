@@ -1,0 +1,18 @@
+{
+  "steelclash.configuration.title": "Steel Clash Configs",
+  "steelclash.configuration.section.steelclash.common.toml": "Steel Clash Configs",
+  "steelclash.configuration.section.steelclash.common.toml.title": "Steel Clash Configs",
+  "steelclash.configuration.section.steelclash.client.toml": "Steel Clash Client Configs",
+  "steelclash.configuration.section.steelclash.client.toml.title": "Steel Clash Client Configs",
+  "steelclash.configuration.disarmMode": "Disarm Mode",
+  "steelclash.configuration.scrollAttacks": "Scroll Wheel Attacks",
+  "key.categories.steelclash": "Steel Clash",
+  "key.steelclash.overhead": "Overhead Attack",
+  "key.steelclash.stab": "Stab Attack",
+  "entity.steelclash.training_dummy": "Training Dummy",
+  "entity.steelclash.training_dummy.mode.passive": "Training Dummy [Passive]",
+  "entity.steelclash.training_dummy.mode.parry": "Training Dummy [Parry]",
+  "entity.steelclash.training_dummy.mode.attack": "Training Dummy [Attack]",
+  "entity.steelclash.training_dummy.mode.spar": "Training Dummy [Spar]",
+  "item.steelclash.training_dummy_spawn_egg": "Training Dummy Spawn Egg"
+}

@@ -1,0 +1,200 @@
+package com.steelclash.core;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class CombatStateMachineTest {
+    private static final AttackTimings TIMINGS = new AttackTimings(3, 2, 4);
+
+    @Test
+    void startsIdle() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertEquals(Phase.IDLE, m.phase());
+        assertFalse(m.isAttacking());
+        assertNull(m.tick());
+    }
+
+    @Test
+    void runsThroughAllPhasesWithExactTickCounts() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertTrue(m.startAttack(AttackType.OVERHEAD, TIMINGS));
+        assertEquals(Phase.WINDUP, m.phase());
+        assertEquals(AttackType.OVERHEAD, m.type());
+
+        List<Phase> phases = new ArrayList<>();
+        for (int i = 0; i < TIMINGS.total(); i++) {
+            m.tick();
+            phases.add(m.phase());
+        }
+        assertEquals(List.of(
+                Phase.WINDUP, Phase.WINDUP, Phase.RELEASE,
+                Phase.RELEASE, Phase.RECOVERY,
+                Phase.RECOVERY, Phase.RECOVERY, Phase.RECOVERY, Phase.IDLE), phases);
+    }
+
+    @Test
+    void releaseSweepsCoverZeroToOneContiguously() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, new AttackTimings(2, 4, 1));
+        List<CombatStateMachine.Sweep> sweeps = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            CombatStateMachine.Sweep s = m.tick();
+            if (s != null) {
+                sweeps.add(s);
+            }
+        }
+        assertEquals(4, sweeps.size());
+        assertEquals(0.0, sweeps.get(0).from(), 1e-9);
+        assertEquals(1.0, sweeps.get(3).to(), 1e-9);
+        for (int i = 1; i < sweeps.size(); i++) {
+            assertEquals(sweeps.get(i - 1).to(), sweeps.get(i).from(), 1e-9, "sweeps must not leave gaps");
+        }
+    }
+
+    @Test
+    void cannotStartWhileAttacking() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        assertFalse(m.startAttack(AttackType.STAB, TIMINGS));
+        assertEquals(AttackType.SLASH, m.type());
+    }
+
+    @Test
+    void canAttackAgainAfterFinishing() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        for (int i = 0; i < TIMINGS.total(); i++) {
+            m.tick();
+        }
+        assertTrue(m.startAttack(AttackType.STAB, TIMINGS));
+    }
+
+    @Test
+    void cancelReturnsToIdle() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        m.tick();
+        m.cancel();
+        assertEquals(Phase.IDLE, m.phase());
+        assertTrue(m.startAttack(AttackType.STAB, TIMINGS));
+    }
+
+    @Test
+    void phaseProgressInterpolates() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, new AttackTimings(4, 1, 1));
+        m.tick();
+        assertEquals(0.25, m.phaseProgress(0f), 1e-9);
+        assertEquals(0.375, m.phaseProgress(0.5f), 1e-9);
+    }
+
+    @Test
+    void snapshotOverridesState() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.apply(Phase.RELEASE, AttackType.STAB, 1, 3, new AttackTimings(5, 3, 5), 0);
+        CombatStateMachine.Sweep s = m.tick();
+        assertNotNull(s);
+        assertEquals(1 / 3.0, s.from(), 1e-9);
+        assertEquals(2 / 3.0, s.to(), 1e-9);
+    }
+
+    @Test
+    void parryTimesOutIntoGuardRecovery() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertTrue(m.startParry(3, 2));
+        assertEquals(Phase.PARRY, m.phase());
+        m.tick();
+        m.tick();
+        m.tick();
+        assertEquals(Phase.GUARD_RECOVERY, m.phase());
+        m.tick();
+        m.tick();
+        assertEquals(Phase.IDLE, m.phase());
+    }
+
+    @Test
+    void releasingParryLowersGuard() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(10, 4);
+        m.releaseParry();
+        assertEquals(Phase.GUARD_RECOVERY, m.phase());
+        assertEquals(4, m.phaseDuration());
+    }
+
+    @Test
+    void successfulParryOpensRiposteWindowThatExpires() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(10, 4);
+        m.parrySucceeded(2);
+        assertEquals(Phase.IDLE, m.phase());
+        assertTrue(m.isRiposteReady());
+        m.tick();
+        assertTrue(m.isRiposteReady());
+        m.tick();
+        assertFalse(m.isRiposteReady());
+    }
+
+    @Test
+    void attackingConsumesRiposteWindow() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(10, 4);
+        m.parrySucceeded(10);
+        assertTrue(m.startAttack(AttackType.STAB, TIMINGS));
+        assertEquals(0, m.riposteTicks());
+    }
+
+    @Test
+    void canParryDuringRecoveryButNotWindupOrRelease() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, new AttackTimings(2, 2, 5));
+        assertFalse(m.canParry(), "windup");
+        m.tick();
+        m.tick();
+        assertEquals(Phase.RELEASE, m.phase());
+        assertFalse(m.canParry(), "release");
+        m.tick();
+        m.tick();
+        assertEquals(Phase.RECOVERY, m.phase());
+        assertTrue(m.startParry(5, 2));
+    }
+
+    @Test
+    void staggerBlocksAttacksAndOptionallyParries() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.stagger(3, false);
+        assertEquals(Phase.STAGGER, m.phase());
+        assertFalse(m.startAttack(AttackType.SLASH, TIMINGS));
+        assertFalse(m.canParry(), "guard break: no parry");
+        m.stagger(3, true);
+        assertTrue(m.canParry(), "parried: may parry the riposte");
+        m.tick();
+        m.tick();
+        m.tick();
+        assertEquals(Phase.IDLE, m.phase());
+    }
+
+    @Test
+    void staggerInterruptsRelease() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, new AttackTimings(1, 4, 1));
+        m.tick();
+        assertEquals(Phase.RELEASE, m.phase());
+        m.stagger(5, true);
+        assertNull(m.tick(), "no more sweeps once staggered");
+    }
+
+    @Test
+    void attackSerialIncrements() {
+        CombatStateMachine m = new CombatStateMachine();
+        int before = m.attackSerial();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        assertEquals(before + 1, m.attackSerial());
+    }
+}

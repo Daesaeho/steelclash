@@ -1,0 +1,64 @@
+{
+  "values": {
+    "minecraft:zombie": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:husk": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:drowned": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:zombie_villager": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:zombified_piglin": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:vindicator": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:piglin": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:piglin_brute": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:wither_skeleton": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:skeleton": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:stray": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:bogged": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:enderman": {
+      "profile": "steelclash:claw"
+    },
+    "minecraft:spider": {
+      "profile": "steelclash:beast"
+    },
+    "minecraft:cave_spider": {
+      "profile": "steelclash:beast"
+    },
+    "minecraft:ravager": {
+      "profile": "steelclash:heavy_beast"
+    },
+    "minecraft:hoglin": {
+      "profile": "steelclash:heavy_beast"
+    },
+    "minecraft:zoglin": {
+      "profile": "steelclash:heavy_beast"
+    },
+    "minecraft:iron_golem": {
+      "profile": "steelclash:heavy_beast"
+    },
+    "steelclash:training_dummy": {
+      "profile": "steelclash:claw"
+    }
+  }
+}

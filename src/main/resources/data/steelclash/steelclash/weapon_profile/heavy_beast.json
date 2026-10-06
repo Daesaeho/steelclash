@@ -1,0 +1,32 @@
+{
+  "archetype": "heavy_beast",
+  "reference_attack_speed": 1.0,
+  "speed_scaling": 0,
+  "attacks": {
+    "overhead": {
+      "windup": 18,
+      "release": 6,
+      "recovery": 16,
+      "damage": 1.0,
+      "arc": {
+        "shape": "vertical"
+      },
+      "max_targets": 1,
+      "stamina_damage": 45,
+      "stamina_cost": 0
+    },
+    "slash": {
+      "windup": 16,
+      "release": 6,
+      "recovery": 16,
+      "damage": 1.0,
+      "arc": {
+        "shape": "horizontal",
+        "width": 150
+      },
+      "max_targets": 3,
+      "stamina_damage": 40,
+      "stamina_cost": 0
+    }
+  }
+}

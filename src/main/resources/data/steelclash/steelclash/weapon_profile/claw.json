@@ -1,0 +1,32 @@
+{
+  "archetype": "claw",
+  "reference_attack_speed": 1.0,
+  "speed_scaling": 0,
+  "attacks": {
+    "slash": {
+      "windup": 14,
+      "release": 5,
+      "recovery": 12,
+      "damage": 1.0,
+      "arc": {
+        "shape": "horizontal",
+        "width": 100
+      },
+      "max_targets": 1,
+      "stamina_damage": 15,
+      "stamina_cost": 0
+    },
+    "overhead": {
+      "windup": 15,
+      "release": 5,
+      "recovery": 12,
+      "damage": 1.1,
+      "arc": {
+        "shape": "vertical"
+      },
+      "max_targets": 1,
+      "stamina_damage": 18,
+      "stamina_cost": 0
+    }
+  }
+}

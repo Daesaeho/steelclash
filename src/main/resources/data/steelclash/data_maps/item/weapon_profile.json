@@ -1,0 +1,46 @@
+{
+  "values": {
+    "minecraft:wooden_sword": {
+      "profile": "steelclash:sword"
+    },
+    "minecraft:wooden_axe": {
+      "profile": "steelclash:axe"
+    },
+    "minecraft:stone_sword": {
+      "profile": "steelclash:sword"
+    },
+    "minecraft:stone_axe": {
+      "profile": "steelclash:axe"
+    },
+    "minecraft:iron_sword": {
+      "profile": "steelclash:sword"
+    },
+    "minecraft:iron_axe": {
+      "profile": "steelclash:axe"
+    },
+    "minecraft:golden_sword": {
+      "profile": "steelclash:sword"
+    },
+    "minecraft:golden_axe": {
+      "profile": "steelclash:axe"
+    },
+    "minecraft:diamond_sword": {
+      "profile": "steelclash:sword"
+    },
+    "minecraft:diamond_axe": {
+      "profile": "steelclash:axe"
+    },
+    "minecraft:netherite_sword": {
+      "profile": "steelclash:sword"
+    },
+    "minecraft:netherite_axe": {
+      "profile": "steelclash:axe"
+    },
+    "minecraft:trident": {
+      "profile": "steelclash:spear"
+    },
+    "minecraft:mace": {
+      "profile": "steelclash:blunt"
+    }
+  }
+}

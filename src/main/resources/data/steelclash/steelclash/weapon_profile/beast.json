@@ -1,0 +1,33 @@
+{
+  "archetype": "beast",
+  "reference_attack_speed": 1.0,
+  "speed_scaling": 0,
+  "attacks": {
+    "stab": {
+      "windup": 10,
+      "release": 4,
+      "recovery": 12,
+      "damage": 1.0,
+      "arc": {
+        "shape": "thrust"
+      },
+      "max_targets": 1,
+      "stamina_damage": 12,
+      "stamina_cost": 0,
+      "reach_bonus": 0.3
+    },
+    "slash": {
+      "windup": 9,
+      "release": 4,
+      "recovery": 10,
+      "damage": 0.9,
+      "arc": {
+        "shape": "horizontal",
+        "width": 80
+      },
+      "max_targets": 1,
+      "stamina_damage": 10,
+      "stamina_cost": 0
+    }
+  }
+}

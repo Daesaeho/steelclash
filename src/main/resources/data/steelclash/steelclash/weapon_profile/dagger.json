@@ -1,0 +1,54 @@
+{
+  "archetype": "dagger",
+  "reference_attack_speed": 2.5,
+  "speed_scaling": 0.5,
+  "attacks": {
+    "slash": {
+      "windup": 7,
+      "release": 4,
+      "recovery": 6,
+      "damage": 1.0,
+      "arc": {
+        "shape": "horizontal",
+        "width": 110
+      },
+      "max_targets": 2,
+      "reach_bonus": -0.4,
+      "stamina_damage": 10,
+      "stamina_cost": 3.0
+    },
+    "overhead": {
+      "windup": 8,
+      "release": 4,
+      "recovery": 7,
+      "damage": 1.05,
+      "arc": {
+        "shape": "vertical"
+      },
+      "max_targets": 1,
+      "reach_bonus": -0.4,
+      "stamina_damage": 12,
+      "stamina_cost": 3.6
+    },
+    "stab": {
+      "windup": 6,
+      "release": 3,
+      "recovery": 6,
+      "damage": 1.0,
+      "arc": {
+        "shape": "thrust"
+      },
+      "max_targets": 1,
+      "reach_bonus": -0.2,
+      "stamina_damage": 8,
+      "stamina_cost": 2.4
+    }
+  },
+  "guard": {
+    "parry_ticks": 10,
+    "recovery": 5,
+    "cone": 120,
+    "stamina_mult": 1.3
+  },
+  "riposte_windup_mult": 0.6
+}

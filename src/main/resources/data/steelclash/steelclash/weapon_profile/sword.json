@@ -1,0 +1,52 @@
+{
+  "archetype": "sword",
+  "reference_attack_speed": 1.6,
+  "speed_scaling": 0.5,
+  "attacks": {
+    "slash": {
+      "windup": 10,
+      "release": 5,
+      "recovery": 8,
+      "damage": 1.0,
+      "arc": {
+        "shape": "horizontal",
+        "width": 140
+      },
+      "max_targets": 3,
+      "stamina_damage": 20,
+      "stamina_cost": 6.0
+    },
+    "overhead": {
+      "windup": 11,
+      "release": 5,
+      "recovery": 9,
+      "damage": 1.15,
+      "arc": {
+        "shape": "vertical"
+      },
+      "max_targets": 2,
+      "stamina_damage": 25,
+      "stamina_cost": 7.5
+    },
+    "stab": {
+      "windup": 9,
+      "release": 4,
+      "recovery": 8,
+      "damage": 0.9,
+      "arc": {
+        "shape": "thrust"
+      },
+      "max_targets": 1,
+      "reach_bonus": 0.3,
+      "stamina_damage": 15,
+      "stamina_cost": 4.5
+    }
+  },
+  "guard": {
+    "parry_ticks": 12,
+    "recovery": 6,
+    "cone": 140,
+    "stamina_mult": 1.0
+  },
+  "riposte_windup_mult": 0.6
+}
