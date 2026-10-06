@@ -139,3 +139,4 @@ Use `/steelclash_debug` to see the arcs.
 | 6 | Sword with an empty offhand | Held in both hands. Put anything in the offhand → one-handed. `twoHandedSwords = false` in the client config turns this off. |
 | 7 | Mobs | They also use all variants and both sides (random), and alternate sides on combos. |
 | 8 | Spam right-click | After each parry ends (caught a hit, released, or timed out) there's a short pause (5 ticks, `parryCooldownTicks` in the common config) before you can parry again. No parrying while lowering the guard. |
+| 9 | Fight 2–3 zombies (or two Attack-mode dummies) and hold a parry as they swing together | One parry catches several hits while it's up (each costs stamina). After the first catch, the timing bar turns white (riposte window) and attacking ripostes straight out of the guard. A parry that caught something drops without the guard-recovery delay. |

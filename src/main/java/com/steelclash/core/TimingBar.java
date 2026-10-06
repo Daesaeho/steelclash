@@ -52,7 +52,10 @@ public record TimingBar(Kind kind, double fraction, double marker) {
             }
             case RELEASE -> new TimingBar(Kind.RELEASE, progress, NO_MARKER);
             case RECOVERY -> new TimingBar(m.isComboAllowed() ? Kind.COMBO : Kind.RECOVERY, 1 - progress, NO_MARKER);
-            case PARRY -> new TimingBar(Kind.PARRY, 1 - progress, NO_MARKER);
+            // Once the guard has caught a hit, what matters is how long you have to riposte out of it.
+            case PARRY -> m.isRiposteReady() && riposteWindow > 0
+                    ? new TimingBar(Kind.RIPOSTE, clamp((m.riposteTicks() - partialTick) / riposteWindow), NO_MARKER)
+                    : new TimingBar(Kind.PARRY, 1 - progress, NO_MARKER);
             case GUARD_RECOVERY -> new TimingBar(Kind.GUARD_RECOVERY, progress, NO_MARKER);
             case STAGGER -> new TimingBar(Kind.STAGGER, 1 - progress, NO_MARKER);
         };

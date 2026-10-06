@@ -8,8 +8,9 @@ import org.jetbrains.annotations.Nullable;
  * attack:  IDLE → WINDUP → RELEASE → RECOVERY → IDLE
  *            WINDUP: feint → IDLE, morph → WINDUP (other type), heavy → longer WINDUP, counter → shorter WINDUP
  *            RECOVERY after a landed hit: attack again immediately (combo)
- * parry:   IDLE/RECOVERY → PARRY → (success) IDLE + riposte window
- *                                → (release/timeout) GUARD_RECOVERY → IDLE
+ * parry:   IDLE/RECOVERY → PARRY (catches any number of hits while up; each opens the riposte window)
+ *                            → attack = riposte straight out of the guard
+ *                            → (release/timeout) IDLE if it caught something, else GUARD_RECOVERY → IDLE
  * stagger: any → STAGGER → IDLE   (parried, shield-blocked, flinched, kicked, clanked, guard broken)
  * </pre>
  * Ticked once per game tick on the server (authoritative) and on clients (for visuals and prediction). During
@@ -29,6 +30,10 @@ public final class CombatStateMachine {
     /** Ticks after a parry ends before another can be raised, and how many are left. */
     private int parryCooldown;
     private int parryCooldownLeft;
+    /** Hits caught by the current parry. */
+    private int parriedHits;
+    /** After catching a hit, the parry stays up at least this many more ticks so a follow-up hit isn't missed. */
+    private static final int PARRY_HOLD_AFTER_HIT = 4;
     private boolean staggerAllowsParry;
     private int riposteTicks;
     private int attackSerial;
@@ -41,7 +46,7 @@ public final class CombatStateMachine {
     private boolean mirrored;
 
     public boolean canStartAttack() {
-        return phase == Phase.IDLE || (phase == Phase.RECOVERY && comboAllowed);
+        return phase == Phase.IDLE || (phase == Phase.RECOVERY && comboAllowed) || (phase == Phase.PARRY && riposteTicks > 0);
     }
 
     public boolean startAttack(AttackType attackType, AttackTimings attackTimings) {
@@ -51,6 +56,9 @@ public final class CombatStateMachine {
     public boolean startAttack(AttackType attackType, AttackTimings attackTimings, int arcVariant, boolean mirror) {
         if (!canStartAttack()) {
             return false;
+        }
+        if (phase == Phase.PARRY) {
+            parryCooldownLeft = parryCooldown; // riposting out of the guard ends the parry
         }
         this.variant = Math.max(0, arcVariant);
         this.mirrored = mirror;
@@ -138,6 +146,7 @@ public final class CombatStateMachine {
         }
         this.parryCooldown = Math.max(0, cooldownTicks);
         this.guardRecovery = Math.max(1, recoveryTicks);
+        this.parriedHits = 0;
         enter(Phase.PARRY, Math.max(1, maxTicks));
         return true;
     }
@@ -145,17 +154,29 @@ public final class CombatStateMachine {
     /** The player let go of block before anything was parried. */
     public void releaseParry() {
         if (phase == Phase.PARRY) {
-            parryCooldownLeft = parryCooldown;
+            endParry();
+        }
+    }
+
+    /** A parry that caught something drops straight to idle; one that caught nothing pays the guard recovery. */
+    private void endParry() {
+        parryCooldownLeft = parryCooldown;
+        if (parriedHits > 0) {
+            enter(Phase.IDLE, 0);
+        } else {
             enter(Phase.GUARD_RECOVERY, guardRecovery);
         }
     }
 
-    /** The parry caught an attack: drop the guard and open the riposte window. */
+    /**
+     * The parry caught an attack. The guard stays up (it can catch more hits, e.g. from a second attacker) and the
+     * riposte window opens; attacking now ripostes straight out of the guard.
+     */
     public void parrySucceeded(int riposteWindow) {
         if (phase == Phase.PARRY) {
-            parryCooldownLeft = parryCooldown;
-            enter(Phase.IDLE, 0);
-            riposteTicks = Math.max(0, riposteWindow);
+            parriedHits++;
+            riposteTicks = Math.max(riposteTicks, Math.max(0, riposteWindow));
+            phaseDuration = Math.max(phaseDuration, phaseTick + PARRY_HOLD_AFTER_HIT);
         }
     }
 
@@ -180,10 +201,10 @@ public final class CombatStateMachine {
         if (parryCooldownLeft > 0) {
             parryCooldownLeft--;
         }
+        if ((phase == Phase.IDLE || phase == Phase.PARRY) && riposteTicks > 0) {
+            riposteTicks--;
+        }
         if (phase == Phase.IDLE) {
-            if (riposteTicks > 0) {
-                riposteTicks--;
-            }
             return null;
         }
         phaseTick++;
@@ -204,8 +225,7 @@ public final class CombatStateMachine {
             }
             case PARRY -> {
                 if (done) {
-                    parryCooldownLeft = parryCooldown;
-                    enter(Phase.GUARD_RECOVERY, guardRecovery);
+                    endParry();
                 }
             }
             default -> {
@@ -290,7 +310,12 @@ public final class CombatStateMachine {
     }
 
     public boolean isRiposteReady() {
-        return phase == Phase.IDLE && riposteTicks > 0;
+        return (phase == Phase.IDLE || phase == Phase.PARRY) && riposteTicks > 0;
+    }
+
+    /** Hits caught by the current (or just-ended) parry. */
+    public int parriedHits() {
+        return parriedHits;
     }
 
     public int riposteTicks() {

@@ -60,6 +60,24 @@ public final class DefenseGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void oneParryCatchesTwoAttackers(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        // Two attackers 45 degrees to either side of the dummy's guard, both facing it.
+        Player left = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -45f, 2);
+        Player right = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -135f, 6);
+        Combat.requestParry(defender);
+        swing(left, AttackType.SLASH);
+        swing(right, AttackType.STAB);
+        CombatData d = data(defender);
+        check(helper, !isHurt(defender), "the parry should stop both attacks");
+        check(helper, data(left).machine.phase() == Phase.STAGGER && data(right).machine.phase() == Phase.STAGGER,
+                "both attackers should be parried");
+        check(helper, d.machine.parriedHits() == 2, "one parry should have caught 2 hits, caught " + d.machine.parriedHits());
+        check(helper, d.machine.phase() == Phase.PARRY && d.machine.isRiposteReady(), "the guard stays up, riposte ready");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void parryDoesNotCoverTheBack(GameTestHelper helper) {
         Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy defender = dummy(helper, 3, 4, FACING_POSITIVE_X); // facing away

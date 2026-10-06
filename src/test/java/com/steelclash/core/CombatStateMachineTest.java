@@ -133,12 +133,48 @@ class CombatStateMachineTest {
         CombatStateMachine m = new CombatStateMachine();
         m.startParry(10, 4);
         m.parrySucceeded(2);
-        assertEquals(Phase.IDLE, m.phase());
+        assertEquals(Phase.PARRY, m.phase(), "the guard stays up after catching a hit");
         assertTrue(m.isRiposteReady());
         m.tick();
         assertTrue(m.isRiposteReady());
         m.tick();
         assertFalse(m.isRiposteReady());
+    }
+
+    @Test
+    void parryCatchesSeveralHitsAndExtendsNearItsEnd() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(6, 4);
+        for (int i = 0; i < 5; i++) {
+            m.tick();
+        }
+        m.parrySucceeded(10);
+        assertEquals(Phase.PARRY, m.phase());
+        assertTrue(m.ticksLeftInPhase() >= 4, "a late catch keeps the guard up for a follow-up");
+        m.parrySucceeded(10);
+        assertEquals(2, m.parriedHits());
+    }
+
+    @Test
+    void ripostingStraightOutOfTheGuard() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(12, 4, 5);
+        assertFalse(m.startAttack(AttackType.SLASH, TIMINGS), "can't attack out of a parry that caught nothing");
+        m.parrySucceeded(10);
+        assertTrue(m.startAttack(AttackType.SLASH, TIMINGS), "riposte out of the guard");
+        assertEquals(Phase.WINDUP, m.phase());
+        assertEquals(5, m.parryCooldownLeft(), "leaving the parry starts its cooldown");
+    }
+
+    @Test
+    void parryThatCaughtSomethingDropsWithoutGuardRecovery() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(3, 6);
+        m.parrySucceeded(10);
+        for (int i = 0; i < 4; i++) {
+            m.tick();
+        }
+        assertEquals(Phase.IDLE, m.phase(), "no guard-recovery penalty after a successful parry");
     }
 
     @Test
@@ -155,7 +191,8 @@ class CombatStateMachineTest {
         CombatStateMachine m = new CombatStateMachine();
         assertTrue(m.startParry(10, 2, 5));
         m.parrySucceeded(10);
-        assertFalse(m.canParry(), "cooldown right after a successful parry");
+        m.releaseParry();
+        assertFalse(m.canParry(), "cooldown right after a successful parry ends");
         for (int i = 0; i < 4; i++) {
             m.tick();
         }
