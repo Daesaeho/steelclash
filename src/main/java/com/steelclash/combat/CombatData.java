@@ -28,6 +28,8 @@ public class CombatData {
     /** Attack input buffered during recovery; starts as soon as the fighter is free. */
     @Nullable
     public AttackType queuedAttack;
+    public int queuedVariant;
+    public boolean queuedMirrored;
 
     // ---- server only ----
     /** Weapon the attack was started with; switching weapons cancels the attack. */

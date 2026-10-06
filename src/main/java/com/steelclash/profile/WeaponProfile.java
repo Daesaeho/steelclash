@@ -7,6 +7,7 @@ import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -83,7 +84,22 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
      * @param staminaCost   stamina the attacker loses when the attack hits nothing (whiff)
      */
     public record AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
-                             float reachBonus, float staminaDamage, float staminaCost) {
+                             float reachBonus, float staminaDamage, float staminaCost, List<ArcSpec> variants) {
+        public AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
+                          float reachBonus, float staminaDamage, float staminaCost) {
+            this(windup, release, recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, List.of());
+        }
+
+        /** How many different arcs this attack can be swung along (the main arc plus its variants). */
+        public int variantCount() {
+            return 1 + variants.size();
+        }
+
+        /** Arc for a variant index: 0 is the main arc, out-of-range indices fall back to it. */
+        public ArcSpec arc(int variant) {
+            return variant > 0 && variant <= variants.size() ? variants.get(variant - 1) : arc;
+        }
+
         public static final Codec<AttackSpec> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.intRange(1, AttackTimings.MAX_TICKS).fieldOf("windup").forGetter(AttackSpec::windup),
                 Codec.intRange(1, AttackTimings.MAX_TICKS).fieldOf("release").forGetter(AttackSpec::release),
@@ -93,7 +109,8 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                 Codec.intRange(1, 64).optionalFieldOf("max_targets", 1).forGetter(AttackSpec::maxTargets),
                 Codec.floatRange(-3f, 5f).optionalFieldOf("reach_bonus", 0f).forGetter(AttackSpec::reachBonus),
                 Codec.floatRange(0f, 1000f).optionalFieldOf("stamina_damage", 15f).forGetter(AttackSpec::staminaDamage),
-                Codec.floatRange(0f, 1000f).optionalFieldOf("stamina_cost", 6f).forGetter(AttackSpec::staminaCost)
+                Codec.floatRange(0f, 1000f).optionalFieldOf("stamina_cost", 6f).forGetter(AttackSpec::staminaCost),
+                ArcSpec.CODEC.listOf().optionalFieldOf("variants", List.of()).forGetter(AttackSpec::variants)
         ).apply(i, AttackSpec::new));
 
         public AttackTimings timings() {
@@ -101,8 +118,16 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
         }
     }
 
-    /** Arc shape. Presets for now; M4 replaces these with keyframes extracted from the attack animations. */
-    public record ArcSpec(Shape shape, float width) {
+    /**
+     * Arc shape: a preset ({@code horizontal} with a width, {@code vertical}, {@code thrust}, {@code kick}) or explicit
+     * keyframes {@code [[t, yaw, pitch, extension], ...]} (yaw right-positive, pitch down-positive, degrees, relative to
+     * the view), which override the preset.
+     */
+    public record ArcSpec(Shape shape, float width, Optional<List<List<Float>>> keyframes) {
+        public ArcSpec(Shape shape, float width) {
+            this(shape, width, Optional.empty());
+        }
+
         public enum Shape {
             HORIZONTAL, VERTICAL, THRUST, KICK;
 
@@ -116,11 +141,17 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
         }
 
         public static final Codec<ArcSpec> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Shape.CODEC.fieldOf("shape").forGetter(ArcSpec::shape),
-                Codec.floatRange(1f, 360f).optionalFieldOf("width", 140f).forGetter(ArcSpec::width)
+                Shape.CODEC.optionalFieldOf("shape", Shape.HORIZONTAL).forGetter(ArcSpec::shape),
+                Codec.floatRange(1f, 360f).optionalFieldOf("width", 140f).forGetter(ArcSpec::width),
+                Codec.FLOAT.listOf(4, 4).listOf().optionalFieldOf("keyframes").forGetter(ArcSpec::keyframes)
         ).apply(i, ArcSpec::new));
 
         public ArcPath toPath() {
+            if (keyframes.isPresent() && !keyframes.get().isEmpty()) {
+                return new ArcPath(keyframes.get().stream()
+                        .map(k -> new ArcPath.Keyframe(k.get(0), k.get(1), k.get(2), k.get(3)))
+                        .toList());
+            }
             return switch (shape) {
                 case HORIZONTAL -> ArcPath.horizontal(width);
                 case VERTICAL -> ArcPath.vertical();

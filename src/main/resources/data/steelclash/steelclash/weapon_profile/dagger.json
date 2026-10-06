@@ -15,7 +15,53 @@
       "max_targets": 2,
       "reach_bonus": -0.4,
       "stamina_damage": 10,
-      "stamina_cost": 3.0
+      "stamina_cost": 3.0,
+      "variants": [
+        {
+          "keyframes": [
+            [
+              0,
+              55.0,
+              -35,
+              1.0
+            ],
+            [
+              0.5,
+              0,
+              0,
+              1.0
+            ],
+            [
+              1,
+              -55.0,
+              32,
+              1.0
+            ]
+          ]
+        },
+        {
+          "keyframes": [
+            [
+              0,
+              55.0,
+              28,
+              1.0
+            ],
+            [
+              0.5,
+              0,
+              2,
+              1.0
+            ],
+            [
+              1,
+              -55.0,
+              -28,
+              1.0
+            ]
+          ]
+        }
+      ]
     },
     "overhead": {
       "windup": 8,
@@ -28,7 +74,31 @@
       "max_targets": 1,
       "reach_bonus": -0.4,
       "stamina_damage": 12,
-      "stamina_cost": 3.6
+      "stamina_cost": 3.6,
+      "variants": [
+        {
+          "keyframes": [
+            [
+              0,
+              35,
+              -65,
+              0.95
+            ],
+            [
+              0.5,
+              8,
+              0,
+              1.0
+            ],
+            [
+              1,
+              -22,
+              45,
+              1.0
+            ]
+          ]
+        }
+      ]
     },
     "stab": {
       "windup": 6,
@@ -41,7 +111,53 @@
       "max_targets": 1,
       "reach_bonus": -0.2,
       "stamina_damage": 8,
-      "stamina_cost": 2.4
+      "stamina_cost": 2.4,
+      "variants": [
+        {
+          "keyframes": [
+            [
+              0,
+              6,
+              22,
+              0.35
+            ],
+            [
+              0.6,
+              0,
+              12,
+              1.0
+            ],
+            [
+              1,
+              0,
+              12,
+              1.0
+            ]
+          ]
+        },
+        {
+          "keyframes": [
+            [
+              0,
+              4,
+              10,
+              0.35
+            ],
+            [
+              0.6,
+              0,
+              -8,
+              1.0
+            ],
+            [
+              1,
+              0,
+              -8,
+              1.0
+            ]
+          ]
+        }
+      ]
     }
   },
   "guard": {

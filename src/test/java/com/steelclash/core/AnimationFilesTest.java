@@ -38,6 +38,10 @@ class AnimationFilesTest {
                 assertFalse(animation.clip(AnimationSet.clipKey(phase, AttackType.SLASH)).isEmpty(),
                         file.getFileName() + " is missing " + phase);
             }
+            for (AttackType type : AttackType.WEAPON_ATTACKS) {
+                assertFalse(animation.clip(type.serializedName() + ".heavy_windup").isEmpty(),
+                        file.getFileName() + " is missing " + type.serializedName() + ".heavy_windup");
+            }
             if (file.getFileName().toString().equals("two_handed.json")) {
                 assertTrue(animation.twoHanded(), "two_handed grips with both hands");
             }

@@ -3,6 +3,7 @@ package com.steelclash.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.steelclash.SteelClash;
+import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.CombatMath;
 import com.steelclash.combat.ModAttachments;
@@ -70,7 +71,7 @@ public final class CombatDebugRenderer {
                 double yaw = CombatMath.viewYaw(entity, partialTick);
                 double pitch = entity.getViewXRot(partialTick);
                 double length = CombatMath.bladeLength(entity, pose.spec());
-                ArcPath path = pose.spec().arc().toPath();
+                ArcPath path = Combat.currentPath(data, pose.spec());
                 Phase phase = data.machine.phase();
                 switch (phase) {
                     case WINDUP -> {

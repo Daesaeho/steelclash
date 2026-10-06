@@ -52,7 +52,7 @@ public final class SwingTracer {
         int remaining = spec.maxTargets() - data.hitThisSwing.size();
         List<LivingEntity> hits = new ArrayList<>();
 
-        ArcPath path = spec.arc().toPath();
+        ArcPath path = Combat.currentPath(data, spec);
         double length = CombatMath.bladeLength(attacker, spec) + (data.lunge ? Config.LUNGE_REACH_BONUS.get() : 0);
         Vec3 pivotNow = CombatMath.pivot(attacker, 1f);
         float yawNow = CombatMath.viewYaw(attacker);

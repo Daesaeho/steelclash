@@ -28,7 +28,7 @@ public record SwingPose(Phase phase, AttackType type, double yaw, double pitch, 
             return Optional.empty();
         }
         return Combat.currentSpec(entity, data).map(spec -> {
-            ArcPath path = spec.arc().toPath();
+            ArcPath path = Combat.currentPath(data, spec);
             AttackType type = data.machine.type();
             double progress = data.machine.phaseProgress(partialTick);
             return switch (phase) {

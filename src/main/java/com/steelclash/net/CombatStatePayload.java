@@ -15,7 +15,7 @@ import net.minecraft.world.entity.LivingEntity;
 /** Server → clients: snapshot of an entity's attack state, sent on every phase change. */
 public record CombatStatePayload(int entityId, Phase phase, AttackType attackType, int phaseTick, int phaseDuration,
                                  AttackTimings timings, int riposteTicks, boolean heavy, boolean morphed,
-                                 boolean comboAllowed, Optional<ResourceLocation> profile,
+                                 boolean comboAllowed, int variant, boolean mirrored, Optional<ResourceLocation> profile,
                                  boolean authoritative) implements CustomPacketPayload {
     public static final Type<CombatStatePayload> TYPE = new Type<>(SteelClash.id("combat_state"));
 
@@ -26,6 +26,7 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         return new CombatStatePayload(entity.getId(), data.machine.phase(), data.machine.type(),
                 data.machine.phaseTick(), data.machine.phaseDuration(), data.machine.timings(), data.machine.riposteTicks(),
                 data.machine.isHeavy(), data.machine.isMorphed(), data.machine.isComboAllowed(),
+                data.machine.variant(), data.machine.isMirrored(),
                 Optional.ofNullable(data.profileKey).map(key -> key.location()), authoritative);
     }
 
@@ -39,7 +40,8 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         buf.writeVarInt(timings.release());
         buf.writeVarInt(timings.recovery());
         buf.writeVarInt(riposteTicks);
-        buf.writeByte((heavy ? 1 : 0) | (morphed ? 2 : 0) | (comboAllowed ? 4 : 0));
+        buf.writeByte((heavy ? 1 : 0) | (morphed ? 2 : 0) | (comboAllowed ? 4 : 0) | (mirrored ? 8 : 0));
+        buf.writeVarInt(variant);
         buf.writeOptional(profile, FriendlyByteBuf::writeResourceLocation);
         buf.writeBoolean(authoritative);
     }
@@ -53,8 +55,9 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         AttackTimings timings = new AttackTimings(buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
         int riposteTicks = buf.readVarInt();
         int flags = buf.readByte();
+        int variant = buf.readVarInt();
         return new CombatStatePayload(entityId, phase, type, phaseTick, phaseDuration, timings, riposteTicks,
-                (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0,
+                (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, variant, (flags & 8) != 0,
                 buf.readOptional(FriendlyByteBuf::readResourceLocation), buf.readBoolean());
     }
 

@@ -93,6 +93,15 @@ class GeometryTest {
         assertEquals(new AttackTimings(1, 1, 1), new AttackTimings(0, -5, 0));
     }
 
+    @Test
+    void mirroredArcRunsTheOtherWay() {
+        ArcPath right = ArcPath.horizontal(100);
+        ArcPath left = right.mirrored();
+        assertEquals(-50, left.sample(0).yaw(), EPS);
+        assertEquals(50, left.sample(1).yaw(), EPS);
+        assertEquals(right.sample(0.3).pitch(), left.sample(0.3).pitch(), EPS, "only the side flips");
+    }
+
     private static boolean hits(Vec pivot, ArcPath path, double t, Vec min, Vec max) {
         Blade.Segment s = Blade.at(pivot, 0, 0, path, t, 3.0);
         return Blade.intersectsBox(s.hilt(), s.tip(), min, max);

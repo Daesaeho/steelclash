@@ -91,3 +91,8 @@ The plan said "author animations in Blockbench, extract the arcs from them". Cha
 - **Bot parry-cancel:** a bot mid-windup cancels into a parry or shield if the incoming hit lands *before* its own; otherwise it keeps swinging and trades.
 - **Test isolation for AI behaviour:** a relentless attacker flinches its opponent out of every attack, so "does it defend?" tests must stop the defender from attacking (pin its brain cooldown). Diagnosing this took failure messages that report what happened (attack counts, phases during the opponent's windup, distance), which is now the pattern for AI tests.
 - Minecraft's sideways movement input (`xxa`, `MoveControl#strafe` right) is positive toward the entity's **left**.
+
+## M6b findings (2026-10-06)
+- **Variant and side are chosen by whoever predicts the attack.** Players' clients pick them (random variant; side from turning direction, combo alternation, or the last side used) and send them in `AttackInputPayload`. The server wraps the variant to the profile's count and traces that exact arc. Mobs pick on the server. Queued attacks carry their choice too, so prediction and server never disagree.
+- **Profiles now accept keyframe arcs** (`"keyframes": [[t, yaw, pitch, extension], ...]`) and per-attack `variants`; presets still work. Mirroring negates keyframe yaw (`ArcPath#mirrored`).
+- **"Does every variant hit?" isn't enough to prove mirroring works:** a slash hits a target in front from either side. `mirroredSlashReachesTheRightSideLater` checks *when* a side target is reached, and fails if mirroring is ignored (verified by mutation).

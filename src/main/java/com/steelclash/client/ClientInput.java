@@ -67,6 +67,13 @@ public final class ClientInput {
     private static Hold hold = Hold.NONE;
     private static boolean attackButtonDown;
 
+    /** Turning faster than this (degrees over the last few ticks) when attacking picks the swing side. */
+    private static final float TURN_THRESHOLD = 4f;
+    private static final int TURN_TICKS = 3;
+    private static final float[] recentYaw = new float[TURN_TICKS];
+    private static int recentYawIndex;
+    private static boolean lastMirrored;
+
     /** Whether we swallowed the attack button's press, so we also swallow its release. */
     private static boolean suppressedAttackRelease;
     /** Same for the use (block) button. */
@@ -204,6 +211,10 @@ public final class ClientInput {
             }
         }
         LocalPlayer player = mc.player;
+        if (player != null) {
+            recentYaw[recentYawIndex] = player.getYRot();
+            recentYawIndex = (recentYawIndex + 1) % TURN_TICKS;
+        }
         if (player == null || !player.hasData(ModAttachments.COMBAT)) {
             return;
         }
@@ -246,10 +257,13 @@ public final class ClientInput {
     private static void tryAttack(LocalPlayer player, AttackType type, Hold source) {
         CombatData data = player.getData(ModAttachments.COMBAT);
         Phase phase = data.machine.phase();
+        int variant = player.getRandom().nextInt(8); // wrapped to the attack's variant count
+        boolean mirrored = chooseSide(player, data);
         if (phase == Phase.WINDUP) {
-            if (type != data.machine.type() && Combat.morph(player, data, type)) {
+            if (type != data.machine.type() && Combat.morph(player, data, type, variant, mirrored)) {
                 hold = source;
-                PacketDistributor.sendToServer(new AttackInputPayload(type));
+                lastMirrored = mirrored;
+                PacketDistributor.sendToServer(new AttackInputPayload(type, variant, mirrored));
             }
             return;
         }
@@ -257,16 +271,34 @@ public final class ClientInput {
             if (player.isUsingItem()) {
                 player.stopUsingItem();
             }
-            if (!Combat.start(player, data, type)) {
+            if (!Combat.start(player, data, type, variant, mirrored)) {
                 return;
             }
             hold = source;
         } else if (phase == Phase.RECOVERY || phase == Phase.GUARD_RECOVERY) {
-            data.queuedAttack = type;
+            Combat.queue(data, type, variant, mirrored);
         } else {
             return;
         }
-        PacketDistributor.sendToServer(new AttackInputPayload(type));
+        lastMirrored = mirrored;
+        PacketDistributor.sendToServer(new AttackInputPayload(type, variant, mirrored));
+    }
+
+    /**
+     * Which side to swing from. Turning while attacking decides it (turning right swings left-to-right, turning left
+     * swings right-to-left), so you can aim a slash with the mouse. Otherwise combos alternate sides, like Chivalry 2,
+     * and a fresh attack keeps the side you last used.
+     */
+    private static boolean chooseSide(LocalPlayer player, CombatData data) {
+        float oldest = recentYaw[recentYawIndex];
+        float turn = net.minecraft.util.Mth.wrapDegrees(player.getYRot() - oldest);
+        if (Math.abs(turn) >= TURN_THRESHOLD) {
+            return turn > 0;
+        }
+        if (data.machine.phase() == Phase.RECOVERY && data.machine.isComboAllowed()) {
+            return !data.machine.isMirrored();
+        }
+        return lastMirrored;
     }
 
     private static boolean inGame(Minecraft mc) {

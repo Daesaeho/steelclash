@@ -1,5 +1,6 @@
 package com.steelclash.client.anim;
 
+import com.steelclash.Config;
 import com.steelclash.client.SwingPose;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
@@ -46,23 +47,44 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
         AnimationSet animation = AnimationLibrary.INSTANCE.get(archetype);
 
         double progress = data.machine.phaseProgress(partialTick);
-        PoseClip clip = animation.clip(AnimationSet.clipKey(pose.phase(), pose.type()));
-        Map<String, double[]> offsets = clip.sample(progress);
+        String key = AnimationSet.clipKey(pose.phase(), pose.type());
+        Map<String, double[]> offsets;
         if (data.machine.isHeavy() && pose.phase() == Phase.WINDUP) {
-            offsets = PoseClip.scale(offsets, animation.heavyWindupScale());
+            // Heavies have their own windup clip; older animation sets just exaggerate the light one.
+            PoseClip heavy = animation.clip(pose.type().serializedName() + ".heavy_windup");
+            offsets = heavy.isEmpty()
+                    ? PoseClip.scale(animation.clip(key).sample(progress), animation.heavyWindupScale())
+                    : heavy.sample(progress);
+        } else {
+            offsets = animation.clip(key).sample(progress);
         }
+        if (data.machine.isMirrored() && pose.phase().isAttack()) {
+            offsets = mirror(offsets);
+        }
+        boolean twoHanded = animation.twoHanded()
+                || (Config.Client.TWO_HANDED_SWORDS.get() && "sword".equals(archetype) && entity.getOffhandItem().isEmpty());
 
         float headYaw = Mth.wrapDegrees(viewYaw(entity, partialTick) - Mth.rotLerp(partialTick, entity.yBodyRotO, entity.yBodyRot));
         double aimYaw = headYaw + pose.yaw();
         double aimPitch = Mth.clamp(entity.getViewXRot(partialTick) + pose.pitch(), -90, 90);
         return Optional.of(new CombatPose(pose.phase(), pose.weight(), aimYaw, aimPitch, offsets,
-                animation.twoHanded(), pose.type() == AttackType.KICK && pose.phase().isAttack()));
+                twoHanded, pose.type() == AttackType.KICK && pose.phase().isAttack()));
     }
 
     private static float viewYaw(LivingEntity entity, float partialTick) {
         return entity instanceof net.minecraft.world.entity.player.Player
                 ? entity.getViewYRot(partialTick)
                 : Mth.rotLerp(partialTick, entity.yHeadRotO, entity.yHeadRot);
+    }
+
+    /** A swing from the other side: twist and lean the other way (yaw and roll flip, pitch stays). */
+    private static Map<String, double[]> mirror(Map<String, double[]> offsets) {
+        Map<String, double[]> out = new java.util.HashMap<>();
+        offsets.forEach((part, v) -> out.put(part, switch (part) {
+            case "body", "head", "torso" -> new double[]{v[0], -v[1], -v[2]};
+            default -> v;
+        }));
+        return out;
     }
 
     /** Additive offset for a part, radians, already weighted. */

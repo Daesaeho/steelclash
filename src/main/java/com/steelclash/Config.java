@@ -41,6 +41,10 @@ public class Config {
     public static final ModConfigSpec.IntValue RIPOSTE_WINDOW_TICKS = BUILDER
             .comment("After a successful parry, an attack started within this many ticks is a faster riposte")
             .defineInRange("riposteWindowTicks", 10, 0, 100);
+    public static final ModConfigSpec.IntValue PARRY_COOLDOWN_TICKS = BUILDER
+            .comment("After a parry ends (caught an attack, released, or timed out), no new parry for this many ticks.",
+                    "Stops parry spamming.")
+            .defineInRange("parryCooldownTicks", 5, 0, 100);
     public static final ModConfigSpec.IntValue PARRIED_STAGGER_TICKS = BUILDER
             .comment("How long an attacker is staggered after being parried (they may still parry the riposte)")
             .defineInRange("parriedStaggerTicks", 14, 1, 100);
@@ -177,6 +181,11 @@ public class Config {
                 .comment("Learning aid: show the attack type and remaining windup above enemies' heads.",
                         "Off by default: reading the animation is the core skill.")
                 .define("enemyTelegraphs", false);
+
+        public static final ModConfigSpec.BooleanValue TWO_HANDED_SWORDS = BUILDER
+                .comment("Hold swords (sword archetype: vanilla swords, longswords, katanas, sabers) with both hands",
+                        "when the offhand is empty. Visual only.")
+                .define("twoHandedSwords", true);
 
         public static final ModConfigSpec.DoubleValue CAMERA_MOTION = BUILDER
                 .comment("Scale of camera sway during swings and shake on hits/parries. 0 turns it off (motion sensitivity).")

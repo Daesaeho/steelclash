@@ -63,6 +63,13 @@ public record ArcPath(List<Keyframe> keyframes) {
         };
     }
 
+    /** The same swing from the other side: a right-to-left slash becomes left-to-right. */
+    public ArcPath mirrored() {
+        return new ArcPath(keyframes.stream()
+                .map(k -> new Keyframe(k.t(), -k.yaw(), k.pitch(), k.extension()))
+                .toList());
+    }
+
     /** Linearly interpolated keyframe at release progress {@code t} in [0, 1]. */
     public Keyframe sample(double t) {
         t = Math.max(0, Math.min(1, t));

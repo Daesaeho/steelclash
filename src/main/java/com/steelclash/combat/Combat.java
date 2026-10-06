@@ -1,6 +1,7 @@
 package com.steelclash.combat;
 
 import com.steelclash.Config;
+import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.CombatStateMachine;
@@ -36,6 +37,14 @@ public final class Combat {
      * client (prediction); does not sync.
      */
     public static boolean start(LivingEntity entity, CombatData data, AttackType type) {
+        return start(entity, data, type, 0, false);
+    }
+
+    /**
+     * @param variant  which of the attack's arcs to swing (wrapped to what the profile defines)
+     * @param mirrored swing from the other side (left to right)
+     */
+    public static boolean start(LivingEntity entity, CombatData data, AttackType type, int variant, boolean mirrored) {
         if (isHolstered(entity, data) && type != AttackType.KICK) {
             return false;
         }
@@ -50,12 +59,17 @@ public final class Combat {
             }
             WeaponProfile profile = resolved.get().profile();
             timings = CombatMath.timings(entity, profile, spec.get());
+            variant = Math.floorMod(variant, spec.get().variantCount());
             if (data.machine.isRiposteReady()) {
                 timings = new AttackTimings(Math.round(timings.windup() * profile.riposteWindupMult()),
                         timings.release(), timings.recovery());
             }
         }
-        if (!data.machine.startAttack(type, timings)) {
+        if (type == AttackType.KICK) {
+            variant = 0;
+            mirrored = false;
+        }
+        if (!data.machine.startAttack(type, timings, variant, mirrored)) {
             return false;
         }
         data.profileKey = resolved.map(WeaponProfiles.Resolved::key).orElse(null);
@@ -92,12 +106,17 @@ public final class Combat {
     }
 
     public static boolean morph(LivingEntity entity, CombatData data, AttackType newType) {
+        return morph(entity, data, newType, 0, data.machine.isMirrored());
+    }
+
+    public static boolean morph(LivingEntity entity, CombatData data, AttackType newType, int variant, boolean mirrored) {
         if (data.machine.phase() != Phase.WINDUP || newType == AttackType.KICK || data.machine.type() == AttackType.KICK) {
             return false;
         }
         Optional<WeaponProfile> profile = currentProfile(entity, data);
         Optional<WeaponProfile.AttackSpec> spec = profile.flatMap(p -> p.attack(newType));
-        if (spec.isEmpty() || !data.machine.morph(newType, CombatMath.timings(entity, profile.get(), spec.get()))) {
+        if (spec.isEmpty() || !data.machine.morph(newType, CombatMath.timings(entity, profile.get(), spec.get()),
+                Math.floorMod(variant, spec.get().variantCount()), mirrored)) {
             return false;
         }
         spend(entity, data, Config.MORPH_STAMINA_COST.get());
@@ -118,7 +137,7 @@ public final class Combat {
         if (parryCancel) {
             data.machine.feint();
         }
-        if (!data.machine.startParry(guard.get().parryTicks(), guard.get().recovery())) {
+        if (!data.machine.startParry(guard.get().parryTicks(), guard.get().recovery(), Config.PARRY_COOLDOWN_TICKS.get())) {
             return false;
         }
         if (parryCancel) {
@@ -139,18 +158,29 @@ public final class Combat {
      */
     public static void requestAttack(LivingEntity entity, AttackType type) {
         CombatData data = entity.getData(ModAttachments.COMBAT);
+        // Mobs (and callers without their own choice): random arc variant; combos alternate sides like Chivalry 2.
+        int variant = entity.getRandom().nextInt(8);
+        boolean mirrored = data.machine.phase() == Phase.RECOVERY && data.machine.isComboAllowed()
+                ? !data.machine.isMirrored()
+                : entity.getRandom().nextBoolean();
+        requestAttack(entity, type, variant, mirrored);
+    }
+
+    /** Players choose the arc variant and side on the client, so the server traces exactly what they predicted. */
+    public static void requestAttack(LivingEntity entity, AttackType type, int variant, boolean mirrored) {
+        CombatData data = entity.getData(ModAttachments.COMBAT);
         CombatStateMachine machine = data.machine;
         if (machine.phase() == Phase.WINDUP) {
-            if (type != machine.type() && morph(entity, data, type)) {
+            if (type != machine.type() && morph(entity, data, type, variant, mirrored)) {
                 sync(entity, data, false);
             }
             return;
         }
         if (!machine.canStartAttack() && (machine.phase() == Phase.RECOVERY || machine.phase() == Phase.GUARD_RECOVERY)) {
-            data.queuedAttack = type;
+            queue(data, type, variant, mirrored);
             return;
         }
-        if (start(entity, data, type)) {
+        if (start(entity, data, type, variant, mirrored)) {
             onAttackStarted(entity, data);
             sync(entity, data, false);
         } else {
@@ -247,7 +277,7 @@ public final class Combat {
         if (data.queuedAttack != null && machine.canStartAttack()) {
             AttackType queued = data.queuedAttack;
             data.queuedAttack = null;
-            if (start(entity, data, queued)) {
+            if (start(entity, data, queued, data.queuedVariant, data.queuedMirrored)) {
                 onAttackStarted(entity, data);
                 sync(entity, data, false);
                 return;
@@ -264,7 +294,7 @@ public final class Combat {
         if (data.queuedAttack != null && data.machine.canStartAttack()) {
             AttackType queued = data.queuedAttack;
             data.queuedAttack = null;
-            start(entity, data, queued);
+            start(entity, data, queued, data.queuedVariant, data.queuedMirrored);
         }
     }
 
@@ -287,6 +317,19 @@ public final class Combat {
             return Optional.of(Kicks.forEntity(entity));
         }
         return currentProfile(entity, data).flatMap(profile -> profile.attack(data.machine.type()));
+    }
+
+    /** Buffers an attack input to start the moment the fighter is free. */
+    public static void queue(CombatData data, AttackType type, int variant, boolean mirrored) {
+        data.queuedAttack = type;
+        data.queuedVariant = variant;
+        data.queuedMirrored = mirrored;
+    }
+
+    /** The arc the current attack follows: its variant, mirrored if swung from the other side. */
+    public static ArcPath currentPath(CombatData data, WeaponProfile.AttackSpec spec) {
+        ArcPath path = spec.arc(data.machine.variant()).toPath();
+        return data.machine.isMirrored() ? path.mirrored() : path;
     }
 
     public static Optional<WeaponProfile> currentProfile(LivingEntity entity, CombatData data) {

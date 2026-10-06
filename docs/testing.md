@@ -125,3 +125,17 @@ The last one stands still, which is useful for looking at poses. It won't fight 
 | 10 | Throw a slow heavy at a skeleton or spider | Sometimes it steps back out of reach instead of parrying. |
 | 11 | Drain a mob's stamina (make it parry a lot) | It backs off until it has recovered. |
 | 12 | Training dummy in Attack or Spar mode with no player nearby | It fights the nearest monster (handy for watching mobs defend). |
+
+## Manual in-game checklist (M6b: attack variants and sides)
+Use `/steelclash_debug` to see the arcs.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Slash repeatedly without turning | Some slashes are flat, some come down diagonally, some rise. Overheads sometimes come in at an angle; stabs sometimes go low or rise toward the head. |
+| 2 | Turn the mouse **right** while pressing attack, then **left** | Turning right swings left→right; turning left swings right→left. Aim a slash at someone beside you by turning into them. |
+| 3 | Land a hit, then combo | The follow-up comes from the other side (alternating, like Chivalry 2). |
+| 4 | Watch your body during a mirrored swing (F5) | The torso twists and leans the other way too. |
+| 5 | Hold for a heavy | A distinct heavy windup: leans back, elbow up, back foot planted (not just a bigger light windup). |
+| 6 | Sword with an empty offhand | Held in both hands. Put anything in the offhand → one-handed. `twoHandedSwords = false` in the client config turns this off. |
+| 7 | Mobs | They also use all variants and both sides (random), and alternate sides on combos. |
+| 8 | Spam right-click | After each parry ends (caught a hit, released, or timed out) there's a short pause (5 ticks, `parryCooldownTicks` in the common config) before you can parry again. No parrying while lowering the guard. |

@@ -98,7 +98,7 @@ class CombatStateMachineTest {
     @Test
     void snapshotOverridesState() {
         CombatStateMachine m = new CombatStateMachine();
-        m.apply(Phase.RELEASE, AttackType.STAB, 1, 3, new AttackTimings(5, 3, 5), 0, false, false, false);
+        m.apply(Phase.RELEASE, AttackType.STAB, 1, 3, new AttackTimings(5, 3, 5), 0, false, false, false, 0, false);
         CombatStateMachine.Sweep s = m.tick();
         assertNotNull(s);
         assertEquals(1 / 3.0, s.from(), 1e-9);
@@ -148,6 +148,37 @@ class CombatStateMachineTest {
         m.parrySucceeded(10);
         assertTrue(m.startAttack(AttackType.STAB, TIMINGS));
         assertEquals(0, m.riposteTicks());
+    }
+
+    @Test
+    void parryCooldownBlocksImmediateReparry() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertTrue(m.startParry(10, 2, 5));
+        m.parrySucceeded(10);
+        assertFalse(m.canParry(), "cooldown right after a successful parry");
+        for (int i = 0; i < 4; i++) {
+            m.tick();
+        }
+        assertFalse(m.canParry(), "4 of 5 cooldown ticks");
+        m.tick();
+        assertTrue(m.canParry(), "cooldown over");
+    }
+
+    @Test
+    void releasedParryAlsoCoolsDownAndGuardRecoveryCantParry() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(10, 2, 5);
+        m.releaseParry();
+        assertEquals(Phase.GUARD_RECOVERY, m.phase());
+        assertFalse(m.canParry(), "no parrying while lowering the guard");
+        m.tick();
+        m.tick();
+        assertEquals(Phase.IDLE, m.phase());
+        assertFalse(m.canParry(), "guard is down but the cooldown still runs");
+        m.tick();
+        m.tick();
+        m.tick();
+        assertTrue(m.canParry());
     }
 
     @Test
@@ -270,5 +301,16 @@ class CombatStateMachineTest {
         m.tick();
         m.tick();
         assertEquals(Phase.RELEASE, m.phase());
+    }
+
+    @Test
+    void variantAndSideAreKeptAndMorphCanChangeThem() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS, 2, true);
+        assertEquals(2, m.variant());
+        assertTrue(m.isMirrored());
+        m.morph(AttackType.STAB, TIMINGS, 1, false);
+        assertEquals(1, m.variant());
+        assertFalse(m.isMirrored());
     }
 }

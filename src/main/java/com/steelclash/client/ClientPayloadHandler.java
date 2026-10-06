@@ -29,7 +29,8 @@ public final class ClientPayloadHandler {
                 return;
             }
             data.machine.apply(payload.phase(), payload.attackType(), payload.phaseTick(), payload.phaseDuration(),
-                    payload.timings(), payload.riposteTicks(), payload.heavy(), payload.morphed(), payload.comboAllowed());
+                    payload.timings(), payload.riposteTicks(), payload.heavy(), payload.morphed(), payload.comboAllowed(),
+                    payload.variant(), payload.mirrored());
             data.profileKey = payload.profile()
                     .map(location -> ResourceKey.create(WeaponProfiles.REGISTRY_KEY, location))
                     .orElse(null);

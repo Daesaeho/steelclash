@@ -10,11 +10,14 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /** Client → server: the player pressed an attack input. */
-public record AttackInputPayload(AttackType attackType) implements CustomPacketPayload {
+public record AttackInputPayload(AttackType attackType, int variant, boolean mirrored) implements CustomPacketPayload {
     public static final Type<AttackInputPayload> TYPE = new Type<>(SteelClash.id("attack_input"));
 
-    public static final StreamCodec<ByteBuf, AttackInputPayload> STREAM_CODEC = ByteBufCodecs.VAR_INT
-            .map(id -> new AttackInputPayload(AttackType.byId(id)), payload -> payload.attackType().ordinal());
+    public static final StreamCodec<ByteBuf, AttackInputPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT.map(AttackType::byId, AttackType::ordinal), AttackInputPayload::attackType,
+            ByteBufCodecs.VAR_INT, AttackInputPayload::variant,
+            ByteBufCodecs.BOOL, AttackInputPayload::mirrored,
+            AttackInputPayload::new);
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -31,7 +34,7 @@ public record AttackInputPayload(AttackType attackType) implements CustomPacketP
                 // Attacking lowers a raised shield / interrupts eating, as in Chivalry 2.
                 player.stopUsingItem();
             }
-            Combat.requestAttack(player, payload.attackType());
+            Combat.requestAttack(player, payload.attackType(), Math.max(0, payload.variant()), payload.mirrored());
         });
     }
 }

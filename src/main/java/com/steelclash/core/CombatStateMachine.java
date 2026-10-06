@@ -26,21 +26,34 @@ public final class CombatStateMachine {
     private int phaseTick;
     private int phaseDuration;
     private int guardRecovery = 1;
+    /** Ticks after a parry ends before another can be raised, and how many are left. */
+    private int parryCooldown;
+    private int parryCooldownLeft;
     private boolean staggerAllowsParry;
     private int riposteTicks;
     private int attackSerial;
     private boolean heavy;
     private boolean morphed;
     private boolean comboAllowed;
+    /** Which of the attack's arc variants is being swung (0 = the profile's main arc). */
+    private int variant;
+    /** Swung from the other side (left to right). */
+    private boolean mirrored;
 
     public boolean canStartAttack() {
         return phase == Phase.IDLE || (phase == Phase.RECOVERY && comboAllowed);
     }
 
     public boolean startAttack(AttackType attackType, AttackTimings attackTimings) {
+        return startAttack(attackType, attackTimings, 0, false);
+    }
+
+    public boolean startAttack(AttackType attackType, AttackTimings attackTimings, int arcVariant, boolean mirror) {
         if (!canStartAttack()) {
             return false;
         }
+        this.variant = Math.max(0, arcVariant);
+        this.mirrored = mirror;
         this.type = attackType;
         this.timings = attackTimings;
         this.riposteTicks = 0;
@@ -74,9 +87,15 @@ public final class CombatStateMachine {
 
     /** Switches the windup to a different attack, once per swing. The new attack winds up from the start. */
     public boolean morph(AttackType newType, AttackTimings newTimings) {
+        return morph(newType, newTimings, 0, mirrored);
+    }
+
+    public boolean morph(AttackType newType, AttackTimings newTimings, int arcVariant, boolean mirror) {
         if (phase != Phase.WINDUP || morphed || newType == type) {
             return false;
         }
+        variant = Math.max(0, arcVariant);
+        mirrored = mirror;
         type = newType;
         timings = newTimings;
         morphed = true;
@@ -101,16 +120,23 @@ public final class CombatStateMachine {
         }
     }
 
+    /** Free to raise a parry: not mid-attack or guard recovery, and the cooldown since the last parry has passed. */
     public boolean canParry() {
-        return phase == Phase.IDLE || phase == Phase.RECOVERY || phase == Phase.GUARD_RECOVERY
-                || (phase == Phase.STAGGER && staggerAllowsParry);
+        return parryCooldownLeft == 0
+                && (phase == Phase.IDLE || phase == Phase.RECOVERY || (phase == Phase.STAGGER && staggerAllowsParry));
     }
 
     /** Raises a weapon parry for at most {@code maxTicks}; lowering it costs {@code recoveryTicks}. */
     public boolean startParry(int maxTicks, int recoveryTicks) {
+        return startParry(maxTicks, recoveryTicks, 0);
+    }
+
+    /** @param cooldownTicks after this parry ends (caught something, released or timed out), no new parry for this long */
+    public boolean startParry(int maxTicks, int recoveryTicks, int cooldownTicks) {
         if (!canParry()) {
             return false;
         }
+        this.parryCooldown = Math.max(0, cooldownTicks);
         this.guardRecovery = Math.max(1, recoveryTicks);
         enter(Phase.PARRY, Math.max(1, maxTicks));
         return true;
@@ -119,6 +145,7 @@ public final class CombatStateMachine {
     /** The player let go of block before anything was parried. */
     public void releaseParry() {
         if (phase == Phase.PARRY) {
+            parryCooldownLeft = parryCooldown;
             enter(Phase.GUARD_RECOVERY, guardRecovery);
         }
     }
@@ -126,6 +153,7 @@ public final class CombatStateMachine {
     /** The parry caught an attack: drop the guard and open the riposte window. */
     public void parrySucceeded(int riposteWindow) {
         if (phase == Phase.PARRY) {
+            parryCooldownLeft = parryCooldown;
             enter(Phase.IDLE, 0);
             riposteTicks = Math.max(0, riposteWindow);
         }
@@ -149,6 +177,9 @@ public final class CombatStateMachine {
      */
     @Nullable
     public Sweep tick() {
+        if (parryCooldownLeft > 0) {
+            parryCooldownLeft--;
+        }
         if (phase == Phase.IDLE) {
             if (riposteTicks > 0) {
                 riposteTicks--;
@@ -173,6 +204,7 @@ public final class CombatStateMachine {
             }
             case PARRY -> {
                 if (done) {
+                    parryCooldownLeft = parryCooldown;
                     enter(Phase.GUARD_RECOVERY, guardRecovery);
                 }
             }
@@ -188,7 +220,9 @@ public final class CombatStateMachine {
     /** Overwrites local state with an authoritative snapshot (client sync). */
     public void apply(Phase newPhase, AttackType newType, int newPhaseTick, int newPhaseDuration,
                       AttackTimings newTimings, int newRiposteTicks, boolean newHeavy, boolean newMorphed,
-                      boolean newComboAllowed) {
+                      boolean newComboAllowed, int newVariant, boolean newMirrored) {
+        this.variant = newVariant;
+        this.mirrored = newMirrored;
         this.phase = newPhase;
         this.type = newType;
         this.phaseTick = newPhaseTick;
@@ -263,6 +297,10 @@ public final class CombatStateMachine {
         return riposteTicks;
     }
 
+    public int parryCooldownLeft() {
+        return parryCooldownLeft;
+    }
+
     public boolean isHeavy() {
         return heavy;
     }
@@ -273,6 +311,14 @@ public final class CombatStateMachine {
 
     public boolean isComboAllowed() {
         return comboAllowed;
+    }
+
+    public int variant() {
+        return variant;
+    }
+
+    public boolean isMirrored() {
+        return mirrored;
     }
 
     /** Increments with every attack started; lets observers react once per attack. */
