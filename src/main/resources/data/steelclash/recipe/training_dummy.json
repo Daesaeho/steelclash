@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " P ",
+    "SHS",
+    " S "
+  ],
+  "key": {
+    "P": {
+      "item": "minecraft:carved_pumpkin"
+    },
+    "H": {
+      "item": "minecraft:hay_block"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "result": {
+    "id": "steelclash:training_dummy_spawn_egg",
+    "count": 1
+  }
+}

@@ -165,6 +165,7 @@ New keys: **R = weapon special**, **G = throw weapon** (Controls → Steel Clash
 | 4 | Rebind Parry to a side mouse button | That button parries; right click is vanilla again. |
 
 ## Slash keys (added 2026-10-06)
+*Now the `TWO_SLASH_KEYS` control scheme; the default is `CHIVALRY` (see "Control schemes and gesture attacks" below).*
 Default controls are now: **left click = slash right→left, right click = slash left→right** (both hold for a heavy), **middle click = parry / raise shield**, Mouse 5 / scroll up = overhead, Mouse 4 / scroll down = stab, X feint, Z kick, R special, G throw. All are rebindable under Controls → Steel Clash. A parry you already rebound (e.g. to Left Alt) keeps your binding.
 
 | # | Check | Expected |
@@ -200,3 +201,62 @@ Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2`
 | 5 | Dev1 (host, no lag) fights normally next to Dev2 | Unchanged: no delayed hits on the host. |
 | 6 | Both players watch each other swing and parry | The other player's arm, debug blade and parries match what they're doing, about a ping behind. |
 
+## Manual in-game checklist (M8: release)
+| # | Check | Expected |
+|---|---|---|
+| 1 | Delete `run/config/steelclash-client.toml`, join a world | One grey chat line with your slash and parry keys and `/steelclash_help`. It doesn't appear on the next join (`tutorialHint` turned itself off). |
+| 2 | `/steelclash_help` | Nine lines; the key names match your bindings (rebind one and run it again). |
+| 3 | Pick up a hay bale in survival, open the recipe book | Training Dummy recipe unlocked; crafting it gives the dummy, which places like a spawn egg. |
+| 4 | Mods → Steel Clash → Config | Readable names for every option and section, with descriptions on hover; changing one takes effect. |
+| 5 | `./gradlew runClient -PnoCompat` | Boots and plays without Spartan Weaponry/Shields; vanilla swords, axes, the mace and the trident all have movesets. |
+| 6 | Drop `build/libs/steelclash-0.1.0-beta.jar` and playerAnimator into a normal NeoForge 21.1 instance | Loads outside the dev environment; the mod list shows MIT, 0.1.0-beta, the author and the credits. |
+
+## Control schemes and gesture attacks (added 2026-10-06)
+Client config (Mods → Steel Clash → Config → client).
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Default `controlScheme = CHIVALRY`: slash several times in a row, standing still | Sides alternate every slash. Turning right while clicking swings from the left (and vice versa). Right click parries; with a shield in the offhand it raises it. A chat line says the scheme was applied (first launch). |
+| 2 | Switch to `TWO_SLASH_KEYS` in the config screen | A chat line confirms; left click slashes right to left, right click left to right, middle click parries (see Controls). Switch back: right click parries again. Rebinding by hand afterwards sticks. |
+| 3 | `gestureAttacks = true`: hold left click and flick the mouse left / right / up / down | Slash from the left / slash from the right / overhead / stab. |
+| 4 | Quick click without moving | Normal right-to-left slash, no noticeable delay. |
+| 5 | Gesture, then keep holding | The attack becomes a heavy (timing bar shows the charge). |
+| 6 | Hold without moving | Slashes after about 0.2 s (`gestureWindowTicks`) and can still become a heavy. |
+| 7 | Tune `gestureThreshold` (e.g. 3 and 10) | Smaller = more sensitive; normal aiming while holding the button shouldn't misfire at the default. |
+| 8 | Set `gestureLeft = SLASH_FROM_RIGHT`, `gestureRight = KICK`, `gestureUp = NONE` | Drag left slashes right to left, drag right kicks, drag up does nothing special (the press slashes after the window). |
+| 9 | `TWO_SLASH_KEYS` + `gestureKeys = BOTH` | Right click also reads gestures; a plain right click still slashes left to right. |
+| 10 | `gestureLockView = true`: hold left click and drag | The view doesn't move while the gesture is read; the attack still matches the drag. Once it fires, the mouse turns you normally again. Works in third person too. |
+
+## Blade twist (added 2026-10-06)
+Hold a sword, third person (F5) and first person, `/steelclash_debug` on.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Slash both ways | The blade turns flat (edge facing the way it travels) during the windup and stays edge-first through the cut. Mirrored slashes turn the other way. |
+| 2 | Overhead | The edge stays down: no roll, as before. |
+| 3 | Stab | The blade is held flat. |
+| 4 | Axe slash (single edge) | The cutting edge leads, not the back of the head. **If it trails, set `bladeTwist = -1`** and tell me, so the default can be flipped. |
+| 5 | If the weapon tumbles end over end instead of rolling around its length | Try `bladeTwistAxis = Y` (then X) and report which one rolls correctly. |
+| 6 | `bladeTwist = 0` | The old look, with no roll. |
+
+## Accels, drags, turn cap, side from movement (added 2026-10-06)
+Sword, dummy in Parry mode, then Attack mode; `/steelclash_debug` on.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Slash and whip the mouse the way the blade travels (accel) | The debug blade connects early in the release. Against a parrying dummy, a late parry misses it. |
+| 2 | Slash and turn against the blade (drag) | It connects late, or carries past. |
+| 3 | During a windup or release, flick the mouse hard | The camera turns at most about 360°/s and then catches up when the swing ends. No 180° hits behind you. Turning outside attacks is unaffected. |
+| 4 | `turnCapDegreesPerSecond = 0` | No limit (the old feel). |
+| 5 | Hard difficulty, fight a footman or a sword zombie for a while | Some of their slashes visibly turn their head mid-swing and land early or late. Parries timed purely to the windup sometimes fail. |
+| 6 | `sideFromMovement = FROM_STRAFE_SIDE`, hold A and slash (CHIVALRY scheme) | Swings from the left every time; D swings from the right; no strafe = alternating again. `TOWARD_STRAFE` is the reverse. |
+
+## Footwork, ducking, health regeneration (added 2026-10-06)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Walk forward while winding up and releasing a slash; parry while walking | Noticeably slower (65% / 75%), back to full speed after. Mobs slow down when they swing too. |
+| 2 | Walk backwards holding a sword, then with an empty hand | Slower with the sword (80%), normal without. |
+| 3 | Dummy in Attack mode: crouch as its slash comes | The level slash passes over you. |
+| 4 | Second player (or a footman) slashes while you crouch, then looks down and slashes | The level slash misses; aimed low, it hits. Overheads always hit. |
+| 5 | Take some damage, then step away | After about 5 s health refills at half a heart per second, even when hungry. `healthRegen = false` turns it off. |

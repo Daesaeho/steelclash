@@ -1,5 +1,7 @@
 package com.steelclash.combat;
 
+import com.steelclash.Config;
+import com.steelclash.core.SwingTurn;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.Vec;
 import com.steelclash.profile.WeaponProfile;
@@ -26,6 +28,20 @@ public final class CombatMath {
     /** Where the fighter is looking. Mobs aim with their head, which turns independently of the body. */
     public static float viewYaw(LivingEntity entity) {
         return entity instanceof Player ? entity.getYRot() : entity.getYHeadRot();
+    }
+
+    /**
+     * The view the swing is traced along this tick: the actual view, or while {@code capped} (windup and release) one
+     * that can only have turned {@code turnCapDegreesPerSecond} since last tick (the turn cap). {@code [yaw, pitch]}.
+     */
+    public static float[] swingView(LivingEntity entity, CombatData data, boolean capped) {
+        float yaw = viewYaw(entity);
+        float pitch = entity.getXRot();
+        if (!capped) {
+            return new float[]{yaw, pitch};
+        }
+        float step = (float) (Config.TURN_CAP.get() / 20.0);
+        return new float[]{SwingTurn.approachYaw(data.prevYaw, yaw, step), SwingTurn.approachPitch(data.prevPitch, pitch, step)};
     }
 
     public static float viewYaw(LivingEntity entity, float partialTick) {

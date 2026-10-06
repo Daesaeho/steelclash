@@ -49,6 +49,8 @@ public class CombatData {
     /** Weapon unusable until this game time (HOLSTER disarm mode for mobs). */
     public long holsteredUntil;
     public float lastSentStamina = -1;
+    /** Game time this entity last took damage (health regeneration waits for a quiet spell). */
+    public long lastHurtAt = Long.MIN_VALUE / 2;
 
     // ---- mob decision making ----
     /** Bot brain state (spacing, plans, opponent memory); created on first use. */

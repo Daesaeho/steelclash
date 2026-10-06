@@ -1,6 +1,7 @@
 package com.steelclash;
 
 import com.steelclash.client.ClientInput;
+import com.steelclash.client.ControlSchemes;
 import com.steelclash.client.ProceduralSwingAnimation;
 import com.steelclash.client.StaminaHud;
 import com.steelclash.client.SoldierRenderer;
@@ -25,6 +26,7 @@ public class SteelClashClient {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         modEventBus.addListener(this::clientSetup);
         modEventBus.addListener(ClientInput::registerKeys);
+        modEventBus.addListener(ControlSchemes::onConfigReloaded);
         modEventBus.addListener(StaminaHud::register);
         modEventBus.addListener(SteelClashClient::registerRenderers);
         modEventBus.addListener(SteelClashClient::registerReloadListeners);

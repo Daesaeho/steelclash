@@ -6,6 +6,7 @@ import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AnimationSet;
+import com.steelclash.core.ArcPath;
 import com.steelclash.core.ArmAim;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
@@ -27,9 +28,10 @@ import net.minecraft.world.entity.LivingEntity;
  * @param offsets     additive part offsets from the clip, degrees ({@code body}, {@code head}, {@code leftArm}, ...)
  * @param twoHanded   the off hand grips the weapon
  * @param kick        the legs, not the weapon arm, do the attacking
+ * @param bladeTwist  degrees to roll the weapon around its length so the edge leads the cut (see {@link ArcPath#edgeAngle})
  */
 public record CombatPose(Phase phase, double weight, double aimYaw, double aimPitch, Map<String, double[]> offsets,
-                         boolean twoHanded, boolean kick) {
+                         boolean twoHanded, boolean kick, double bladeTwist) {
     /** Degrees the off arm is turned toward the weapon hand for a two-handed grip. */
     private static final double TWO_HAND_CONVERGE = 28;
 
@@ -68,7 +70,20 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
         double aimYaw = headYaw + pose.yaw();
         double aimPitch = Mth.clamp(entity.getViewXRot(partialTick) + pose.pitch(), -90, 90);
         return Optional.of(new CombatPose(pose.phase(), pose.weight(), aimYaw, aimPitch, offsets,
-                twoHanded, pose.type() == AttackType.KICK && pose.phase().isAttack()));
+                twoHanded, pose.type() == AttackType.KICK && pose.phase().isAttack(), bladeTwist(data, pose)));
+    }
+
+    /** Edge into the cut for the whole attack: set during the windup, follows the arc, held through recovery. */
+    private static double bladeTwist(CombatData data, SwingPose pose) {
+        if (!pose.phase().isAttack() || pose.type() == AttackType.KICK || pose.type() == AttackType.THROW) {
+            return 0;
+        }
+        double t = switch (pose.phase()) {
+            case WINDUP -> 0;
+            case RELEASE -> pose.releaseProgress();
+            default -> 1;
+        };
+        return Combat.currentPath(data, pose.spec()).edgeAngle(t);
     }
 
     private static float viewYaw(LivingEntity entity, float partialTick) {

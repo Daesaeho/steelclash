@@ -21,7 +21,25 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle
+      - name: Build and unit test
         run: ./gradlew build
-      - name: Run game tests
+
+      - name: Game tests (with Spartan Weaponry and Spartan Shields)
         run: ./gradlew runGameTestServer
+
+      - name: Game tests (without the optional mods)
+        run: ./gradlew runGameTestServer -PnoCompat
+
+      - name: Upload mod jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: steelclash-jar
+          path: build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/

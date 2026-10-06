@@ -37,7 +37,7 @@ import net.neoforged.neoforge.common.ItemAbilities;
  *     <li>ATTACK: slashes at the nearest player every few seconds — practice parrying</li>
  *     <li>SPAR: random attacks, parries half the time</li>
  * </ul>
- * Implements {@link Enemy} so right-click (without sneaking) parries at it instead of interacting.
+ * Implements {@link Enemy} so the slash keys (without sneaking) swing at it instead of interacting.
  */
 public class TrainingDummy extends PathfinderMob implements Enemy {
     public enum Mode {

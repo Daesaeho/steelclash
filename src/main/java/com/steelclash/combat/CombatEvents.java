@@ -48,6 +48,9 @@ public final class CombatEvents {
             return;
         }
         LagCompensation.record(entity);
+        if (entity instanceof ServerPlayer player) {
+            HealthRegen.tick(player, player.getData(ModAttachments.COMBAT));
+        }
         if (entity instanceof ServerPlayer player && player.tickCount % 4 == 0) {
             Disarm.tryPickUp(player);
         }
@@ -85,6 +88,9 @@ public final class CombatEvents {
     @SubscribeEvent
     static void onDamageTaken(LivingDamageEvent.Post event) {
         LivingEntity entity = event.getEntity();
+        if (event.getNewDamage() > 0) {
+            entity.getData(ModAttachments.COMBAT).lastHurtAt = entity.level().getGameTime();
+        }
         if (event.getNewDamage() <= 0 || !entity.hasData(ModAttachments.COMBAT) || Config.FLINCH_TICKS.get() <= 0) {
             return;
         }

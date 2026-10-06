@@ -9,6 +9,7 @@ import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackTokens;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.BotSkill;
+import com.steelclash.core.SwingTurn;
 import com.steelclash.core.BotStyle;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Guard;
@@ -45,6 +46,8 @@ public final class ClashBrain {
     /** Start swinging this far inside full reach, so the blade actually arrives. */
     private static final double REACH_MARGIN = 0.3;
     private static final double KICK_RANGE = 1.8;
+    /** How far a bot turns its head over a release to accel or drag a slash. */
+    private static final double TRICK_DEGREES = 50;
 
     private ClashBrain() {
     }
@@ -77,6 +80,30 @@ public final class ClashBrain {
         observe(brain, target);
         defend(mob, data, brain, skill);
         offend(mob, data, brain, skill, target);
+        steerSwing(mob, data, brain, target);
+    }
+
+    /**
+     * Accel or drag: during the release, turn the head with the swing (it lands early, cutting the defender's reaction
+     * time) or against it (it lands late, after an early parry has dropped). The server's turn cap still applies.
+     * Runs after the look control, so it decides where the head points this tick.
+     */
+    private static void steerSwing(PathfinderMob mob, CombatData data, BrainState brain, LivingEntity target) {
+        CombatStateMachine m = data.machine;
+        if (brain.trick == SwingTurn.Trick.NONE) {
+            return;
+        }
+        if (!m.isAttacking()) {
+            brain.trick = SwingTurn.Trick.NONE;
+            return;
+        }
+        Optional<WeaponProfile.AttackSpec> spec = Combat.currentSpec(mob, data);
+        if (m.phase() != Phase.RELEASE || spec.isEmpty()) {
+            return;
+        }
+        int travel = SwingTurn.travel(Combat.currentPath(data, spec.get()));
+        double bearing = Math.toDegrees(Math.atan2(target.getZ() - mob.getZ(), target.getX() - mob.getX())) - 90;
+        mob.setYHeadRot((float) (bearing + SwingTurn.trickYaw(brain.trick, travel, m.phaseProgress(0f), TRICK_DEGREES)));
     }
 
     private static void observe(BrainState brain, LivingEntity target) {
@@ -335,6 +362,9 @@ public final class ClashBrain {
         } else if (random.nextDouble() < skill.heavyChance()) {
             Combat.requestHeavy(mob);
         }
+        brain.trick = allowTricks && random.nextDouble() < skill.swingTrickChance()
+                ? (random.nextBoolean() ? SwingTurn.Trick.ACCEL : SwingTurn.Trick.DRAG)
+                : SwingTurn.Trick.NONE;
         brain.cooldown = (int) Math.round((8 + random.nextInt(18)) * BotStyles.of(mob).cooldownMult());
     }
 

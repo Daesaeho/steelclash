@@ -39,10 +39,10 @@ displayName="${mod_name}" #mandatory
 #logoFile="examplemod.png" #optional
 
 # A text field displayed in the mod UI
-#credits="" #optional
+credits="Inspired by Chivalry 2 (Torn Banner Studios). Animation via playerAnimator (KosmX). Optional integration with Spartan Weaponry and Spartan Shields (ObliviousSpartan, NeoForge ports by Mai-xiyu)."
 
 # The authors of the mod, displayed in the mod UI (optional)
-#authors=""
+authors="Daesaeho"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''

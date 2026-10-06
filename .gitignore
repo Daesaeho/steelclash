@@ -41,4 +41,5 @@ repo/
 
 # Steel Clash
 run-client2
+run-gametest
 build-*.log

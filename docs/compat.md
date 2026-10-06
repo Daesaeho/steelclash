@@ -1,0 +1,52 @@
+# Compatibility
+
+Steel Clash 0.1.0-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **both** the client and the server.
+
+## Mods
+
+| Mod | Status | Notes |
+|---|---|---|
+| playerAnimator 2.0.4+ | **Required** | Swing animations in first and third person. |
+| Spartan Weaponry (Unofficial) 1.2.3+ | Optional, integrated | Each Spartan weapon type maps to an archetype (table below). Its traits (armour piercing, backstab, reach and so on) still apply, because hits go through vanilla attack code. Its weapons join mob gear pools and the brigand loot. Tested by GameTests with and without it. |
+| Spartan Shields (Unofficial) 1.0.0+ | Optional, integrated | Basic shields block in a 150° cone and tower shields in a 180° cone; towers stop arrows from the front only. The parry key raises them. Tested with and without it. |
+| Better Combat | **Incompatible** | Both replace melee attacks; the game refuses to load with both. |
+| Epic Fight | **Incompatible** | Same. |
+| Other weapon mods | Works, unmapped | Items without a weapon profile keep vanilla combat. Add a profile through the item data map (below). |
+| Other shield mods | Usually works | Anything that performs `ItemAbilities.SHIELD_BLOCK` gets the basic shield cone and stamina rules. |
+| Mob AI mods | Case by case | Mobs in `#steelclash:fighters` get a spacing goal and the bot brain on top of their goals. Mods that replace a mob's melee goal may fight it; take the mob out of the tag. |
+| Shaders / Sodium-likes | Expected to work | Steel Clash renders through playerAnimator and vanilla model hooks. One mixin, on `LivingEntityRenderer` (after `setupAnim`), poses mob arms. |
+
+### Weapon archetypes
+
+| Archetype | Vanilla | Spartan Weaponry |
+|---|---|---|
+| sword | swords | longsword, katana, saber |
+| rapier | | rapier (fast, light stabs) |
+| dagger | | dagger, parrying dagger, throwing knife |
+| axe | axes | battleaxe, tomahawk |
+| blunt | mace | battle hammer, warhammer, flanged mace, club |
+| spear | trident | spear, pike, lance, javelin |
+| polearm | | halberd, glaive, scythe |
+| two_handed | | greatsword |
+| staff | | quarterstaff |
+| claw, beast, heavy_beast | | used by unarmed mobs (zombie hands, spiders, ravagers…) |
+
+Two-handed archetypes (two_handed, polearm, spear) can't raise an offhand shield.
+
+## Config
+
+The common config (`steelclash-common.toml`, the server's copy counts) has sections for stamina, defense, offense, mobs and network. The client config (`steelclash-client.toml`) covers the HUD, camera motion, hit-stop, scroll attacks, telegraph labels and the tutorial hint. Both can be edited in game under *Mods → Steel Clash → Config*.
+
+## For pack makers
+
+| What | Where | Format |
+|---|---|---|
+| Weapon profiles | `data/<ns>/steelclash/weapon_profile/<name>.json` (datapack registry `steelclash:weapon_profile`) | `archetype`, `reference_attack_speed`, `speed_scaling`, `attacks` (`slash`/`overhead`/`stab`, each with `windup`/`release`/`recovery` ticks, `damage` multiplier, `arc` shape and width, optional `variants` keyframes, `max_targets`, `reach_bonus`, `stamina_damage`, `stamina_cost`, `damage_type`), `guard` (`parry_ticks`, `recovery`, `cone`, `stamina_mult`), `riposte_windup_mult`, `heavy`, `hyper_armor_on_heavy`, `damage_type` (`cut`/`blunt`/`chop`), `special`. Copy one of the built-in profiles in `data/steelclash/steelclash/weapon_profile/` as a starting point. |
+| Item → profile | `data/<ns>/data_maps/item/weapon_profile.json` | `{"values": {"mymod:big_sword": {"profile": "steelclash:two_handed"}}}` |
+| Which mobs fight | `#steelclash:fighters` (entity tag) | Telegraphed, parryable attacks and the bot brain. |
+| Mob's unarmed profile | `data_maps/entity_type/mob_profile.json` | `{"profile": "steelclash:claw"}` |
+| Mob personality | `data_maps/entity_type/bot_style.json` | `shambler`, `duelist`, `rusher`, `brute`, `skirmisher` |
+| Mobs that spawn armed | `#steelclash:armable` | Chances per difficulty are in the mobs config. |
+| Mob gear pools | `#steelclash:mob_weapons/tier_1`, `tier_2`, `tier_3`, `#steelclash:mob_shields`, `#steelclash:soldier_weapons/footman`, `knight` | Item tags; entries from optional mods need `"required": false`. |
+| Brigand camp | `worldgen/structure/brigand_camp.json`, `structure_set/brigand_camps.json`, biome tag `#steelclash:has_structure/brigand_camp` | Remove the structure set to disable camps. |
+| Soldier night spawns | `neoforge/biome_modifier/soldier_spawns.json` | Override it with an empty `spawners` list to disable them. |

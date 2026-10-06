@@ -117,3 +117,12 @@ The plan said "author animations in Blockbench, extract the arcs from them". Cha
 - Mock players and mobs have no connection, so GameTests force a latency with `LagCompensation.forceLatency`.
 - `runClient` once died with a native access violation (0xC0000005) while opening FML's early window, before any mod code ran. It booted normally on retry: an environment or driver hiccup.
 
+## M8 findings (2026-10-06)
+- **Gradle configuration cache vs. `jar` customisation:** a `rename { "${it}_${mod_id}" }` closure fails at execution ("> mod_id") because project properties aren't readable then. Resolve the value into a local variable at configuration time.
+- **Optional mods really are optional:** `-PnoCompat` drops Spartan Weaponry/Shields from `localRuntime`. All GameTests pass without them, and the log has no data errors (every optional tag entry is `"required": false`). CI runs both variants.
+- GameTest classes ship in the jar (they live in `main`). That's harmless: they only register when NeoForge's GameTest system is enabled.
+- NeoForge's `ConfigurationScreen` shows raw keys unless `<modid>.configuration.<key>` translations exist. Generate them from the spec; the `.comment(...)` texts become the hover tooltips.
+
+- **GameTests shared `run/config` with the dev client.** Toggling `lagCompensation` off in game (as the M7 checklist suggests) made the lag GameTests fail. `runGameTestServer` now uses its own `run-gametest/` directory with default configs.
+- **playerAnimator's held item rotation order** (`HeldItemMixin`, bytecode): `mulPose(ZP z)`, then `YP y`, then `XP x`, injected just before `renderItem`, i.e. after vanilla's hand rotation (-90° about X). So X (`weaponGripPitch`) acts on the item first, and the arm's length lies on Z: blade twist rolls about Z. The sign still needs an in-game look (`bladeTwist = -1` flips it).
+

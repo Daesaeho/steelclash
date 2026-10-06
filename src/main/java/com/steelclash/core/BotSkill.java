@@ -13,13 +13,14 @@ package com.steelclash.core;
  * @param counterChance  chance to counter (instead of parry) an attack type the player keeps repeating
  * @param kickAfterTicks kick a target that has been guarding this long (0 = never)
  * @param attackers      how many mobs may attack the same target at once (attack tokens)
+ * @param swingTrickChance chance a slash is accelerated or dragged by turning during the release
  */
 public record BotSkill(int reactionTicks, double parryChance, double feintChance, double morphChance, double heavyChance,
-                       double comboChance, double counterChance, int kickAfterTicks, int attackers) {
+                       double comboChance, double counterChance, int kickAfterTicks, int attackers, double swingTrickChance) {
 
-    public static final BotSkill EASY = new BotSkill(8, 0.15, 0.0, 0.0, 0.15, 0.10, 0.0, 0, 1);
-    public static final BotSkill NORMAL = new BotSkill(6, 0.35, 0.10, 0.05, 0.25, 0.30, 0.25, 30, 2);
-    public static final BotSkill HARD = new BotSkill(4, 0.55, 0.20, 0.10, 0.30, 0.50, 0.50, 18, 3);
+    public static final BotSkill EASY = new BotSkill(8, 0.15, 0.0, 0.0, 0.15, 0.10, 0.0, 0, 1, 0.0);
+    public static final BotSkill NORMAL = new BotSkill(6, 0.35, 0.10, 0.05, 0.25, 0.30, 0.25, 30, 2, 0.15);
+    public static final BotSkill HARD = new BotSkill(4, 0.55, 0.20, 0.10, 0.30, 0.50, 0.50, 18, 3, 0.35);
 
     /** @param difficulty 0 = peaceful, 1 = easy, 2 = normal, 3 = hard */
     public static BotSkill forDifficulty(int difficulty) {
@@ -32,12 +33,12 @@ public record BotSkill(int reactionTicks, double parryChance, double feintChance
 
     public BotSkill withParryChance(double chance) {
         return new BotSkill(reactionTicks, chance, feintChance, morphChance, heavyChance, comboChance, counterChance,
-                kickAfterTicks, attackers);
+                kickAfterTicks, attackers, swingTrickChance);
     }
 
     public BotSkill withAttackers(int count) {
         return new BotSkill(reactionTicks, parryChance, feintChance, morphChance, heavyChance, comboChance, counterChance,
-                kickAfterTicks, Math.max(1, count));
+                kickAfterTicks, Math.max(1, count), swingTrickChance);
     }
 
     /** Has the bot seen enough of this windup to react to it? */

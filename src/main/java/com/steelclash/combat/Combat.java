@@ -242,6 +242,7 @@ public final class Combat {
     // ---------------------------------------------------------------- ticking
 
     public static void tickServer(LivingEntity entity, CombatData data) {
+        CombatMovement.update(entity, data);
         data.stamina.tick(Config.STAMINA_REGEN_PER_SECOND.get().floatValue() / 20f, Config.STAMINA_REGEN_DELAY_TICKS.get());
         syncStaminaIfChanged(entity, data);
 
@@ -309,8 +310,11 @@ public final class Combat {
     /** End of a server tick: remember the view for next tick's sweep, start buffered attacks, sync phase changes. */
     private static void finishTick(LivingEntity entity, CombatData data, Phase before) {
         CombatStateMachine machine = data.machine;
-        data.prevYaw = CombatMath.viewYaw(entity);
-        data.prevPitch = entity.getXRot();
+        // The same turn-capped view this tick's sweep used (the phase may already have moved on to recovery).
+        boolean capped = isTurnCapped(before) || isTurnCapped(machine.phase());
+        float[] view = CombatMath.swingView(entity, data, capped);
+        data.prevYaw = view[0];
+        data.prevPitch = view[1];
         data.prevPivot = CombatMath.pivot(entity, 1f);
 
         if (data.queuedAttack != null && machine.canStartAttack()) {
@@ -327,9 +331,16 @@ public final class Combat {
         }
     }
 
+    private static boolean isTurnCapped(Phase phase) {
+        return phase == Phase.WINDUP || phase == Phase.RELEASE;
+    }
+
     /** Client-side tick: advances the local copy of the machine for visuals and prediction. */
     public static void tickClient(LivingEntity entity, CombatData data) {
         data.machine.tick();
+        if (entity instanceof Player player && player.isLocalPlayer()) {
+            CombatMovement.update(entity, data); // predicted: the client moves the local player
+        }
         if (data.queuedAttack != null && data.machine.canStartAttack()) {
             AttackType queued = data.queuedAttack;
             data.queuedAttack = null;

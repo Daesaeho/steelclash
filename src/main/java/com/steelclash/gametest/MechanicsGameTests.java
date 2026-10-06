@@ -125,4 +125,13 @@ public final class MechanicsGameTests {
         finish(player);
         return zombie.getMaxHealth() - zombie.getHealth();
     }
+
+    @GameTest(template = "arena")
+    public static void trainingDummyIsCraftable(GameTestHelper helper) {
+        var recipe = helper.getLevel().getRecipeManager().byKey(com.steelclash.SteelClash.id("training_dummy"));
+        check(helper, recipe.isPresent(), "the training dummy recipe should load");
+        check(helper, recipe.get().value().getResultItem(helper.getLevel().registryAccess())
+                .is(com.steelclash.entity.ModEntities.TRAINING_DUMMY_SPAWN_EGG.get()), "it should make a training dummy");
+        helper.succeed();
+    }
 }

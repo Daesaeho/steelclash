@@ -89,6 +89,8 @@ neoForge {
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
             type = "gameTestServer"
+            // Own directory: configs tweaked while playing in run/ must not change test results
+            gameDirectory = project.file('run-gametest')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -141,9 +143,12 @@ dependencies {
 
     // Optional integrations: compile against them, run with them in dev, but don't publish a dependency
     compileOnly "maven.modrinth:spartan-weaponry-unofficial:${spartan_weaponry_version}"
-    localRuntime "maven.modrinth:spartan-weaponry-unofficial:${spartan_weaponry_version}"
     compileOnly "maven.modrinth:spartan-shields-unofficial:${spartan_shields_version}"
-    localRuntime "maven.modrinth:spartan-shields-unofficial:${spartan_shields_version}"
+    // -PnoCompat runs (client, GameTests) without them, to prove they really are optional
+    if (!project.hasProperty('noCompat')) {
+        localRuntime "maven.modrinth:spartan-weaponry-unofficial:${spartan_weaponry_version}"
+        localRuntime "maven.modrinth:spartan-shields-unofficial:${spartan_shields_version}"
+    }
 
     // Plain JUnit for the Minecraft-free combat core
     testImplementation "org.junit.jupiter:junit-jupiter:${junit_version}"
@@ -225,5 +230,13 @@ idea {
     module {
         downloadSources = true
         downloadJavadoc = true
+    }
+}
+
+// Ship the license inside the jar (renamed so it can't clash with other mods' LICENSE files)
+def licenseSuffix = "_${mod_id}" // resolved now: the configuration cache can't read project properties later
+tasks.named('jar', Jar) {
+    from('LICENSE') {
+        rename { it + licenseSuffix }
     }
 }

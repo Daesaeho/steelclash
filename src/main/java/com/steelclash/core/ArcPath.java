@@ -71,6 +71,42 @@ public record ArcPath(List<Keyframe> keyframes) {
                 .toList());
     }
 
+    /** Total angle the blade sweeps (degrees); thrusts barely sweep at all, they extend. */
+    public double sweepDegrees() {
+        double total = 0;
+        for (int i = 1; i < keyframes.size(); i++) {
+            Keyframe a = keyframes.get(i - 1);
+            Keyframe b = keyframes.get(i);
+            total += Math.hypot(b.yaw() - a.yaw(), b.pitch() - a.pitch());
+        }
+        return total;
+    }
+
+    /**
+     * Blade twist: how far to roll the weapon around its own length at progress {@code t} so the edge leads the cut.
+     * 0 = edge down (a vertical cut like an overhead), -90 = turned for a cut travelling right to left (yaw falling),
+     * +90 for left to right. Thrusts are held flat (90). Smoothed over a window so keyframe corners don't snap.
+     */
+    public double edgeAngle(double t) {
+        if (sweepDegrees() < THRUST_SWEEP) {
+            return 90;
+        }
+        Keyframe a = sample(t - EDGE_WINDOW);
+        Keyframe b = sample(t + EDGE_WINDOW);
+        double yaw = b.yaw() - a.yaw();
+        double pitch = b.pitch() - a.pitch();
+        if (Math.hypot(yaw, pitch) < 1) { // the blade is momentarily still: use the whole swing's direction
+            a = sample(0);
+            b = sample(1);
+            yaw = b.yaw() - a.yaw();
+            pitch = b.pitch() - a.pitch();
+        }
+        return Math.toDegrees(Math.atan2(yaw, pitch));
+    }
+
+    private static final double THRUST_SWEEP = 20;
+    private static final double EDGE_WINDOW = 0.15;
+
     /** Linearly interpolated keyframe at release progress {@code t} in [0, 1]. */
     public Keyframe sample(double t) {
         t = Math.max(0, Math.min(1, t));

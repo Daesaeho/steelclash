@@ -79,12 +79,28 @@ public class ProceduralSwingAnimation implements IAnimation {
                 }
                 yield add(value, part);
             }
-            // Turn the held weapon so its blade lies along the arm, i.e. along the arc.
-            case "rightItem" -> pose.kick() ? value : new Vec3f(
-                    value.getX() + (float) Math.toRadians(Config.Client.WEAPON_GRIP_PITCH.get()) * w, value.getY(), value.getZ());
+            // Turn the held weapon so its blade lies along the arm (along the arc), then roll it so the edge leads.
+            case "rightItem" -> pose.kick() ? value : itemRotation(value, w);
             case "body", "torso", "head", "rightLeg", "leftLeg" -> add(value, part);
             default -> value;
         };
+    }
+
+    /**
+     * playerAnimator applies the item rotation as Z, then Y, then X (so X, the grip pitch, acts on the weapon first),
+     * after vanilla's -90° hand rotation, which leaves the arm's length on Z: rolling about Z twists the blade.
+     */
+    private Vec3f itemRotation(Vec3f value, float w) {
+        float x = value.getX() + (float) Math.toRadians(Config.Client.WEAPON_GRIP_PITCH.get()) * w;
+        float y = value.getY();
+        float z = value.getZ();
+        float twist = (float) Math.toRadians(pose.bladeTwist() * Config.Client.BLADE_TWIST.get()) * w;
+        switch (Config.Client.BLADE_TWIST_AXIS.get()) {
+            case X -> x += twist;
+            case Y -> y += twist;
+            case Z -> z += twist;
+        }
+        return new Vec3f(x, y, z);
     }
 
     private Vec3f add(Vec3f value, String part) {

@@ -3,6 +3,7 @@ package com.steelclash.ai;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.BotStyle;
 import com.steelclash.core.OpponentMemory;
+import com.steelclash.core.SwingTurn;
 import org.jetbrains.annotations.Nullable;
 
 /** A mob's bot-brain state, kept in its combat data. Server only. */
@@ -44,4 +45,6 @@ public class BrainState {
     public int answeredSerial = -1;
     /** Attack serial whose combo chance was already rolled. */
     public int comboRolledFor = -1;
+    /** Accel or drag planned for the current attack (turning the head during the release). */
+    public SwingTurn.Trick trick = SwingTurn.Trick.NONE;
 }

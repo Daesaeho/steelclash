@@ -1,5 +1,6 @@
 package com.steelclash;
 
+import com.steelclash.core.Gesture;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class Config {
@@ -21,8 +22,10 @@ public class Config {
     }
 
     public static final ModConfigSpec.DoubleValue MAX_STAMINA = BUILDER
+            .comment("Maximum stamina for players and mobs")
             .defineInRange("max", 100.0, 1.0, 10_000.0);
     public static final ModConfigSpec.DoubleValue STAMINA_REGEN_PER_SECOND = BUILDER
+            .comment("Stamina regained per second once regeneration starts")
             .defineInRange("regenPerSecond", 30.0, 0.0, 10_000.0);
     public static final ModConfigSpec.IntValue STAMINA_REGEN_DELAY_TICKS = BUILDER
             .comment("Ticks after spending stamina before it starts regenerating")
@@ -55,6 +58,7 @@ public class Config {
             .comment("How long a defender is staggered (unable to act) when their stamina breaks")
             .defineInRange("guardBreakStaggerTicks", 24, 1, 200);
     public static final ModConfigSpec.IntValue SHIELD_BREAK_COOLDOWN_TICKS = BUILDER
+            .comment("A player whose shield guard breaks cannot raise it again for this long")
             .defineInRange("shieldBreakCooldownTicks", 40, 0, 400);
     public static final ModConfigSpec.IntValue HOLSTER_TICKS = BUILDER
             .comment("Ticks the weapon is unusable in HOLSTER disarm mode")
@@ -63,10 +67,13 @@ public class Config {
             .comment("Full width in degrees protected by basic shields (vanilla and Spartan basic)")
             .defineInRange("basicShieldCone", 150.0, 10.0, 360.0);
     public static final ModConfigSpec.DoubleValue TOWER_SHIELD_CONE = BUILDER
+            .comment("Full width in degrees protected by tower shields (Spartan Shields)")
             .defineInRange("towerShieldCone", 180.0, 10.0, 360.0);
     public static final ModConfigSpec.DoubleValue BASIC_SHIELD_STAMINA_MULT = BUILDER
+            .comment("Stamina a basic shield block costs, as a fraction of the hit's stamina damage")
             .defineInRange("basicShieldStaminaMult", 0.7, 0.0, 10.0);
     public static final ModConfigSpec.DoubleValue TOWER_SHIELD_STAMINA_MULT = BUILDER
+            .comment("Stamina a tower shield block costs, as a fraction of the hit's stamina damage")
             .defineInRange("towerShieldStaminaMult", 0.5, 0.0, 10.0);
 
     static {
@@ -74,13 +81,16 @@ public class Config {
     }
 
     public static final ModConfigSpec.DoubleValue FEINT_STAMINA_COST = BUILDER
+            .comment("Stamina spent cancelling an attack during its windup")
             .defineInRange("feintStaminaCost", 10.0, 0.0, 1000.0);
     public static final ModConfigSpec.DoubleValue MORPH_STAMINA_COST = BUILDER
+            .comment("Stamina spent changing an attack into another type during its windup")
             .defineInRange("morphStaminaCost", 8.0, 0.0, 1000.0);
     public static final ModConfigSpec.DoubleValue PARRY_CANCEL_STAMINA_COST = BUILDER
             .comment("Cancelling a windup straight into a parry")
             .defineInRange("parryCancelStaminaCost", 10.0, 0.0, 1000.0);
     public static final ModConfigSpec.DoubleValue KICK_STAMINA_COST = BUILDER
+            .comment("Stamina spent on a kick or shield bash")
             .defineInRange("kickStaminaCost", 10.0, 0.0, 1000.0);
     public static final ModConfigSpec.DoubleValue KICK_STAMINA_DAMAGE = BUILDER
             .comment("Stamina a guarding target loses when kicked (shield bash: x1.2)")
@@ -104,11 +114,17 @@ public class Config {
             .comment("Blades that hit walls/obstacles (not floors) stop and stagger the attacker")
             .define("environmentClank", true);
     public static final ModConfigSpec.IntValue CLANK_STAGGER_TICKS = BUILDER
+            .comment("How long the attacker is staggered when their blade hits a wall")
             .defineInRange("clankStaggerTicks", 10, 0, 100);
+    public static final ModConfigSpec.DoubleValue TURN_CAP = BUILDER
+            .comment("Turn speed limit (degrees per second) while winding up and releasing an attack, as in Chivalry 2.",
+                    "Accels and drags still work; 180° flicks don't. 0 = no limit.")
+            .defineInRange("turnCapDegreesPerSecond", 360.0, 0.0, 3600.0);
     public static final ModConfigSpec.DoubleValue LUNGE_REACH_BONUS = BUILDER
             .comment("Extra reach for attacks started while sprinting")
             .defineInRange("lungeReachBonus", 0.7, 0.0, 5.0);
     public static final ModConfigSpec.DoubleValue LUNGE_DAMAGE_MULT = BUILDER
+            .comment("Damage multiplier for attacks started while sprinting")
             .defineInRange("lungeDamageMult", 1.15, 0.0, 10.0);
     public static final ModConfigSpec.BooleanValue DAMAGE_TYPES = BUILDER
             .comment("Cut/chop/blunt/pierce damage versus armour weight (blunt beats plate, cuts beat cloth)")
@@ -131,16 +147,20 @@ public class Config {
             .comment("How many mobs may swing at the same target at once (the rest circle and wait)")
             .defineInRange("maxAttackersEasy", 1, 1, 64);
     public static final ModConfigSpec.IntValue MAX_ATTACKERS_NORMAL = BUILDER
+            .comment("maxAttackers on Normal difficulty")
             .defineInRange("maxAttackersNormal", 2, 1, 64);
     public static final ModConfigSpec.IntValue MAX_ATTACKERS_HARD = BUILDER
+            .comment("maxAttackers on Hard difficulty")
             .defineInRange("maxAttackersHard", 3, 1, 64);
     public static final ModConfigSpec.DoubleValue ARMED_CHANCE_EASY = BUILDER
             .comment("Chance a #steelclash:armable mob (zombies, husks, zombie villagers) spawns with a melee weapon",
                     "from #steelclash:mob_weapons/tier_1..3 (includes Spartan Weaponry weapons when installed)")
             .defineInRange("armedChanceEasy", 0.30, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue ARMED_CHANCE_NORMAL = BUILDER
+            .comment("armedChance on Normal difficulty")
             .defineInRange("armedChanceNormal", 0.50, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue ARMED_CHANCE_HARD = BUILDER
+            .comment("armedChance on Hard difficulty")
             .defineInRange("armedChanceHard", 0.70, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue ARMED_SHIELD_CHANCE = BUILDER
             .comment("Chance an armed mob with a one-handed weapon also gets a shield (scaled up with difficulty)")
@@ -165,10 +185,13 @@ public class Config {
             .comment("Mobs in #steelclash:fighters wind up their melee attacks instead of hitting instantly")
             .define("telegraphAttacks", true);
     public static final ModConfigSpec.DoubleValue MOB_PARRY_CHANCE_EASY = BUILDER
+            .comment("Chance a mob without the bot brain parries an attack it sees coming, on Easy")
             .defineInRange("parryChanceEasy", 0.15, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue MOB_PARRY_CHANCE_NORMAL = BUILDER
+            .comment("Mob parry chance on Normal difficulty")
             .defineInRange("parryChanceNormal", 0.35, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue MOB_PARRY_CHANCE_HARD = BUILDER
+            .comment("Mob parry chance on Hard difficulty")
             .defineInRange("parryChanceHard", 0.55, 0.0, 1.0);
 
     static {
@@ -189,6 +212,44 @@ public class Config {
             .defineInRange("maxParryGraceMs", 250, 0, 1000);
 
     static {
+        BUILDER.pop().push("movement");
+    }
+
+    public static final ModConfigSpec.DoubleValue ATTACK_MOVE_SPEED = BUILDER
+            .comment("Movement speed (fraction of normal) while winding up and releasing an attack, as in Chivalry 2")
+            .defineInRange("attackMoveSpeed", 0.65, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue RECOVERY_MOVE_SPEED = BUILDER
+            .comment("Movement speed while recovering from an attack")
+            .defineInRange("recoveryMoveSpeed", 0.85, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue GUARD_MOVE_SPEED = BUILDER
+            .comment("Movement speed while a weapon parry is up or being lowered (shields use vanilla's item-use slowdown)")
+            .defineInRange("guardMoveSpeed", 0.75, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue STAGGER_MOVE_SPEED = BUILDER
+            .comment("Movement speed while staggered (parried, kicked, guard broken)")
+            .defineInRange("staggerMoveSpeed", 0.5, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue BACKPEDAL_SPEED = BUILDER
+            .comment("Players walking backwards with a weapon move at this fraction of normal speed")
+            .defineInRange("backpedalSpeed", 0.8, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue DUCK_HEIGHT = BUILDER
+            .comment("Ducking: a crouching fighter only counts this many blocks tall for blade hits, so level slashes pass",
+                    "over (overheads, kicks and slashes aimed downward still hit). 0 = use the normal crouching hitbox.")
+            .defineInRange("duckHeight", 1.0, 0.0, 2.0);
+
+    static {
+        BUILDER.pop().push("health");
+    }
+
+    public static final ModConfigSpec.BooleanValue HEALTH_REGEN = BUILDER
+            .comment("Players regenerate health a few seconds after they last took damage (Chivalry 2), independent of food")
+            .define("healthRegen", true);
+    public static final ModConfigSpec.IntValue HEALTH_REGEN_DELAY_TICKS = BUILDER
+            .comment("Ticks without taking damage before health starts coming back")
+            .defineInRange("healthRegenDelayTicks", 100, 0, 6000);
+    public static final ModConfigSpec.DoubleValue HEALTH_REGEN_PER_SECOND = BUILDER
+            .comment("Health regained per second once it starts (20 = a full vanilla health bar)")
+            .defineInRange("healthRegenPerSecond", 1.0, 0.0, 100.0);
+
+    static {
         BUILDER.pop();
     }
 
@@ -201,6 +262,74 @@ public class Config {
                 .comment("While holding a weapon, scroll up = overhead and scroll down = stab (as in Chivalry 2).",
                         "Number keys still switch hotbar slots. Turn off to keep vanilla scroll-to-switch.")
                 .define("scrollAttacks", true);
+
+        /** How slashes and right click work. Changing it rebinds the parry and second slash keys once. */
+        public enum ControlScheme {
+            /** One slash key whose side alternates (turning picks it); right click parries. */
+            CHIVALRY,
+            /** Left click slashes right to left, right click slashes left to right; parry on middle click. */
+            TWO_SLASH_KEYS
+        }
+
+        public static final ModConfigSpec.EnumValue<ControlScheme> CONTROL_SCHEME = BUILDER
+                .comment("CHIVALRY (as in Chivalry 2): left click slashes and the side alternates every slash, or follows",
+                        "your turn if you're turning; right click parries. TWO_SLASH_KEYS: left click slashes right to left,",
+                        "right click slashes left to right, parry moves to middle click. Switching rebinds those keys once;",
+                        "you can rebind them freely afterwards in Controls.")
+                .defineEnum("controlScheme", ControlScheme.CHIVALRY);
+
+        /** Which slash key(s) read mouse gestures. */
+        public enum GestureKeys {
+            SLASH, SECOND_SLASH, BOTH
+        }
+
+        /** Picking the swing side from strafing (A / D). */
+        public enum MovementSide {
+            OFF, FROM_STRAFE_SIDE, TOWARD_STRAFE
+        }
+
+        public static final ModConfigSpec.EnumValue<MovementSide> SIDE_FROM_MOVEMENT = BUILDER
+                .comment("Attack direction from movement: while strafing, swings whose side isn't fixed by their key (the",
+                        "CHIVALRY slash, overheads, stabs, plain gesture clicks) take their side from it.",
+                        "FROM_STRAFE_SIDE: strafing left swings from the left. TOWARD_STRAFE: strafing left swings toward the",
+                        "left (right to left). OFF: sides alternate / follow your turn, as in Chivalry 2.")
+                .defineEnum("sideFromMovement", MovementSide.OFF);
+
+        public static final ModConfigSpec.BooleanValue GESTURE_ATTACKS = BUILDER
+                .comment("EXPERIMENTAL. Hold a slash key and drag the mouse to choose the attack (see gestureLeft/Right/Up/Down).",
+                        "A click without a drag does the key's own slash. Keep holding after the gesture for a heavy.")
+                .define("gestureAttacks", false);
+        public static final ModConfigSpec.EnumValue<GestureKeys> GESTURE_KEYS = BUILDER
+                .comment("Which key reads gestures: the slash key (left click), the second slash key (left to right,",
+                        "right click in the TWO_SLASH_KEYS scheme), or both")
+                .defineEnum("gestureKeys", GestureKeys.SLASH);
+        public static final ModConfigSpec.BooleanValue GESTURE_LOCK_VIEW = BUILDER
+                .comment("Freeze your view while a gesture is being read: the mouse movement only picks the attack and",
+                        "doesn't turn you. Off = the gesture also turns your view (and the swing follows it).")
+                .define("gestureLockView", false);
+        public static final ModConfigSpec.EnumValue<Gesture.Action> GESTURE_LEFT = BUILDER
+                .comment("Attack for dragging left. Defaults read the drag as where the attack comes from (as in Mordhau);",
+                        "NONE ignores the direction. Options: SLASH_FROM_LEFT, SLASH_FROM_RIGHT, OVERHEAD, STAB, KICK, NONE")
+                .defineEnum("gestureLeft", Gesture.Action.SLASH_FROM_LEFT);
+        public static final ModConfigSpec.EnumValue<Gesture.Action> GESTURE_RIGHT = BUILDER
+                .comment("Attack for dragging right")
+                .defineEnum("gestureRight", Gesture.Action.SLASH_FROM_RIGHT);
+        public static final ModConfigSpec.EnumValue<Gesture.Action> GESTURE_UP = BUILDER
+                .comment("Attack for dragging up")
+                .defineEnum("gestureUp", Gesture.Action.OVERHEAD);
+        public static final ModConfigSpec.EnumValue<Gesture.Action> GESTURE_DOWN = BUILDER
+                .comment("Attack for dragging down")
+                .defineEnum("gestureDown", Gesture.Action.STAB);
+
+        public static Gesture.Mapping gestureMapping() {
+            return new Gesture.Mapping(GESTURE_LEFT.get(), GESTURE_RIGHT.get(), GESTURE_UP.get(), GESTURE_DOWN.get());
+        }
+        public static final ModConfigSpec.DoubleValue GESTURE_THRESHOLD = BUILDER
+                .comment("How far (degrees of view movement) a drag must go to count as a gesture")
+                .defineInRange("gestureThreshold", 5.0, 1.0, 45.0);
+        public static final ModConfigSpec.IntValue GESTURE_WINDOW_TICKS = BUILDER
+                .comment("How long (ticks) a held button waits for a gesture before slashing anyway")
+                .defineInRange("gestureWindowTicks", 4, 1, 20);
 
         public static final ModConfigSpec.BooleanValue TIMING_HUD = BUILDER
                 .comment("Timing bar under the crosshair: heavy charge, windup/release/recovery, combo window,",
@@ -226,6 +355,24 @@ public class Config {
                 .comment("Degrees the held weapon is rotated in your hand so its blade follows the swing.",
                         "-80 verified in game (2026-10-06); only change this if a weapon model is held unusually.")
                 .defineInRange("weaponGripPitch", -80.0, -180.0, 180.0);
+
+        /** Hand-frame axis the held weapon is rolled around for blade twist (its length, after the grip pitch). */
+        public enum TwistAxis {
+            X, Y, Z
+        }
+
+        public static final ModConfigSpec.DoubleValue BLADE_TWIST = BUILDER
+                .comment("Blade twist: the held weapon rolls around its length so the edge leads the cut (flat for slashes,",
+                        "edge down for overheads). 1 = full, 0 = off, -1 = the other way round (if the edge trails).")
+                .defineInRange("bladeTwist", 1.0, -1.0, 1.0);
+        public static final ModConfigSpec.EnumValue<TwistAxis> BLADE_TWIST_AXIS = BUILDER
+                .comment("Axis the twist turns around. Z should be the weapon's length; only change it if the weapon",
+                        "visibly tumbles instead of rolling.")
+                .defineEnum("bladeTwistAxis", TwistAxis.Z);
+
+        public static final ModConfigSpec.BooleanValue TUTORIAL_HINT = BUILDER
+                .comment("Show a one-line controls hint the next time you join a world (turns itself off after showing)")
+                .define("tutorialHint", true);
 
         static final ModConfigSpec SPEC = BUILDER.build();
 

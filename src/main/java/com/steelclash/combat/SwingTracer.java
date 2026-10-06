@@ -52,7 +52,13 @@ public final class SwingTracer {
     /** A possible target and where the attacker saw it, as an offset from where it is now. */
     private record Candidate(LivingEntity target, Vec3 offset) {
         AABB box() {
-            return target.getBoundingBox().move(offset);
+            AABB box = target.getBoundingBox().move(offset);
+            // Ducking (Chivalry 2): a crouching fighter is short enough for level slashes to pass over.
+            double duck = Config.DUCK_HEIGHT.get();
+            if (duck > 0 && target.isCrouching()) {
+                box = box.setMaxY(Math.min(box.maxY, box.minY + duck));
+            }
+            return box;
         }
     }
 
@@ -64,8 +70,9 @@ public final class SwingTracer {
         ArcPath path = Combat.currentPath(data, spec);
         double length = CombatMath.bladeLength(attacker, spec) + (data.lunge ? Config.LUNGE_REACH_BONUS.get() : 0);
         Vec3 pivotNow = CombatMath.pivot(attacker, 1f);
-        float yawNow = CombatMath.viewYaw(attacker);
-        float pitchNow = attacker.getXRot();
+        float[] view = CombatMath.swingView(attacker, data, true); // turn-capped during the swing
+        float yawNow = view[0];
+        float pitchNow = view[1];
 
         // A lagged attacker swings at targets as their screen showed them: trace those against where they were then.
         int rewind = LagCompensation.rewindTicks(attacker);

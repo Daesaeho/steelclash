@@ -7,7 +7,9 @@ import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.Gesture;
 import com.steelclash.core.Phase;
+import com.steelclash.core.SwingTurn;
 import com.steelclash.net.ActionPayload;
 import com.steelclash.net.AttackInputPayload;
 import com.steelclash.net.BlockInputPayload;
@@ -36,7 +38,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.settings.IKeyConflictContext;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.common.ItemAbilities;
@@ -45,11 +49,13 @@ import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Turns input into attacks while a profiled weapon is held. Every input is a rebindable key (Controls → Steel Clash):
+ * Turns input into attacks while a profiled weapon is held. Every input is a rebindable key (Controls → Steel Clash);
+ * the client config's control scheme sets the defaults ({@link ControlSchemes}):
  * <ul>
- *     <li>Slash right→left: left click. Slash left→right: right click. (Both hold for a heavy.)</li>
- *     <li>Overhead: Mouse 5 / scroll up. Stab: Mouse 4 / scroll down.</li>
- *     <li>Parry: middle click (also raises an offhand shield). Feint X, kick Z, special R, throw G.</li>
+ *     <li>CHIVALRY: slash on left click, its side alternating (or following your turn); parry on right click.</li>
+ *     <li>TWO_SLASH_KEYS: left click slashes right→left, right click left→right; parry on middle click.</li>
+ *     <li>Overhead: Mouse 5 / scroll up. Stab: Mouse 4 / scroll down. Hold any attack for a heavy.</li>
+ *     <li>Parry also raises an offhand shield. Feint X, kick Z, special R, throw G. Optional gestures: see below.</li>
  * </ul>
  * Mouse-bound inputs are intercepted in {@link InputEvent.MouseButton.Pre}, before Minecraft registers the click on any
  * {@link KeyMapping}. That stops vanilla attacking, block mining and using, and also stops Spartan Shields from reading
@@ -79,15 +85,16 @@ public final class ClientInput {
 
     public static final KeyMapping SLASH_RIGHT_TO_LEFT = new KeyMapping("key.steelclash.slash_right_to_left",
             SharesVanillaButton.INSTANCE, InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT, CATEGORY);
+    /** Unbound in the default CHIVALRY scheme; the TWO_SLASH_KEYS scheme puts it on right click. */
     public static final KeyMapping SLASH_LEFT_TO_RIGHT = new KeyMapping("key.steelclash.slash_left_to_right",
-            SharesVanillaButton.INSTANCE, InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_RIGHT, CATEGORY);
+            SharesVanillaButton.INSTANCE, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
     public static final KeyMapping OVERHEAD = new KeyMapping("key.steelclash.overhead",
             InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_5, CATEGORY);
     public static final KeyMapping STAB = new KeyMapping("key.steelclash.stab",
             InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_4, CATEGORY);
     /** Weapon parry; raises the shield instead when one is in the offhand. */
     public static final KeyMapping PARRY = new KeyMapping("key.steelclash.parry",
-            SharesVanillaButton.INSTANCE, InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_MIDDLE, CATEGORY);
+            SharesVanillaButton.INSTANCE, InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_RIGHT, CATEGORY);
     public static final KeyMapping FEINT = new KeyMapping("key.steelclash.feint",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY);
     public static final KeyMapping KICK = new KeyMapping("key.steelclash.kick",
@@ -98,14 +105,14 @@ public final class ClientInput {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY);
 
     /**
-     * An attack input: which attack it starts and, for the two slash keys, which side it swings from ({@code null} =
-     * chosen by turning / combo alternation). Holding it past {@link Combat#HEAVY_HOLD_TICKS} makes a heavy.
+     * An attack input: which attack it starts and which side it swings from ({@code null} = alternating, or chosen by
+     * turning; see {@link #sideOf}). Holding it past {@link Combat#HEAVY_HOLD_TICKS} makes a heavy.
      */
     private record AttackKey(KeyMapping key, AttackType type, @Nullable Boolean mirrored) {
     }
 
     private static final List<AttackKey> ATTACK_KEYS = List.of(
-            new AttackKey(SLASH_RIGHT_TO_LEFT, AttackType.SLASH, false),
+            new AttackKey(SLASH_RIGHT_TO_LEFT, AttackType.SLASH, null), // side set by the control scheme
             new AttackKey(SLASH_LEFT_TO_RIGHT, AttackType.SLASH, true),
             new AttackKey(OVERHEAD, AttackType.OVERHEAD, null),
             new AttackKey(STAB, AttackType.STAB, null));
@@ -127,6 +134,22 @@ public final class ClientInput {
     private static final float[] recentYaw = new float[TURN_TICKS];
     private static int recentYawIndex;
     private static boolean lastMirrored;
+
+    /** Gesture attacks: the held input being read as a gesture, and where the view was when it went down. */
+    @Nullable
+    private static AttackKey gestureKey;
+    private static float gestureYaw;
+    private static float gesturePitch;
+    private static int gestureTicks;
+    /** Turn absorbed while the view is locked (gestureLockView), counted toward the gesture. */
+    private static float gestureTurnYaw;
+    private static float gestureTurnPitch;
+
+    /** Turn cap state: the view as last allowed, and when. */
+    private static final float[] NO_TURN = {0, 0};
+    private static float limitYaw;
+    private static float limitPitch;
+    private static long limitNanos;
 
     private ClientInput() {
     }
@@ -152,6 +175,10 @@ public final class ClientInput {
         int button = event.getButton();
         if (event.getAction() == GLFW.GLFW_RELEASE) {
             heldButtons.remove(button);
+            if (gestureKey != null && gestureKey.key().matchesMouse(button) && mc.player != null) {
+                Gesture.Result read = readGesture(mc.player);
+                fireGesture(mc.player, read); // no drag: the key's own attack
+            }
             if (PARRY.matchesMouse(button)) {
                 releaseGuardInput(mc);
             }
@@ -166,7 +193,7 @@ public final class ClientInput {
         for (AttackKey attack : ATTACK_KEYS) {
             if (attack.key().matchesMouse(button)) {
                 if (holdsWeapon(mc.player) && !leaveToVanilla(mc, attack.key())) {
-                    tryAttack(mc.player, attack.type(), attack, attack.mirrored());
+                    pressAttack(mc.player, attack);
                     swallow(event, button);
                 }
                 return;
@@ -293,7 +320,7 @@ public final class ClientInput {
         for (AttackKey attack : ATTACK_KEYS) {
             while (attack.key().consumeClick()) {
                 if (isKeyboard(attack.key()) && inGame(mc) && holdsWeapon(player)) {
-                    tryAttack(player, attack.type(), attack, attack.mirrored());
+                    pressAttack(player, attack);
                 }
             }
         }
@@ -327,6 +354,7 @@ public final class ClientInput {
         if (player == null || !player.hasData(ModAttachments.COMBAT)) {
             return;
         }
+        tickGesture(mc, player);
         CombatData data = player.getData(ModAttachments.COMBAT);
         while (FEINT.consumeClick()) {
             if (inGame(mc) && Combat.feint(player, data)) {
@@ -358,6 +386,169 @@ public final class ClientInput {
         return attack.key().getKey().getType() == InputConstants.Type.MOUSE
                 ? heldButtons.contains(attack.key().getKey().getValue())
                 : attack.key().isDown();
+    }
+
+    // ------------------------------------------------------------------ gestures (experimental)
+
+    /** An attack input went down: attack at once, or (gesture attacks on) start reading a gesture. */
+    private static void pressAttack(LocalPlayer player, AttackKey attack) {
+        if (readsGestures(attack)) {
+            gestureKey = attack;
+            gestureYaw = player.getYRot();
+            gesturePitch = player.getXRot();
+            gestureTicks = 0;
+            gestureTurnYaw = 0;
+            gestureTurnPitch = 0;
+            return;
+        }
+        tryAttack(player, attack.type(), attack, sideOf(attack));
+    }
+
+    /** The side an attack key swings from: fixed for the slash keys in TWO_SLASH_KEYS, otherwise chosen per swing. */
+    @Nullable
+    private static Boolean sideOf(AttackKey attack) {
+        if (attack.key() == SLASH_RIGHT_TO_LEFT) {
+            return Config.Client.CONTROL_SCHEME.get() == Config.Client.ControlScheme.TWO_SLASH_KEYS ? Boolean.FALSE : null;
+        }
+        return attack.mirrored();
+    }
+
+    private static boolean readsGestures(AttackKey attack) {
+        if (!Config.Client.GESTURE_ATTACKS.get()) {
+            return false;
+        }
+        return switch (Config.Client.GESTURE_KEYS.get()) {
+            case SLASH -> attack.key() == SLASH_RIGHT_TO_LEFT;
+            case SECOND_SLASH -> attack.key() == SLASH_LEFT_TO_RIGHT;
+            case BOTH -> attack.key() == SLASH_RIGHT_TO_LEFT || attack.key() == SLASH_LEFT_TO_RIGHT;
+        };
+    }
+
+    /** The attack the drag so far asks for, or {@code null} (too small, or that direction is set to NONE). */
+    @Nullable
+    private static Gesture.Result readGesture(LocalPlayer player) {
+        return Gesture.classify(gestureTurnYaw + Mth.wrapDegrees(player.getYRot() - gestureYaw),
+                gestureTurnPitch + player.getXRot() - gesturePitch,
+                Config.Client.GESTURE_THRESHOLD.get().floatValue(), Config.Client.gestureMapping());
+    }
+
+    /** Fires once the drag is big enough; a hold that never moves slashes after the gesture window. */
+    private static void tickGesture(Minecraft mc, LocalPlayer player) {
+        if (gestureKey == null) {
+            return;
+        }
+        if (!inGame(mc) || !holdsWeapon(player)) {
+            gestureKey = null;
+            return;
+        }
+        gestureTicks++;
+        Gesture.Result read = readGesture(player);
+        if (read != null) {
+            fireGesture(player, read);
+        } else if (!isHeld(gestureKey) || gestureTicks >= Config.Client.GESTURE_WINDOW_TICKS.get()) {
+            fireGesture(player, null);
+        }
+    }
+
+    /**
+     * Starts the gesture's attack, or the key's own attack if there was no (usable) drag. Still holding the button
+     * afterwards turns it into a heavy, like any held attack key.
+     */
+    private static void fireGesture(LocalPlayer player, @Nullable Gesture.Result result) {
+        AttackKey source = gestureKey;
+        gestureKey = null;
+        if (result == null) {
+            tryAttack(player, source.type(), source, sideOf(source));
+        } else {
+            tryAttack(player, result.type(), source, result.mirrored());
+        }
+    }
+
+    /**
+     * Lock view: whatever the mouse turned since the last check is added to the gesture and undone, so the view stays
+     * where it was when the button went down. Runs before each tick (so the server never sees the turn) and each frame.
+     *
+     * @return the yaw taken back out
+     */
+    private static float absorbLockedTurn(LocalPlayer player) {
+        if (gestureKey == null || !Config.Client.GESTURE_LOCK_VIEW.get()) {
+            return 0;
+        }
+        float yaw = Mth.wrapDegrees(player.getYRot() - gestureYaw);
+        float pitch = player.getXRot() - gesturePitch;
+        gestureTurnYaw += yaw;
+        gestureTurnPitch += pitch;
+        player.setYRot(gestureYaw);
+        player.setXRot(gesturePitch);
+        player.yRotO = gestureYaw;
+        player.xRotO = gesturePitch;
+        return yaw;
+    }
+
+    /**
+     * Turn cap, client side: during your own windup and release the camera turns no faster than the server traces the
+     * swing ({@code turnCapDegreesPerSecond}), so what you see is what hits. Mouse movement beyond it is dropped.
+     *
+     * @return {@code [yaw, pitch]} taken back out
+     */
+    private static float[] limitTurn(LocalPlayer player) {
+        long now = System.nanoTime();
+        double cap = Config.TURN_CAP.get();
+        Phase phase = player.hasData(ModAttachments.COMBAT) ? player.getData(ModAttachments.COMBAT).machine.phase() : Phase.IDLE;
+        if (cap <= 0 || (phase != Phase.WINDUP && phase != Phase.RELEASE)) {
+            limitYaw = player.getYRot();
+            limitPitch = player.getXRot();
+            limitNanos = now;
+            return NO_TURN;
+        }
+        float step = (float) (cap * Math.min(0.1, (now - limitNanos) / 1e9));
+        float yaw = SwingTurn.approachYaw(limitYaw, player.getYRot(), step);
+        float pitch = SwingTurn.approachPitch(limitPitch, player.getXRot(), step);
+        float[] removed = {Mth.wrapDegrees(player.getYRot() - yaw), player.getXRot() - pitch};
+        player.setYRot(yaw);
+        player.setXRot(pitch);
+        limitYaw = yaw;
+        limitPitch = pitch;
+        limitNanos = now;
+        return removed;
+    }
+
+    /** Chivalry 2 footwork: backpedalling with a weapon is slower than moving forward. */
+    @SubscribeEvent
+    static void onMovementInput(MovementInputUpdateEvent event) {
+        if (event.getInput().forwardImpulse < 0 && event.getEntity() instanceof LocalPlayer player && holdsWeapon(player)) {
+            event.getInput().forwardImpulse *= Config.BACKPEDAL_SPEED.get().floatValue();
+        }
+    }
+
+    @SubscribeEvent
+    static void onClientTickPre(ClientTickEvent.Pre event) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            absorbLockedTurn(player);
+            limitTurn(player);
+        }
+    }
+
+    @SubscribeEvent
+    static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null || event.getCamera().getEntity() != player) {
+            return;
+        }
+        float pitchBefore = player.getXRot();
+        float yaw = absorbLockedTurn(player);
+        float pitch = pitchBefore - player.getXRot();
+        float[] capped = limitTurn(player);
+        yaw += capped[0];
+        pitch += capped[1];
+        if (yaw != 0 || pitch != 0) {
+            // The camera was already set up from the turned view: take the turn back out (front view mirrors pitch).
+            boolean mirrored = mc.options.getCameraType().isMirrored();
+            event.setYaw(event.getYaw() - yaw);
+            event.setPitch(event.getPitch() - (mirrored ? -pitch : pitch));
+        }
     }
 
     // ------------------------------------------------------------------ attacks
@@ -400,10 +591,17 @@ public final class ClientInput {
     }
 
     /**
-     * Side for attacks whose key doesn't dictate one (overheads, stabs, scroll): turning while attacking decides it
-     * (turning right swings left-to-right), otherwise combos alternate sides and fresh attacks keep the last side.
+     * Side for attacks whose key doesn't dictate one (the CHIVALRY slash, overheads, stabs, scroll), as in Chivalry 2:
+     * every swing alternates sides; turning while attacking overrides it (turning right swings left to right), and so
+     * does strafing if {@code sideFromMovement} is on.
      */
     private static boolean chooseSide(LocalPlayer player, CombatData data) {
+        Config.Client.MovementSide fromMovement = Config.Client.SIDE_FROM_MOVEMENT.get();
+        float strafe = player.input.leftImpulse; // > 0 while moving left
+        if (fromMovement != Config.Client.MovementSide.OFF && Math.abs(strafe) > 0.1f) {
+            boolean fromLeft = strafe > 0;
+            return fromMovement == Config.Client.MovementSide.FROM_STRAFE_SIDE ? fromLeft : !fromLeft;
+        }
         float oldest = recentYaw[recentYawIndex];
         float turn = Mth.wrapDegrees(player.getYRot() - oldest);
         if (Math.abs(turn) >= TURN_THRESHOLD) {
@@ -412,7 +610,7 @@ public final class ClientInput {
         if (data.machine.phase() == Phase.RECOVERY && data.machine.isComboAllowed()) {
             return !data.machine.isMirrored();
         }
-        return lastMirrored;
+        return !lastMirrored;
     }
 
     private static boolean inGame(Minecraft mc) {
