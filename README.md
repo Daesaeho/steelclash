@@ -53,6 +53,17 @@ Weapons, mob rosters and mob gear are all data-driven: weapon profiles, item and
 
 Developer docs: [plan](docs/PLAN.md), [findings](docs/spikes.md), [manual test checklists](docs/testing.md).
 
+## Releasing
+
+Every push and pull request is built and tested by GitHub Actions (`build.yml`); the jar is attached to the run as an artifact.
+
+To publish a version:
+
+1. Set `mod_version` in `gradle.properties` and add a `# <version>` section at the top of `CHANGELOG.md`.
+2. Commit, then either push a matching tag (`git tag v0.1.0-beta && git push origin v0.1.0-beta`) or start **Actions > Release > Run workflow**, which creates the tag itself.
+
+`release.yml` then runs every test and creates the GitHub release, with the jar and that version's changelog section. Versions with `alpha` or `beta` in the name are marked as pre-releases. A tag that doesn't match `mod_version` fails the run. Once `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables) and `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN` (secrets) are set, the same run also uploads to Modrinth and CurseForge.
+
 ## License
 
-[MIT](LICENSE). Steel Clash is a fan project inspired by Chivalry 2; it is not affiliated with Torn Banner Studios.
+[Steel Clash License](LICENSE), source available. You may play it anywhere, put it in modpacks and publish forks or modified versions, as long as you credit Daesaeho (forks under a different name). Re-uploading the mod itself, or a copy with only trivial changes, to Modrinth, CurseForge or elsewhere is not allowed. Versions up to commit 027c479 were published under MIT. Steel Clash is a fan project inspired by Chivalry 2; it is not affiliated with Torn Banner Studios.

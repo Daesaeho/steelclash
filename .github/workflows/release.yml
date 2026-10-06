@@ -1,22 +1,73 @@
 name: Release
 
-# Push a tag like v0.1.0-beta to build, test and attach the jar to a GitHub release.
+# Publishes a release when a version tag is pushed, or when started by hand from the Actions tab:
+#   git tag v0.1.0-beta && git push origin v0.1.0-beta
+#   or Actions > Release > Run workflow (tags the chosen branch as v<mod_version> from gradle.properties)
+# The tag must match mod_version in gradle.properties. Every test runs first; the GitHub release gets the mod jar and
+# this version's section of CHANGELOG.md. Versions with "alpha" or "beta" in them are marked as pre-releases.
 # Modrinth / CurseForge uploads run only once their tokens and project ids are configured:
 #   secrets MODRINTH_TOKEN, CURSEFORGE_TOKEN; repository variables MODRINTH_ID, CURSEFORGE_ID.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
-      - uses: actions/setup-java@v4
+      - name: Version and tag
+        id: version
+        run: |
+          version=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
+          tag="v${version}"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            if [ "${GITHUB_REF_NAME}" != "${tag}" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} doesn't match mod_version ${version} in gradle.properties (expected ${tag})"
+              exit 1
+            fi
+          elif git rev-parse -q --verify "refs/tags/${tag}" > /dev/null; then
+            echo "::error::Tag ${tag} already exists: bump mod_version in gradle.properties first"
+            exit 1
+          fi
+          case "${version}" in
+            *alpha*) type=alpha; pre=true ;;
+            *beta*) type=beta; pre=true ;;
+            *) type=release; pre=false ;;
+          esac
+          {
+            echo "version=${version}"
+            echo "tag=${tag}"
+            echo "type=${type}"
+            echo "prerelease=${pre}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          # The "# <version>" section, up to the next "# " heading.
+          awk -v v="# ${{ steps.version.outputs.version }}" '
+            $0 == v { found = 1; next }
+            found && /^# / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::warning::No '# ${{ steps.version.outputs.version }}' section in CHANGELOG.md; using a placeholder"
+            echo "Steel Clash ${{ steps.version.outputs.version }}" > release-notes.md
+          fi
+
+      - uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -32,9 +83,13 @@ jobs:
       - name: GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/*.jar
-          body_path: CHANGELOG.md
-          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Steel Clash ${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          files: build/libs/steelclash-${{ steps.version.outputs.version }}.jar
+          fail_on_unmatched_files: true
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
 
       - name: Modrinth and CurseForge
         if: ${{ vars.MODRINTH_ID != '' || vars.CURSEFORGE_ID != '' }}
@@ -44,9 +99,11 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           curseforge-id: ${{ vars.CURSEFORGE_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files: build/libs/!(*-@(sources|javadoc)).jar
-          changelog-file: CHANGELOG.md
-          version-type: ${{ contains(github.ref_name, 'beta') && 'beta' || 'release' }}
+          files: build/libs/steelclash-${{ steps.version.outputs.version }}.jar
+          name: Steel Clash ${{ steps.version.outputs.version }}
+          version: ${{ steps.version.outputs.version }}
+          changelog-file: release-notes.md
+          version-type: ${{ steps.version.outputs.type }}
           loaders: neoforge
           game-versions: 1.21.1
           java: 21

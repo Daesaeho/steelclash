@@ -12,7 +12,7 @@ Drafts to paste when creating the projects. Nothing here is published automatica
 | Categories | Modrinth: `adventure`, `equipment`, `game-mechanics`, `mobs`. CurseForge: Adventure and RPG, Armor/Tools/Weapons, Mobs. |
 | Environment | Client: required. Server: required. |
 | Loader / versions | NeoForge, 1.21.1 |
-| License | MIT |
+| License | Custom: "Steel Clash License" (Modrinth: choose *Custom* and link the LICENSE file on GitHub; CurseForge: *All Rights Reserved* or *Custom*). Source available; no re-uploads; forks and modpacks allowed with credit. |
 | Dependencies | Player Animation Library (required); Spartan Weaponry Unofficial, Spartan Shields Unofficial (optional); Better Combat, Epic Fight (incompatible) |
 | Release channel | Beta (0.1.0-beta) |
 | Source / issues | Link the GitHub repo once it's public. |

@@ -1,21 +1,39 @@
-MIT License
+Steel Clash License
 
-Copyright (c) 2026 Daesaeho
+Copyright (c) 2026 Daesaeho. All rights reserved, except as granted below.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+"The Mod" means Steel Clash: its source code, assets and the compiled jar files built from them, as published by
+the author at https://github.com/Daesaeho/steelclash and on the author's official mod pages.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. You may, free of charge:
+   a. download, install and play the Mod, on your own computer or on any server, including public and commercial
+      servers;
+   b. read, study and build the source code, and change it for your own use;
+   c. include the unmodified Mod in a modpack, on any platform, provided the modpack credits the author (for example
+      "Steel Clash by Daesaeho") and, where the platform allows it, uses the author's official download instead of a
+      re-uploaded file;
+   d. publish a modified version or a fork of the Mod (a "Derivative"), and use parts of the source code in your own
+      projects, provided that:
+        - you credit the author visibly, on the project page and in the files, as "Based on Steel Clash by
+          Daesaeho" with a link to https://github.com/Daesaeho/steelclash;
+        - the Derivative is clearly marked as modified and uses a different name, and is not presented as the
+          original Mod or as made or endorsed by the author;
+        - this license text is included with it;
+   e. make videos, streams, reviews and screenshots of the Mod, with or without credit (credit is appreciated).
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. You may not, without the author's written permission:
+   a. publish, upload or otherwise distribute the Mod itself, or a copy of it with only trivial changes (for
+      example a different name, icon, description, version number or packaging), as a standalone download on
+      Modrinth, CurseForge or any other website, file host or platform;
+   b. sell the Mod or put it behind a paywall or a link shortener.
+
+3. Contributions (for example pull requests) are made under this same license, and the contributor permits the
+   author to use and relicense them as part of the Mod.
+
+4. The Mod is provided "as is", without warranty of any kind, express or implied, including but not limited to the
+   warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the author
+   be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising
+   from, out of or in connection with the Mod or its use.
+
+Steel Clash is a fan project inspired by Chivalry 2 and is not affiliated with Torn Banner Studios. Minecraft is a
+trademark of Mojang Studios; the Mod is not an official Minecraft product.
