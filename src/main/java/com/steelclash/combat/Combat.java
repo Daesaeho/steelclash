@@ -5,11 +5,12 @@ import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.CombatStateMachine;
-import com.steelclash.core.Phase;
-import com.steelclash.net.CombatStatePayload;
-import com.steelclash.net.StaminaPayload;
 import com.steelclash.core.DamageType;
+import com.steelclash.core.Phase;
 import com.steelclash.entity.ThrownWeapon;
+import com.steelclash.net.CombatStatePayload;
+import com.steelclash.net.ModNetwork;
+import com.steelclash.net.StaminaPayload;
 import com.steelclash.profile.Jabs;
 import com.steelclash.profile.Kicks;
 import com.steelclash.profile.Throws;
@@ -24,7 +25,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 /** Starting, ticking and cancelling attacks and parries. Shared by players and mobs. */
 public final class Combat {
@@ -57,7 +57,14 @@ public final class Combat {
         if (type == AttackType.KICK) {
             timings = Kicks.forEntity(entity).timings();
         } else if (type == AttackType.JAB) {
+            if (data.jabReadyAt > entity.level().getGameTime()) {
+                return false; // just disarmed
+            }
             timings = Jabs.spec().timings();
+            if (Dodge.justDodged(entity, data)) {
+                timings = timings.withWindupUs(timings.windupUs()
+                        + (long) Dodge.JAB_AFTER_DODGE_EXTRA_WINDUP * AttackTimings.TICK_US);
+            }
         } else if (type == AttackType.THROW) {
             if (resolved.isEmpty() || entity.getMainHandItem().isEmpty()) {
                 return false; // throw what you're fighting with
@@ -76,8 +83,7 @@ public final class Combat {
             timings = CombatMath.timings(entity, profile, spec.get());
             variant = Math.floorMod(variant, spec.get().variantCount());
             if (data.machine.isRiposteReady()) {
-                timings = new AttackTimings(Math.round(timings.windup() * profile.riposteWindupMult()),
-                        timings.release(), timings.recovery());
+                timings = timings.withWindupUs(Math.round(timings.windupUs() * (double) profile.riposteWindupMult()));
             }
         }
         if (type == AttackType.KICK || type == AttackType.THROW || type == AttackType.JAB) {
@@ -118,8 +124,22 @@ public final class Combat {
         if (profile.isEmpty()) {
             return false;
         }
-        int heavyWindup = Math.round(data.machine.timings().windup() * profile.get().heavy().windupMult());
-        return data.machine.makeHeavy(heavyWindup);
+        long heavyWindupUs = Math.round(data.machine.timings().windupUs() * (double) profile.get().heavy().windupMult());
+        return data.machine.makeHeavy((int) Math.min(AttackTimings.MAX_US, heavyWindupUs));
+    }
+
+    /**
+     * Feint into a kick or jab (Chivalry 2): during a weapon attack's windup, the kick or jab key drops the attack
+     * (paying the feint) and starts the kick or jab instead.
+     */
+    public static boolean feintInto(LivingEntity entity, CombatData data, AttackType type) {
+        if ((type != AttackType.KICK && type != AttackType.JAB) || data.machine.phase() != Phase.WINDUP
+                || !isWeaponAttack(data.machine.type())) {
+            return false;
+        }
+        data.machine.feint();
+        spend(entity, data, Config.FEINT_STAMINA_COST.get());
+        return start(entity, data, type, 0, false);
     }
 
     public static boolean feint(LivingEntity entity, CombatData data) {
@@ -161,6 +181,9 @@ public final class Combat {
         }
         if (data.machine.phase() == Phase.WINDUP && data.machine.type() == AttackType.JAB) {
             return false; // a jab is committed
+        }
+        if (Dodge.tooSoonToParry(entity, data)) {
+            return false; // mid-dash
         }
         boolean parryCancel = data.machine.phase() == Phase.WINDUP && data.machine.type() != AttackType.KICK;
         if (parryCancel) {
@@ -213,12 +236,17 @@ public final class Combat {
         CombatData data = entity.getData(ModAttachments.COMBAT);
         CombatStateMachine machine = data.machine;
         if (machine.phase() == Phase.WINDUP) {
-            if (type != machine.type() && morph(entity, data, type, variant, mirrored)) {
+            if (feintInto(entity, data, type)) {
+                onAttackStarted(entity, data);
+                sync(entity, data, false);
+            } else if (type != machine.type() && morph(entity, data, type, variant, mirrored)) {
                 sync(entity, data, false);
             }
             return;
         }
-        if (!machine.canStartAttack() && (machine.phase() == Phase.RECOVERY || machine.phase() == Phase.GUARD_RECOVERY)) {
+        if (!machine.canStartAttack() && (machine.phase() == Phase.RECOVERY || machine.phase() == Phase.GUARD_RECOVERY
+                || machine.phase() == Phase.STAGGER)) {
+            // Also buffered while staggered: it starts the moment the stagger ends (Chivalry 2 queued ripostes/counters).
             queue(data, type, variant, mirrored);
             return;
         }
@@ -271,7 +299,9 @@ public final class Combat {
             // Holding a guard drains stamina slowly and keeps it from regenerating (Chivalry 2).
             data.stamina.spend(Config.HELD_BLOCK_DRAIN_PER_SECOND.get().floatValue() / 20f);
         }
-        data.stamina.tick(Config.STAMINA_REGEN_PER_SECOND.get().floatValue() / 20f, Config.STAMINA_REGEN_DELAY_TICKS.get());
+        boolean crouchPause = Config.CROUCH_PAUSES_STAMINA_REGEN.get() && entity.isCrouching();
+        data.stamina.tick(crouchPause ? 0f : Config.STAMINA_REGEN_PER_SECOND.get().floatValue() / 20f,
+                Config.STAMINA_REGEN_DELAY_TICKS.get());
         syncStaminaIfChanged(entity, data);
 
         CombatStateMachine machine = data.machine;
@@ -301,21 +331,28 @@ public final class Combat {
                 return;
             }
             SwingTracer.Result result = SwingTracer.trace(entity, data, spec.get(), sweep);
+            CombatProfiler.count(CombatProfiler.Counter.RELEASES, 1);
+            CombatProfiler.count(CombatProfiler.Counter.CONTACTS, result.hits().size());
+            CombatProfiler.begin(CombatProfiler.Section.RESOLVE);
             boolean landed = false;
-            for (LivingEntity target : result.hits()) {
-                Hit hit = prepareHit(entity, data, target, spec.get());
-                if (LagCompensation.hold(entity, target, hit)) {
-                    continue; // a lagged defender gets time for their parry to arrive; see deliverHeld
+            try {
+                for (LivingEntity target : result.hits()) {
+                    Hit hit = prepareHit(entity, data, target, spec.get());
+                    if (LagCompensation.hold(entity, target, hit)) {
+                        continue; // a lagged defender gets time for their parry to arrive; see deliverHeld
+                    }
+                    float healthBefore = target.getHealth();
+                    deliver(entity, target, hit);
+                    if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
+                        break; // parried, countered or blocked: the swing stops here
+                    }
+                    landed = true;
+                    if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
+                        Feedback.hit(entity, target, machine.isHeavy());
+                    }
                 }
-                float healthBefore = target.getHealth();
-                deliver(entity, target, hit);
-                if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
-                    break; // parried, countered or blocked: the swing stops here
-                }
-                landed = true;
-                if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
-                    Feedback.hit(entity, target, machine.isHeavy());
-                }
+            } finally {
+                CombatProfiler.end(CombatProfiler.Section.RESOLVE);
             }
             if (landed && !machine.isComboAllowed()) {
                 machine.allowCombo();
@@ -483,6 +520,7 @@ public final class Combat {
         }
         if (Config.DAMAGE_TYPES.get() && profile.isPresent()) {
             damageMult *= (float) profile.get().damageTypeOf(spec).multiplierFor(target.getArmorValue());
+            staminaDamage *= (float) profile.get().damageTypeOf(spec).staminaDamageMultiplier();
         }
         // Couched lance: stabs and lunges from a moving mount hit harder the faster it goes.
         if (attacker.getVehicle() != null && (type == AttackType.STAB || type == AttackType.SPECIAL)) {
@@ -534,6 +572,12 @@ public final class Combat {
      */
     private static void applyKick(LivingEntity attacker, LivingEntity target, WeaponProfile.AttackSpec spec) {
         CombatData targetData = target.getData(ModAttachments.COMBAT);
+        CombatStateMachine targetMachine = targetData.machine;
+        boolean striking = targetMachine.phase() == Phase.WINDUP || targetMachine.phase() == Phase.RELEASE;
+        if (striking && targetMachine.type() == AttackType.KICK) {
+            Feedback.kick(target, false); // kicks block kicks: the two cancel out
+            return;
+        }
         boolean guarding = target.isBlocking() || targetData.machine.phase() == Phase.PARRY;
         boolean bash = Kicks.canBash(attacker);
         if (guarding) {
@@ -545,7 +589,10 @@ public final class Combat {
             Feedback.kick(target, true);
         } else {
             Feedback.kick(target, false);
-            stagger(target, targetData, Config.KICK_STAGGER_TICKS.get(), true);
+            if (!striking) {
+                // A kick doesn't interrupt someone already attacking (Chivalry 2): they swing straight through it.
+                stagger(target, targetData, Config.KICK_STAGGER_TICKS.get(), true);
+            }
             DamageSource source = attacker instanceof Player player
                     ? attacker.damageSources().playerAttack(player)
                     : attacker.damageSources().mobAttack(attacker);
@@ -621,7 +668,12 @@ public final class Combat {
         if (entity.level().isClientSide()) {
             return;
         }
-        PacketDistributor.sendToPlayersTrackingEntityAndSelf(entity, CombatStatePayload.of(entity, data, authoritative));
+        CombatProfiler.begin(CombatProfiler.Section.SYNC);
+        try {
+            ModNetwork.sendToTrackingAndSelf(entity, CombatStatePayload.of(entity, data, authoritative));
+        } finally {
+            CombatProfiler.end(CombatProfiler.Section.SYNC);
+        }
     }
 
     private static void syncStaminaIfChanged(LivingEntity entity, CombatData data) {
@@ -631,7 +683,7 @@ public final class Combat {
         float current = data.stamina.current();
         if (Math.abs(current - data.lastSentStamina) >= 1f || (current == data.stamina.max() && data.lastSentStamina != current)) {
             data.lastSentStamina = current;
-            PacketDistributor.sendToPlayer(player, new StaminaPayload(current, data.stamina.max()));
+            ModNetwork.sendTo(player, new StaminaPayload(current, data.stamina.max()));
         }
     }
 }

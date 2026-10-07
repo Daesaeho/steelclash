@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.ai.ClashBrain;
 import com.steelclash.ai.ClashSpacingGoal;
+import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import com.steelclash.profile.WeaponProfiles;
@@ -20,6 +21,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
+import net.neoforged.neoforge.event.entity.living.LivingEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
@@ -47,22 +49,57 @@ public final class CombatEvents {
             }
             return;
         }
-        LagCompensation.record(entity);
+        CombatProfiler.begin(CombatProfiler.Section.LAG);
+        try {
+            LagCompensation.record(entity);
+        } finally {
+            CombatProfiler.end(CombatProfiler.Section.LAG);
+        }
         if (entity instanceof ServerPlayer player) {
             HealthRegen.tick(player, player.getData(ModAttachments.COMBAT));
         }
         if (entity instanceof ServerPlayer player && player.tickCount % 4 == 0) {
             Disarm.tryPickUp(player);
         }
-        if (entity instanceof PathfinderMob pathfinder && !(entity instanceof TrainingDummy) && ClashBrain.manages(pathfinder)) {
-            ClashBrain.tick(pathfinder, pathfinder.getData(ModAttachments.COMBAT));
-        } else if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy) && mob.getTarget() != null) {
-            MobCombat.tickDefense(mob, mob.getData(ModAttachments.COMBAT), MobCombat.parryChance(mob));
+        CombatProfiler.begin(CombatProfiler.Section.AI);
+        try {
+            if (entity instanceof PathfinderMob pathfinder && !(entity instanceof TrainingDummy) && ClashBrain.manages(pathfinder)) {
+                ClashBrain.tick(pathfinder, pathfinder.getData(ModAttachments.COMBAT));
+            } else if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy) && mob.getTarget() != null) {
+                MobCombat.tickDefense(mob, mob.getData(ModAttachments.COMBAT), MobCombat.parryChance(mob));
+            }
+            if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy)) {
+                MobCombat.keepAggressive(mob, mob.getData(ModAttachments.COMBAT));
+            }
+        } finally {
+            CombatProfiler.end(CombatProfiler.Section.AI);
         }
         if (entity.hasData(ModAttachments.COMBAT)) {
-            Combat.tickServer(entity, entity.getData(ModAttachments.COMBAT));
+            CombatProfiler.begin(CombatProfiler.Section.STATE);
+            try {
+                Combat.tickServer(entity, entity.getData(ModAttachments.COMBAT));
+            } finally {
+                CombatProfiler.end(CombatProfiler.Section.STATE);
+            }
         }
     }
+
+    /** A jump costs stamina while fighting (Chivalry 2: 12), and a jump with no stamina left is still allowed. */
+    @SubscribeEvent
+    static void onJump(LivingEvent.LivingJumpEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || Config.JUMP_STAMINA_COST.get() <= 0
+                || !player.hasData(ModAttachments.COMBAT)) {
+            return;
+        }
+        CombatData data = player.getData(ModAttachments.COMBAT);
+        long sinceFight = player.level().getGameTime() - Math.max(data.lastCombatAt, data.lastHurtAt);
+        if (sinceFight <= IN_COMBAT_TICKS) {
+            data.stamina.spend(Config.JUMP_STAMINA_COST.get().floatValue());
+        }
+    }
+
+    /** How long after attacking, guarding or being hurt a player still counts as fighting (for the jump cost). */
+    private static final int IN_COMBAT_TICKS = 100;
 
     /**
      * The damage pipeline for every hit, in order: telegraph interception (vanilla fighter-mob melee becomes a windup),
@@ -84,7 +121,7 @@ public final class CombatEvents {
         }
     }
 
-    /** Flinch: taking real damage during your own windup interrupts it, unless the heavy has hyper armor. */
+    /** Flinch: taking real damage during your own windup interrupts it, unless the heavy has hyper armor or it's a kick. */
     @SubscribeEvent
     static void onDamageTaken(LivingDamageEvent.Post event) {
         LivingEntity entity = event.getEntity();
@@ -93,6 +130,10 @@ public final class CombatEvents {
         }
         if (event.getNewDamage() <= 0 || !entity.hasData(ModAttachments.COMBAT) || Config.FLINCH_TICKS.get() <= 0) {
             return;
+        }
+        SwingContext.Active swing = SwingContext.forAttacker(event.getSource().getEntity());
+        if (swing != null && swing.type() == AttackType.KICK) {
+            return; // a kick doesn't interrupt an attack (Chivalry 2); it only breaks guards and staggers the idle
         }
         CombatData data = entity.getData(ModAttachments.COMBAT);
         if (data.machine.phase() == Phase.WINDUP && !Combat.hasHyperArmor(entity, data)) {
@@ -137,6 +178,7 @@ public final class CombatEvents {
     @SubscribeEvent
     static void onServerTick(ServerTickEvent.Post event) {
         LagCompensation.tick();
+        CombatProfiler.endTick();
     }
 
     /** Two-handed weapons need both hands: no raising a shield in the offhand. */

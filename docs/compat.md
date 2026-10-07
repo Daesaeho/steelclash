@@ -14,7 +14,8 @@ Steel Clash 0.1.0-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **bo
 | Other weapon mods | Works, unmapped | Items without a weapon profile keep vanilla combat. Add a profile through the item data map (below). |
 | Other shield mods | Usually works | Anything that performs `ItemAbilities.SHIELD_BLOCK` gets the basic shield cone and stamina rules. |
 | Mob AI mods | Case by case | Mobs in `#steelclash:fighters` get a spacing goal and the bot brain on top of their goals. Mods that replace a mob's melee goal may fight it; take the mob out of the tag. |
-| Shaders / Sodium-likes | Expected to work | Steel Clash renders through Player Animation Library and vanilla model hooks. One mixin, on `LivingEntityRenderer` (after `setupAnim`), poses mob arms. |
+| Sodium 0.8.13 (NeoForge) | Works | Tested: the dev runs include it (`-PnoSodium` leaves it out), the pose sheet renders identically with it, and all GameTests pass with it loaded. |
+| Shaders / other renderers | Expected to work | Steel Clash renders through Player Animation Library and vanilla model hooks. One mixin, on `LivingEntityRenderer`, poses mob models: after `setupAnim` (arms, legs, head) and at the end of `setupRotations` (whole-body lean and twist). |
 
 ### Weapon archetypes
 
@@ -41,7 +42,7 @@ The common config (`steelclash-common.toml`, the server's copy counts) has secti
 
 | What | Where | Format |
 |---|---|---|
-| Weapon profiles | `data/<ns>/steelclash/weapon_profile/<name>.json` (datapack registry `steelclash:weapon_profile`) | `archetype`, `reference_attack_speed`, `speed_scaling`, `attacks` (`slash`/`overhead`/`stab`, each with `windup`/`release`/`recovery` ticks, `damage` multiplier, `arc` shape and width, optional `variants` keyframes, `max_targets`, `reach_bonus`, `stamina_damage`, `stamina_cost`, `damage_type`), `guard` (`parry_ticks`, `recovery`, `cone`, `stamina_mult`), `riposte_windup_mult`, `heavy`, `hyper_armor_on_heavy`, `damage_type` (`cut`/`blunt`/`chop`), `special`. Copy one of the built-in profiles in `data/steelclash/steelclash/weapon_profile/` as a starting point. |
+| Weapon profiles | `data/<ns>/steelclash/weapon_profile/<name>.json` (datapack registry `steelclash:weapon_profile`) | `archetype`, `reference_attack_speed`, `speed_scaling`, `attacks` (`slash`/`overhead`/`stab`, each with `windup`/`release`/`recovery` in ticks or, more precisely, `windup_ms`/`release_ms`/`recovery_ms` in milliseconds (milliseconds win where both are given, and you can mix them), `damage` multiplier, `arc` shape and width, optional `variants` keyframes, `max_targets`, `reach_bonus`, `stamina_damage`, `stamina_cost`, `damage_type`), `guard` (`parry_ticks`, `recovery`, `cone`, `stamina_mult`), `riposte_windup_mult`, `heavy`, `hyper_armor_on_heavy`, `damage_type` (`cut`/`blunt`/`chop`), `special`. Copy one of the built-in profiles in `data/steelclash/steelclash/weapon_profile/` as a starting point. |
 | Item → profile | `data/<ns>/data_maps/item/weapon_profile.json` | `{"values": {"mymod:big_sword": {"profile": "steelclash:two_handed"}}}` |
 | Which mobs fight | `#steelclash:fighters` (entity tag) | Telegraphed, parryable attacks and the bot brain. |
 | Mob's unarmed profile | `data_maps/entity_type/mob_profile.json` | `{"profile": "steelclash:claw"}` |

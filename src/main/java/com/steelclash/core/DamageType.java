@@ -46,6 +46,15 @@ public enum DamageType {
         return multiplier(ArmorClass.of(armorPoints));
     }
 
+    /** Extra stamina damage against a parry or block: chops +10%, blunt +25% (Chivalry 2 2.4.2). */
+    public double staminaDamageMultiplier() {
+        return switch (this) {
+            case CHOP -> 1.10;
+            case BLUNT -> 1.25;
+            default -> 1.0;
+        };
+    }
+
     public String serializedName() {
         return name().toLowerCase(Locale.ROOT);
     }

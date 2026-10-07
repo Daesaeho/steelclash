@@ -16,8 +16,12 @@ import org.jetbrains.annotations.Nullable;
  * Ripostes and counters carry an <em>active parry</em> for a few ticks: hits from the front are parried while the
  * return attack winds up and swings. An attack started from the guard that is hit within the forgiveness window falls
  * back into the guard ({@link #forgiveIntoParry}).
- * Ticked once per game tick on the server (authoritative) and on clients (for visuals and prediction). During
- * RELEASE each tick yields a {@link Sweep}: the slice of release progress the blade moved through that tick.
+ * Ticked once per game tick on the server (authoritative) and on clients (for visuals and prediction). Time inside
+ * a phase is kept in microseconds and phase boundaries are resolved <em>inside</em> the tick (the architecture plan's
+ * sub-tick timeline): an attack whose windup ends 18 ms into a tick spends the remaining 32 ms of that tick in its
+ * release. During RELEASE each tick yields a {@link Sweep}: the slice of release progress the blade moved through
+ * that tick, including a partial first or last slice. Timings that are whole ticks behave exactly as before.
+ * Guards, staggers, cooldowns and windows are still counted in ticks.
  */
 public final class CombatStateMachine {
     /** Release progress covered in one tick, both in [0, 1]. */
@@ -26,9 +30,10 @@ public final class CombatStateMachine {
 
     private Phase phase = Phase.IDLE;
     private AttackType type = AttackType.SLASH;
-    private AttackTimings timings = new AttackTimings(1, 1, 1);
-    private int phaseTick;
-    private int phaseDuration;
+    private AttackTimings timings = AttackTimings.ofTicks(1, 1, 1);
+    /** Time spent in the current phase and its length, microseconds. */
+    private long phaseElapsedUs;
+    private long phaseDurationUs;
     private int guardRecovery = 1;
     /** Ticks after a parry ends before another can be raised, and how many are left. */
     private int parryCooldown;
@@ -79,18 +84,18 @@ public final class CombatStateMachine {
         this.heavy = false;
         this.morphed = false;
         this.comboAllowed = false;
-        enter(Phase.WINDUP, attackTimings.windup());
+        enterUs(Phase.WINDUP, attackTimings.windupUs());
         return true;
     }
 
-    /** Turns the current windup into a heavy attack with the given total windup length. */
-    public boolean makeHeavy(int heavyWindup) {
+    /** Turns the current windup into a heavy attack with the given total windup length, microseconds. */
+    public boolean makeHeavy(int heavyWindupUs) {
         if (phase != Phase.WINDUP || heavy) {
             return false;
         }
         heavy = true;
-        timings = new AttackTimings(heavyWindup, timings.release(), timings.recovery());
-        phaseDuration = Math.max(phaseTick + 1, heavyWindup);
+        timings = timings.withWindupUs(heavyWindupUs);
+        phaseDurationUs = Math.max(phaseElapsedUs + 1, timings.windupUs());
         return true;
     }
 
@@ -118,7 +123,7 @@ public final class CombatStateMachine {
         timings = newTimings;
         morphed = true;
         heavy = false;
-        enter(Phase.WINDUP, newTimings.windup());
+        enterUs(Phase.WINDUP, newTimings.windupUs());
         return true;
     }
 
@@ -132,7 +137,7 @@ public final class CombatStateMachine {
         if (phase != Phase.WINDUP) {
             return false;
         }
-        phaseDuration = Math.min(phaseDuration, phaseTick + Math.max(1, ticksLeft));
+        phaseDurationUs = Math.min(phaseDurationUs, phaseElapsedUs + (long) Math.max(1, ticksLeft) * AttackTimings.TICK_US);
         activeParryTicks = Math.max(activeParryTicks, activeParry);
         return true;
     }
@@ -168,7 +173,7 @@ public final class CombatStateMachine {
      * @return whether the guard is up again
      */
     public boolean forgiveIntoParry(int windowTicks, int recoveryTicks) {
-        if (!isFromGuard() || phaseTick > windowTicks) {
+        if (!isFromGuard() || phaseTick() > windowTicks) {
             return false;
         }
         fromGuard = false;
@@ -234,7 +239,7 @@ public final class CombatStateMachine {
         if (phase == Phase.PARRY) {
             parriedHits++;
             riposteTicks = Math.max(riposteTicks, Math.max(0, riposteWindow));
-            phaseDuration = Math.max(phaseDuration, phaseTick + PARRY_HOLD_AFTER_HIT);
+            phaseDurationUs = Math.max(phaseDurationUs, phaseElapsedUs + (long) PARRY_HOLD_AFTER_HIT * AttackTimings.TICK_US);
         }
     }
 
@@ -251,9 +256,9 @@ public final class CombatStateMachine {
     }
 
     /**
-     * Advances one tick.
+     * Advances one tick (50 ms), crossing as many phase boundaries as fall inside it.
      *
-     * @return the blade sweep for this tick if the attack is in its release, otherwise {@code null}
+     * @return the blade sweep for this tick if any of it was spent in the release, otherwise {@code null}
      */
     @Nullable
     public Sweep tick() {
@@ -266,49 +271,44 @@ public final class CombatStateMachine {
         if ((phase == Phase.IDLE || phase == Phase.PARRY) && riposteTicks > 0) {
             riposteTicks--;
         }
-        if (phase == Phase.IDLE) {
-            return null;
+        long remaining = AttackTimings.TICK_US;
+        double sweepFrom = -1;
+        double sweepTo = -1;
+        while (remaining > 0 && phase != Phase.IDLE) {
+            long step = Math.min(remaining, Math.max(0, phaseDurationUs - phaseElapsedUs));
+            if (phase == Phase.RELEASE && phaseDurationUs > 0) { // a release is entered at most once per tick
+                sweepFrom = phaseElapsedUs / (double) phaseDurationUs;
+                sweepTo = (phaseElapsedUs + step) / (double) phaseDurationUs;
+            }
+            phaseElapsedUs += step;
+            remaining -= step;
+            if (phaseElapsedUs >= phaseDurationUs) {
+                endPhase();
+            }
         }
-        phaseTick++;
-        boolean done = phaseTick >= phaseDuration;
+        return sweepFrom < 0 ? null : new Sweep(sweepFrom, Math.min(1, sweepTo));
+    }
+
+    /** The current phase has run its course: on to the next. */
+    private void endPhase() {
         switch (phase) {
-            case WINDUP -> {
-                if (done) {
-                    enter(Phase.RELEASE, timings.release());
-                }
-            }
-            case RELEASE -> {
-                Sweep sweep = new Sweep((phaseTick - 1) / (double) phaseDuration,
-                        Math.min(phaseTick, phaseDuration) / (double) phaseDuration);
-                if (done) {
-                    enter(Phase.RECOVERY, timings.recovery());
-                }
-                return sweep;
-            }
-            case PARRY -> {
-                if (done) {
-                    endParry();
-                }
-            }
-            default -> {
-                if (done) {
-                    enter(Phase.IDLE, 0);
-                }
-            }
+            case WINDUP -> enterUs(Phase.RELEASE, timings.releaseUs());
+            case RELEASE -> enterUs(Phase.RECOVERY, timings.recoveryUs());
+            case PARRY -> endParry();
+            default -> enter(Phase.IDLE, 0);
         }
-        return null;
     }
 
     /** Overwrites local state with an authoritative snapshot (client sync). */
-    public void apply(Phase newPhase, AttackType newType, int newPhaseTick, int newPhaseDuration,
+    public void apply(Phase newPhase, AttackType newType, long newElapsedUs, long newDurationUs,
                       AttackTimings newTimings, int newRiposteTicks, boolean newHeavy, boolean newMorphed,
                       boolean newComboAllowed, int newVariant, boolean newMirrored) {
         this.variant = newVariant;
         this.mirrored = newMirrored;
         this.phase = newPhase;
         this.type = newType;
-        this.phaseTick = newPhaseTick;
-        this.phaseDuration = newPhaseDuration;
+        this.phaseElapsedUs = newElapsedUs;
+        this.phaseDurationUs = newDurationUs;
         this.timings = newTimings;
         this.riposteTicks = newRiposteTicks;
         this.heavy = newHeavy;
@@ -326,16 +326,21 @@ public final class CombatStateMachine {
 
     /** Progress through the current phase in [0, 1], interpolated within the tick. */
     public double phaseProgress(float partialTick) {
-        if (phaseDuration <= 0) {
+        if (phaseDurationUs <= 0) {
             return 0;
         }
-        return Math.max(0, Math.min(1, (phaseTick + partialTick) / phaseDuration));
+        return Math.max(0, Math.min(1, (phaseElapsedUs + partialTick * (double) AttackTimings.TICK_US) / phaseDurationUs));
     }
 
-    private void enter(Phase next, int duration) {
+    /** Enters a phase lasting {@code ticks} game ticks. */
+    private void enter(Phase next, long ticks) {
+        enterUs(next, ticks * AttackTimings.TICK_US);
+    }
+
+    private void enterUs(Phase next, long durationUs) {
         phase = next;
-        phaseTick = 0;
-        phaseDuration = duration;
+        phaseElapsedUs = 0;
+        phaseDurationUs = durationUs;
     }
 
     public Phase phase() {
@@ -350,16 +355,31 @@ public final class CombatStateMachine {
         return timings;
     }
 
+    /** Whole ticks spent in the current phase. */
     public int phaseTick() {
-        return phaseTick;
+        return (int) (phaseElapsedUs / AttackTimings.TICK_US);
     }
 
+    /** Length of the current phase in ticks, rounded up. */
     public int phaseDuration() {
-        return phaseDuration;
+        return (int) Math.min(Integer.MAX_VALUE, ceilTicks(phaseDurationUs));
     }
 
+    /** Ticks until the current phase ends, rounded up. */
     public int ticksLeftInPhase() {
-        return Math.max(0, phaseDuration - phaseTick);
+        return (int) Math.min(Integer.MAX_VALUE, ceilTicks(Math.max(0, phaseDurationUs - phaseElapsedUs)));
+    }
+
+    public long phaseElapsedUs() {
+        return phaseElapsedUs;
+    }
+
+    public long phaseDurationUs() {
+        return phaseDurationUs;
+    }
+
+    private static long ceilTicks(long us) {
+        return (us + AttackTimings.TICK_US - 1) / AttackTimings.TICK_US;
     }
 
     public boolean isAttacking() {

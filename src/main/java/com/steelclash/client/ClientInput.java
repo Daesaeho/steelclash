@@ -590,6 +590,11 @@ public final class ClientInput {
         int variant = player.getRandom().nextInt(8); // wrapped to the attack's variant count
         boolean mirrored = forcedMirrored != null ? forcedMirrored : chooseSide(player, data);
         if (phase == Phase.WINDUP) {
+            if (Combat.feintInto(player, data, type)) { // feint into a kick or jab
+                hold = null;
+                PacketDistributor.sendToServer(new AttackInputPayload(type, 0, false));
+                return;
+            }
             if (type != data.machine.type() && Combat.morph(player, data, type, variant, mirrored)) {
                 hold = source;
                 lastMirrored = mirrored;
@@ -605,8 +610,8 @@ public final class ClientInput {
                 return;
             }
             hold = source;
-        } else if (phase == Phase.RECOVERY || phase == Phase.GUARD_RECOVERY) {
-            Combat.queue(data, type, variant, mirrored);
+        } else if (phase == Phase.RECOVERY || phase == Phase.GUARD_RECOVERY || phase == Phase.STAGGER) {
+            Combat.queue(data, type, variant, mirrored); // starts as soon as it can (also out of a stagger)
         } else {
             return;
         }

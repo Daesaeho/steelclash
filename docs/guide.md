@@ -1,6 +1,6 @@
 # Steel Clash player guide
 
-Steel Clash replaces vanilla's click-spam melee with Chivalry 2's rules. Every attack telegraphs, and every attack can be answered. In game, `/steelclash_help` prints a short version of this guide with your own keybinds.
+Steel Clash replaces vanilla's click-spam melee with Chivalry 2's rules. Every attack telegraphs, and every attack can be answered. In game, `/steelclash_help` prints a short version of this guide with your own keybinds. It also appears every time you join a world; turn that off with `helpOnJoin` in the client config.
 
 ## Attacking
 
@@ -46,10 +46,13 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Riposte:** attack after blocking a hit and your attack winds up much faster. While it winds up and swings, it also parries anyone else hitting your front (**active parry**). That's how you fight two at once.
 - **Counter:** answer an attack with the **same** attack type, started just after theirs (from your guard or not). Their attack is parried, yours lands first, and it carries an active parry too.
 - **Parry forgiveness:** attack out of your guard with the wrong type, or too late, in the last tenth of a second before a hit lands, and you still block it instead of getting hit.
-- **Dodge** (Left Alt): a quick dash in the direction you're moving, or backwards when standing still. It costs 12 stamina, has a one-second cooldown, and drops a windup or a raised guard. You can't dodge out of a swing that's already coming down, or while staggered. Dodging a swing makes it whiff, leaving the attacker in recovery.
-- **Jab** (V): a quick, short thrust for a quarter of your weapon's damage. Use it to interrupt a slow heavy up close. It can be parried, and it can't be feinted, made heavy or cancelled. Some mobs jab your heavies too.
+- **Dodge** (Left Alt): a quick dash in the direction you're moving, or backwards when standing still. It costs 12 stamina, has a one-second cooldown, and drops a windup or a raised guard. You can't dodge out of a swing that's already coming down, or while staggered. Dodging a swing makes it whiff, leaving the attacker in recovery. You can't raise your guard until the dash is half done, and a jab straight after a dodge comes out a little slower.
+- **Jab** (V): a quick, short thrust for a quarter of your weapon's damage. Use it to interrupt a slow heavy up close. It can be parried, and it can't be feinted, made heavy or cancelled. Two jabs meeting: the one already out blocks the other. Some mobs jab your heavies too.
+- **Feint into a kick or jab:** during a weapon windup, press kick or jab and the attack turns into it (costs the feint's stamina).
+- **Buffered retaliation:** press an attack while staggered (after being parried, say) and it starts the moment the stagger ends.
 - **Shields:** with a shield in your offhand, the parry key raises it. Shields hold for as long as you keep the key down, but every block costs stamina. Tower shields (Spartan Shields) cover more and stop arrows from the front only.
-- **Kick / shield bash** (Z): can't be parried. It breaks a raised parry or shield and staggers the target. Use it on turtles.
+- **Kick / shield bash** (Z): can't be parried. It breaks a raised parry or shield and staggers an idle target. Use it on turtles. It does **not** interrupt someone who is already attacking (they swing straight through it), and two kicks meeting cancel out.
+- **Counter windows depend on the attacker's weapon:** against fast weapons (daggers) you have slightly less time to counter, against slow ones (greatswords, heavies) slightly more.
 
 ## Footwork
 
@@ -70,6 +73,8 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 All of this is in the `movement` and `health` sections of the common config.
 
 ## Stamina
+
+As in Chivalry 2: **jumping costs 12 stamina while you're fighting** (within 5 seconds of attacking, guarding or being hit; jumping around outside a fight is free), and **crouching pauses stamina regeneration**. Chop weapons drain 10% more stamina from a guard, blunt ones 25% more.
 
 Attacking, whiffing, feinting, parrying and blocking all cost stamina (the bar above your hotbar). It regenerates after a short pause. **Parrying or blocking with no stamina left breaks your guard.** A parry knocks your weapon out of your hand (walk over it to pick it back up); a shield is lowered and goes on cooldown. Mobs follow the same rule, so drain a knight's stamina to disarm him.
 

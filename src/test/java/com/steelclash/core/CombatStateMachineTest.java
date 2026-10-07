@@ -2,6 +2,7 @@ package com.steelclash.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,7 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CombatStateMachineTest {
-    private static final AttackTimings TIMINGS = new AttackTimings(3, 2, 4);
+    private static final AttackTimings TIMINGS = AttackTimings.ofTicks(3, 2, 4);
 
     @Test
     void startsIdle() {
@@ -42,7 +43,7 @@ class CombatStateMachineTest {
     @Test
     void releaseSweepsCoverZeroToOneContiguously() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(2, 4, 1));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(2, 4, 1));
         List<CombatStateMachine.Sweep> sweeps = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             CombatStateMachine.Sweep s = m.tick();
@@ -89,7 +90,7 @@ class CombatStateMachineTest {
     @Test
     void phaseProgressInterpolates() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(4, 1, 1));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(4, 1, 1));
         m.tick();
         assertEquals(0.25, m.phaseProgress(0f), 1e-9);
         assertEquals(0.375, m.phaseProgress(0.5f), 1e-9);
@@ -98,7 +99,7 @@ class CombatStateMachineTest {
     @Test
     void snapshotOverridesState() {
         CombatStateMachine m = new CombatStateMachine();
-        m.apply(Phase.RELEASE, AttackType.STAB, 1, 3, new AttackTimings(5, 3, 5), 0, false, false, false, 0, false);
+        m.apply(Phase.RELEASE, AttackType.STAB, AttackTimings.TICK_US, 3L * AttackTimings.TICK_US, AttackTimings.ofTicks(5, 3, 5), 0, false, false, false, 0, false);
         CombatStateMachine.Sweep s = m.tick();
         assertNotNull(s);
         assertEquals(1 / 3.0, s.from(), 1e-9);
@@ -198,7 +199,7 @@ class CombatStateMachineTest {
     @Test
     void activeParryLastsWhileAttackingAndCanBeExtended() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(10, 5, 5));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(10, 5, 5));
         m.startActiveParry(3);
         assertTrue(m.isActiveParry());
         m.tick();
@@ -269,7 +270,7 @@ class CombatStateMachineTest {
     @Test
     void canParryDuringRecoveryButNotWindupOrRelease() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(2, 2, 5));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(2, 2, 5));
         assertFalse(m.canParry(), "windup");
         m.tick();
         m.tick();
@@ -299,7 +300,7 @@ class CombatStateMachineTest {
     @Test
     void staggerInterruptsRelease() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(1, 4, 1));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 4, 1));
         m.tick();
         assertEquals(Phase.RELEASE, m.phase());
         m.stagger(5, true);
@@ -317,13 +318,13 @@ class CombatStateMachineTest {
     @Test
     void heavyExtendsWindupOnce() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(10, 4, 8));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(10, 4, 8));
         m.tick();
         m.tick();
-        assertTrue(m.makeHeavy(16));
+        assertTrue(m.makeHeavy(16 * AttackTimings.TICK_US));
         assertTrue(m.isHeavy());
         assertEquals(16, m.phaseDuration());
-        assertFalse(m.makeHeavy(30), "only once");
+        assertFalse(m.makeHeavy(30 * AttackTimings.TICK_US), "only once");
         for (int i = 0; i < 13; i++) {
             m.tick();
         }
@@ -337,10 +338,10 @@ class CombatStateMachineTest {
     void feintOnlyDuringWindup() {
         CombatStateMachine m = new CombatStateMachine();
         assertFalse(m.feint());
-        m.startAttack(AttackType.SLASH, new AttackTimings(3, 2, 2));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(3, 2, 2));
         assertTrue(m.feint());
         assertEquals(Phase.IDLE, m.phase());
-        m.startAttack(AttackType.SLASH, new AttackTimings(1, 2, 2));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 2, 2));
         m.tick();
         assertEquals(Phase.RELEASE, m.phase());
         assertFalse(m.feint(), "too late once released");
@@ -349,11 +350,11 @@ class CombatStateMachineTest {
     @Test
     void morphSwitchesTypeOnceAndRestartsWindup() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(10, 4, 8));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(10, 4, 8));
         m.tick();
         m.tick();
         assertFalse(m.morph(AttackType.SLASH, TIMINGS), "same type is not a morph");
-        assertTrue(m.morph(AttackType.STAB, new AttackTimings(7, 3, 6)));
+        assertTrue(m.morph(AttackType.STAB, AttackTimings.ofTicks(7, 3, 6)));
         assertEquals(AttackType.STAB, m.type());
         assertEquals(0, m.phaseTick());
         assertEquals(7, m.phaseDuration());
@@ -364,7 +365,7 @@ class CombatStateMachineTest {
     @Test
     void comboSkipsRecoveryOnlyAfterLandedHit() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(1, 1, 10));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 1, 10));
         m.tick();
         m.tick();
         assertEquals(Phase.RECOVERY, m.phase());
@@ -378,7 +379,7 @@ class CombatStateMachineTest {
     @Test
     void counterShortensWindup() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(12, 4, 8));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(12, 4, 8));
         m.tick();
         assertTrue(m.counter(3));
         assertEquals(4, m.phaseDuration());
@@ -397,5 +398,109 @@ class CombatStateMachineTest {
         m.morph(AttackType.STAB, TIMINGS, 1, false);
         assertEquals(1, m.variant());
         assertFalse(m.isMirrored());
+    }
+
+    // ---- sub-tick timeline (architecture plan section 5)
+
+    @Test
+    void wholeTickTimingsBehaveExactlyAsBefore() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(3, 2, 4));
+        assertNull(m.tick());
+        assertNull(m.tick());
+        assertNull(m.tick(), "the windup ends exactly on the third tick boundary: no sweep that tick");
+        assertEquals(Phase.RELEASE, m.phase());
+        CombatStateMachine.Sweep first = m.tick();
+        assertEquals(0, first.from(), 1e-9);
+        assertEquals(0.5, first.to(), 1e-9);
+    }
+
+    @Test
+    void releaseStartsInsideTheTickWhenTheWindupEndsMidTick() {
+        CombatStateMachine m = new CombatStateMachine();
+        // 120 ms windup: 2 ticks + 20 ms; 100 ms release.
+        m.startAttack(AttackType.SLASH, AttackTimings.ofMillis(120, 100, 200));
+        assertNull(m.tick());
+        assertNull(m.tick());
+        CombatStateMachine.Sweep s = m.tick();
+        assertNotNull(s, "30 ms of this tick are already release");
+        assertEquals(Phase.RELEASE, m.phase());
+        assertEquals(0, s.from(), 1e-9);
+        assertEquals(0.3, s.to(), 1e-9);
+        assertEquals(30_000, m.phaseElapsedUs());
+        assertEquals(0, m.phaseTick(), "30 ms in: no whole tick yet");
+        assertEquals(2, m.ticksLeftInPhase(), "70 ms left: 2 ticks, rounded up");
+    }
+
+    @Test
+    void distinctMillisecondTimingsStayDistinct() {
+        // 350 vs 370 ms: whole ticks would round both to 7.
+        assertNotEquals(releaseTick(350), releaseTick(380), "380 ms releases a tick later than 350 ms");
+        CombatStateMachine a = new CombatStateMachine();
+        CombatStateMachine b = new CombatStateMachine();
+        a.startAttack(AttackType.SLASH, AttackTimings.ofMillis(350, 100, 100));
+        b.startAttack(AttackType.SLASH, AttackTimings.ofMillis(370, 100, 100));
+        for (int i = 0; i < 7; i++) {
+            a.tick();
+            b.tick();
+        }
+        assertEquals(Phase.RELEASE, a.phase());
+        assertEquals(Phase.WINDUP, b.phase(), "370 ms is still winding up after 350 ms");
+        b.tick();
+        assertEquals(Phase.RELEASE, b.phase());
+        assertEquals(30_000, b.phaseElapsedUs(), "and is 30 ms into its release at the end of tick 8");
+    }
+
+    private static int releaseTick(int windupMs) {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, AttackTimings.ofMillis(windupMs, 100, 100));
+        int tick = 0;
+        while (m.phase() == Phase.WINDUP) {
+            m.tick();
+            tick++;
+        }
+        return tick;
+    }
+
+    @Test
+    void aReleaseShorterThanATickIsSweptWholeInOneTick() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.STAB, AttackTimings.ofMillis(60, 20, 100));
+        assertNull(m.tick(), "first 50 ms: windup");
+        CombatStateMachine.Sweep s = m.tick();
+        assertNotNull(s);
+        assertEquals(0, s.from(), 1e-9);
+        assertEquals(1, s.to(), 1e-9, "the whole 20 ms release fits in this tick");
+        assertEquals(Phase.RECOVERY, m.phase());
+        assertEquals(20_000, m.phaseElapsedUs(), "10 ms windup + 20 ms release + 20 ms of recovery");
+    }
+
+    @Test
+    void sweepsCoverTheWholeReleaseExactlyOnce() {
+        for (int releaseMs : new int[]{20, 70, 100, 135, 333}) {
+            CombatStateMachine m = new CombatStateMachine();
+            m.startAttack(AttackType.SLASH, AttackTimings.ofMillis(77, releaseMs, 100));
+            double covered = 0;
+            double last = 0;
+            for (int i = 0; i < 40 && m.isAttacking(); i++) {
+                CombatStateMachine.Sweep s = m.tick();
+                if (s != null) {
+                    assertEquals(last, s.from(), 1e-9, "contiguous, release " + releaseMs);
+                    covered += s.to() - s.from();
+                    last = s.to();
+                }
+            }
+            assertEquals(1, covered, 1e-9, "release " + releaseMs + " ms covered once");
+        }
+    }
+
+    @Test
+    void progressIsInterpolatedInMicroseconds() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, AttackTimings.ofMillis(200, 100, 100));
+        m.tick();
+        assertEquals(0.25, m.phaseProgress(0), 1e-9);
+        assertEquals(0.375, m.phaseProgress(0.5f), 1e-9);
+        assertEquals(3, m.ticksLeftInPhase(), "150 ms left: 3 ticks");
     }
 }

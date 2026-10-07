@@ -13,7 +13,25 @@ import net.minecraft.world.phys.Vec3;
  * charge the stamina and cancel the attack or guard.
  */
 public final class Dodge {
+    /** The dash lasts about this long; a guard can't be raised during the first half of it (Chivalry 2 2.11). */
+    public static final int DASH_TICKS = 6;
+    /** A jab started this soon after a dodge winds up {@link #JAB_AFTER_DODGE_EXTRA_WINDUP} ticks slower (2.9). */
+    public static final int JAB_AFTER_DODGE_TICKS = 10;
+    public static final int JAB_AFTER_DODGE_EXTRA_WINDUP = 3;
+    /** After being disarmed, no dodge or jab for this long (2.5: winning the stamina war earns a free hit). */
+    public static final int POST_DISARM_COOLDOWN_TICKS = 30;
+
     private Dodge() {
+    }
+
+    /** Within the first half of a dash: too soon to raise a guard. */
+    public static boolean tooSoonToParry(LivingEntity entity, CombatData data) {
+        return entity.level().getGameTime() - data.dodgedAt < DASH_TICKS / 2;
+    }
+
+    /** Right after a dodge: jabs come out slower. */
+    public static boolean justDodged(LivingEntity entity, CombatData data) {
+        return entity.level().getGameTime() - data.dodgedAt < JAB_AFTER_DODGE_TICKS;
     }
 
     public static boolean canDodge(LivingEntity entity, CombatData data) {
@@ -36,6 +54,7 @@ public final class Dodge {
         data.queuedAttack = null;
         data.stamina.spend(Config.DODGE_STAMINA_COST.get().floatValue());
         data.dodgeReadyAt = entity.level().getGameTime() + Config.DODGE_COOLDOWN_TICKS.get();
+        data.dodgedAt = entity.level().getGameTime();
         return true;
     }
 

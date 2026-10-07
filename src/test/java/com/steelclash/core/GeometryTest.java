@@ -77,20 +77,20 @@ class GeometryTest {
 
     @Test
     void speedScalingShortensForFasterWielders() {
-        AttackTimings base = new AttackTimings(10, 4, 8);
+        AttackTimings base = AttackTimings.ofTicks(10, 4, 8);
         AttackTimings faster = base.scaledForSpeed(3.2, 1.6, 1.0);
-        assertEquals(new AttackTimings(5, 2, 4), faster);
+        assertEquals(AttackTimings.ofTicks(5, 2, 4), faster);
         AttackTimings slower = base.scaledForSpeed(0.8, 1.6, 1.0);
-        assertEquals(new AttackTimings(20, 8, 16), slower);
+        assertEquals(AttackTimings.ofTicks(20, 8, 16), slower);
         // factor is clamped to [0.5, 2]
-        assertEquals(new AttackTimings(5, 2, 4), base.scaledForSpeed(100, 1.6, 1.0));
+        assertEquals(AttackTimings.ofTicks(5, 2, 4), base.scaledForSpeed(100, 1.6, 1.0));
         // exponent 0 ignores attack speed
         assertEquals(base, base.scaledForSpeed(3.2, 1.6, 0));
     }
 
     @Test
-    void timingsNeverDropBelowOneTick() {
-        assertEquals(new AttackTimings(1, 1, 1), new AttackTimings(0, -5, 0));
+    void timingsNeverDropBelowOneMillisecond() {
+        assertEquals(AttackTimings.ofMillis(1, 1, 1), AttackTimings.ofTicks(0, -5, 0));
     }
 
     @Test

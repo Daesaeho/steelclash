@@ -46,8 +46,14 @@ public class CombatData {
     public boolean jumpAttack;
     /** Game time when the weapon special is off cooldown. */
     public long specialReadyAt;
+    /** {@link MobCombat#keepAggressive} turned this mob's aggressive flag on (and so should turn it off). */
+    public boolean forcedAggressive;
     /** Game time the next dodge is allowed. */
     public long dodgeReadyAt;
+    /** Game time of the last dodge (a guard can't come up until the dash is half done; a jab right after is slower). */
+    public long dodgedAt = Long.MIN_VALUE / 2;
+    /** Game time the next jab is allowed (after a disarm). */
+    public long jabReadyAt;
     /** Weapon unusable until this game time (HOLSTER disarm mode for mobs). */
     public long holsteredUntil;
     public float lastSentStamina = -1;

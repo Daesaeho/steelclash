@@ -17,7 +17,7 @@ import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 
 /**
  * In-game help: {@code /steelclash_help} lists the controls (with the player's actual bindings) and how to practise
- * on the training dummy. The first time a world is joined, a one-line hint points at it.
+ * on the training dummy. It's also shown every time a world is joined, unless {@code helpOnJoin} is off.
  */
 @EventBusSubscriber(modid = SteelClash.MOD_ID, value = Dist.CLIENT)
 public final class Tutorial {
@@ -35,17 +35,15 @@ public final class Tutorial {
         }));
     }
 
-    /** Once per install: say the mod changes combat and where the help is, then turn the hint off. */
+    /** Every world join: the full controls help, and how to turn it off. */
     @SubscribeEvent
     static void onLogIn(ClientPlayerNetworkEvent.LoggingIn event) {
-        if (!Config.Client.TUTORIAL_HINT.get()) {
+        if (!Config.Client.HELP_ON_JOIN.get()) {
             return;
         }
-        event.getPlayer().displayClientMessage(Component.translatable("tutorial.steelclash.hint",
-                key(ClientInput.SLASH_RIGHT_TO_LEFT), key(ClientInput.PARRY),
-                Component.literal("/steelclash_help").withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GRAY), false);
-        Config.Client.TUTORIAL_HINT.set(false);
-        Config.Client.TUTORIAL_HINT.save();
+        showHelp(event.getPlayer());
+        line(event.getPlayer(), Component.translatable("tutorial.steelclash.on_join",
+                Component.literal("/steelclash_help").withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.DARK_GRAY));
     }
 
     static void showHelp(Player player) {

@@ -21,12 +21,16 @@ import net.minecraft.client.Screenshot;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Dev tool for checking animations without anyone at the keyboard. Started with system properties (see build.gradle:
@@ -38,6 +42,9 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
  *     every attack is shot with each and the file names start with the item's path ({@code pose_iron_axe_slash_...});</li>
  *     <li>{@code steelclash.poseSheetDebug}: draw the traced blade too ({@code /steelclash_debug}), to check that the
  *     rendered weapon lies on it;</li>
+ *     <li>{@code steelclash.poseSheetMob}: photograph a mob of this type instead (e.g. {@code minecraft:zombie}),
+ *     summoned without AI three blocks in front of the player holding the item, from the front and the side in first
+ *     person (file names {@code ..._mobfront}, {@code ..._mobside});</li>
  *     <li>{@code steelclash.poseSheetQuit}: close the game when done.</li>
  * </ul>
  * Each pose is frozen on the local player (client-side only) at fixed points of the attack and photographed from
@@ -46,6 +53,9 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 @EventBusSubscriber(modid = SteelClash.MOD_ID, value = Dist.CLIENT)
 public final class PoseSheet {
     private static final String SPEC = System.getProperty("steelclash.poseSheet");
+    private static final String MOB = System.getProperty("steelclash.poseSheetMob");
+    /** Mob shots: the mob's yaw (the player looks along +Z): facing the camera, then side-on. */
+    private static final float[] MOB_YAWS = {180, 90};
     /** Ticks for the world to settle before the first shot, and per shot for the pose to be rendered. */
     private static final int SETTLE_TICKS = 80;
     private static final int SHOT_TICKS = 3;
@@ -54,8 +64,9 @@ public final class PoseSheet {
             {0, 0.5}, {0, 0.95}, {1, 0.0}, {1, 0.35}, {1, 0.7}, {1, 0.99}, {2, 0.3}};
     private static final CameraType[] VIEWS = {CameraType.THIRD_PERSON_BACK, CameraType.THIRD_PERSON_FRONT, CameraType.FIRST_PERSON};
 
+    /** @param mobYaw the photographed mob's yaw, or null to photograph the player */
     private record Shot(String item, AttackType type, boolean heavy, boolean mirrored, Phase phase, double progress, CameraType view,
-                        String name) {
+                        String name, @Nullable Float mobYaw) {
     }
 
     private static List<Shot> shots;
@@ -122,6 +133,11 @@ public final class PoseSheet {
                 "item replace entity @s weapon.mainhand with " + item}) {
             player.connection.sendCommand(command);
         }
+        if (MOB != null) {
+            player.connection.sendCommand("kill @e[type=!player,distance=..12]"); // last run's model, still standing there
+            player.connection.sendCommand("summon " + MOB + " ~ 301 ~3 {NoAI:1b,Silent:1b,PersistenceRequired:1b,"
+                    + "Invulnerable:1b,IsBaby:0b,HandItems:[{id:\"" + item + "\",count:1},{}]}");
+        }
     }
 
     private static List<String> items() {
@@ -153,17 +169,20 @@ public final class PoseSheet {
             boolean heavy = entry.contains("_heavy");
             boolean mirrored = entry.contains("_mirrored");
             String base = entry.replace("_heavy", "").replace("_mirrored", "");
-            for (CameraType view : VIEWS) {
+            for (int v = 0; v < (MOB != null ? MOB_YAWS.length : VIEWS.length); v++) {
+                CameraType view = MOB != null ? CameraType.FIRST_PERSON : VIEWS[v];
+                Float mobYaw = MOB != null ? MOB_YAWS[v] : null;
+                String viewName = MOB != null ? (v == 0 ? "mobfront" : "mobside") : viewName(view);
                 if (base.equals("parry")) {
-                    out.add(new Shot(item, AttackType.SLASH, false, false, Phase.PARRY, 1.0, view, prefix + "parry_" + viewName(view)));
+                    out.add(new Shot(item, AttackType.SLASH, false, false, Phase.PARRY, 1.0, view, prefix + "parry_" + viewName, mobYaw));
                     continue;
                 }
                 AttackType type = AttackType.valueOf(base.toUpperCase(Locale.ROOT));
                 for (double[] point : POINTS) {
                     Phase phase = point[0] == 0 ? Phase.WINDUP : point[0] == 1 ? Phase.RELEASE : Phase.RECOVERY;
                     String name = prefix + String.format(Locale.ROOT, "%s_%s_%03d_%s", entry, phase.name().toLowerCase(Locale.ROOT),
-                            Math.round(point[1] * 100), viewName(view));
-                    out.add(new Shot(item, type, heavy, mirrored, phase, point[1], view, name));
+                            Math.round(point[1] * 100), viewName);
+                    out.add(new Shot(item, type, heavy, mirrored, phase, point[1], view, name, mobYaw));
                 }
             }
         }
@@ -182,8 +201,9 @@ public final class PoseSheet {
             SteelClash.LOGGER.warn("Pose sheet: unknown item {}, using an iron sword", shot.item());
             return Items.IRON_SWORD;
         }));
-        if (!ItemStack.isSameItem(player.getMainHandItem(), item)) {
-            player.getInventory().setItem(player.getInventory().selected, item); // client-side only: just for the picture
+        LivingEntity subject = subject(player, shot);
+        if (!ItemStack.isSameItem(subject.getMainHandItem(), item)) {
+            subject.setItemSlot(EquipmentSlot.MAINHAND, item); // client-side only: just for the picture
         }
         mc.options.hideGui = true;
         mc.options.setCameraType(shot.view());
@@ -199,8 +219,20 @@ public final class PoseSheet {
         player.yHeadRotO = 0;
         player.yBodyRot = 0;
         player.yBodyRotO = 0;
-        CombatData data = player.getData(ModAttachments.COMBAT);
-        Optional<WeaponProfiles.Resolved> resolved = WeaponProfiles.resolve(player.getMainHandItem(), player.level().registryAccess());
+        LivingEntity subject = subject(player, shot);
+        if (shot.mobYaw() != null) {
+            float yaw = shot.mobYaw();
+            subject.setYRot(yaw);
+            subject.yRotO = yaw;
+            subject.setYHeadRot(yaw);
+            subject.yHeadRotO = yaw;
+            subject.yBodyRot = yaw;
+            subject.yBodyRotO = yaw;
+            subject.setXRot(0);
+            subject.xRotO = 0;
+        }
+        CombatData data = subject.getData(ModAttachments.COMBAT);
+        Optional<WeaponProfiles.Resolved> resolved = WeaponProfiles.resolve(subject.getMainHandItem(), player.level().registryAccess());
         if (resolved.isEmpty()) {
             return;
         }
@@ -210,20 +242,28 @@ public final class PoseSheet {
         if (spec.isEmpty()) {
             return;
         }
-        int windup = spec.get().windup();
+        AttackTimings timings = spec.get().timings();
         if (shot.heavy()) {
-            windup = Math.round(windup * profile.heavy().windupMult());
+            timings = timings.withWindupUs(Math.round(timings.windupUs() * (double) profile.heavy().windupMult()));
         }
-        AttackTimings timings = new AttackTimings(windup, spec.get().release(), spec.get().recovery());
-        int duration = switch (shot.phase()) {
-            case WINDUP -> timings.windup();
-            case RELEASE -> timings.release();
-            case RECOVERY -> timings.recovery();
-            default -> 20;
+        long duration = switch (shot.phase()) {
+            case WINDUP -> timings.windupUs();
+            case RELEASE -> timings.releaseUs();
+            case RECOVERY -> timings.recoveryUs();
+            default -> 20L * AttackTimings.TICK_US;
         };
-        int tick = (int) Math.min(duration - 1, Math.round(shot.progress() * duration));
-        data.machine.apply(shot.phase(), shot.type(), Math.max(0, tick), duration, timings, 0, shot.heavy(), false, false, 0,
+        long elapsed = Math.min(duration - 1, Math.round(shot.progress() * duration));
+        data.machine.apply(shot.phase(), shot.type(), Math.max(0, elapsed), duration, timings, 0, shot.heavy(), false, false, 0,
                 shot.mirrored());
+    }
+
+    /** Who is being photographed: the player, or the nearest mob for mob shots (the player if it isn't there yet). */
+    private static LivingEntity subject(LocalPlayer player, Shot shot) {
+        if (shot.mobYaw() == null) {
+            return player;
+        }
+        List<Mob> mobs = player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(6));
+        return mobs.stream().min(java.util.Comparator.comparingDouble(player::distanceToSqr)).<LivingEntity>map(m -> m).orElse(player);
     }
 
     private static void capture(Minecraft mc, Shot shot) {
@@ -234,7 +274,7 @@ public final class PoseSheet {
     private static void finish(Minecraft mc, LocalPlayer player) {
         mc.options.hideGui = false;
         mc.options.setCameraType(CameraType.FIRST_PERSON);
-        player.getData(ModAttachments.COMBAT).machine.apply(Phase.IDLE, AttackType.SLASH, 0, 0, new AttackTimings(1, 1, 1), 0,
+        player.getData(ModAttachments.COMBAT).machine.apply(Phase.IDLE, AttackType.SLASH, 0, 0, AttackTimings.ofTicks(1, 1, 1), 0,
                 false, false, false, 0, false);
         SteelClash.LOGGER.info("Pose sheet: done, {} screenshots in {}", shots.size(), new File(mc.gameDirectory, "screenshots"));
         if (System.getProperty("steelclash.poseSheetQuit") != null) {

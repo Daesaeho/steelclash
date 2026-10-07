@@ -30,7 +30,7 @@ public final class ClientPayloadHandler {
                 data.machine.applyWindows(payload.riposteTicks(), payload.comboAllowed());
                 return;
             }
-            data.machine.apply(payload.phase(), payload.attackType(), payload.phaseTick(), payload.phaseDuration(),
+            data.machine.apply(payload.phase(), payload.attackType(), payload.phaseElapsedUs(), payload.phaseDurationUs(),
                     payload.timings(), payload.riposteTicks(), payload.heavy(), payload.morphed(), payload.comboAllowed(),
                     payload.variant(), payload.mirrored());
             data.profileKey = payload.profile()

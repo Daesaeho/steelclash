@@ -181,6 +181,65 @@ public final class OffenseGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void kickDoesNotInterruptAnAttacker(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 2, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.OVERHEAD);
+        swing(player, AttackType.KICK);
+        check(helper, data(dummy).machine.phase() == Phase.WINDUP, "the dummy swings straight through the kick, phase "
+                + data(dummy).machine.phase());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void kicksBlockKicks(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 2, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.KICK);
+        swing(player, AttackType.KICK);
+        check(helper, !isHurt(dummy) && data(dummy).machine.phase() == Phase.WINDUP, "two kicks cancel out");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void jabsBlockJabs(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.JAB);
+        swing(player, AttackType.JAB);
+        check(helper, !isHurt(dummy), "the dummy's jab blocks the incoming jab");
+        check(helper, data(player).machine.phase() == Phase.STAGGER, "the blocked jabber reels back");
+        check(helper, data(dummy).machine.type() == AttackType.JAB && data(dummy).machine.isAttacking(), "the dummy's jab carries on");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void feintIntoAKickOrJab(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(player);
+        Combat.requestAttack(player, AttackType.SLASH);
+        Combat.requestAttack(player, AttackType.KICK);
+        check(helper, d.machine.phase() == Phase.WINDUP && d.machine.type() == AttackType.KICK, "the slash became a kick");
+        d.machine.cancel();
+        Combat.requestAttack(player, AttackType.OVERHEAD);
+        Combat.requestAttack(player, AttackType.JAB);
+        check(helper, d.machine.type() == AttackType.JAB, "the overhead became a jab");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void attackPressedWhileStaggeredStartsWhenItEnds(GameTestHelper helper) {
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        CombatData d = data(dummy);
+        Combat.stagger(dummy, d, 5, true);
+        Combat.requestAttack(dummy, AttackType.SLASH);
+        check(helper, d.queuedAttack == AttackType.SLASH, "the attack is buffered during the stagger");
+        advance(dummy, 6);
+        check(helper, d.machine.phase() == Phase.WINDUP, "and starts as soon as it ends, phase " + d.machine.phase());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void heavyHyperArmorIgnoresFlinch(GameTestHelper helper) {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);

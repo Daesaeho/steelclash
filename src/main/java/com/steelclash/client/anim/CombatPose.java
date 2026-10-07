@@ -121,21 +121,33 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
      * @param twistScale blade twist setting (1 full, 0 off, -1 reversed)
      */
     public WeaponRig rig(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis) {
-        double[] body = offsets.getOrDefault("body", NO_OFFSET);
-        double[] weightedBody = {body[0] * weight, body[1] * weight, body[2] * weight};
-        return WeaponRig.solve(aimYaw, aimPitch, gripDegrees, bladeTwist * twistScale, twistAxis, weightedBody, WRIST_RELAX, gripGap);
+        return WeaponRig.solve(aimYaw, aimPitch, gripDegrees, bladeTwist * twistScale, twistAxis, bodyDegrees(), WRIST_RELAX, gripGap);
     }
 
-    /** Weapon arm rotation (radians) that puts an un-rotated held blade on the arc (mobs). */
-    public double[] weaponArmForFixedItem() {
-        return ArmAim.aimArmForBlade(aimYaw, aimPitch);
+
+    /** The clip's whole-body rotation for this frame, degrees {x, y, z}, already weighted. */
+    public double[] bodyDegrees() {
+        double[] body = offsets.getOrDefault("body", NO_OFFSET);
+        return new double[]{body[0] * weight, body[1] * weight, body[2] * weight};
+    }
+
+    /**
+     * Weapon arm for mobs (the held item can't be rotated): the blade on the arc, with the arm countering the
+     * whole-body rotation the renderer applies (see {@code LivingEntityRendererMixin}), so the twist doesn't swing the
+     * blade off the traced arc.
+     */
+    public double[] mobWeaponArm() {
+        double[] arm = ArmAim.aimArmForBlade(aimYaw, aimPitch);
+        Mat3 inBody = WeaponRig.bodyRotation(bodyDegrees()).transpose().mul(Mat3.zyx(arm[0], arm[1], arm[2]));
+        return inBody.toZyx();
     }
 
     /** Off arm reaching for the grip just behind the weapon hand (mobs; players get it from {@link #rig}). */
     public double[] gripArm(double[] weaponArm) {
         Vec hand = WeaponRig.RIGHT_SHOULDER.add(Mat3.zyx(weaponArm[0], weaponArm[1], weaponArm[2])
                 .apply(new Vec(0, WeaponRig.HAND_DISTANCE, 0)));
-        Vec grip = hand.subtract(ArmAim.modelDirection(aimYaw, aimPitch).scale(gripGap));
+        Vec bladeInBody = WeaponRig.bodyRotation(bodyDegrees()).transpose().apply(ArmAim.modelDirection(aimYaw, aimPitch));
+        Vec grip = hand.subtract(bladeInBody.scale(gripGap));
         return WeaponRig.reach(WeaponRig.LEFT_SHOULDER, grip);
     }
 }

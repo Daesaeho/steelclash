@@ -22,7 +22,7 @@ class TimingBarTest {
     @Test
     void holdingChargesTowardHeavy() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(10, 4, 8));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(10, 4, 8));
         m.tick();
         TimingBar b = bar(m, true);
         assertNotNull(b);
@@ -34,7 +34,7 @@ class TimingBarTest {
     @Test
     void releasedEarlyShowsALightWindup() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(10, 4, 8));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(10, 4, 8));
         m.tick();
         TimingBar b = bar(m, false);
         assertEquals(TimingBar.Kind.WINDUP, b.kind());
@@ -44,7 +44,7 @@ class TimingBarTest {
     @Test
     void heavyWindupHasItsOwnKind() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(10, 4, 8));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(10, 4, 8));
         m.makeHeavy(16);
         assertEquals(TimingBar.Kind.HEAVY_WINDUP, bar(m, true).kind(), "once heavy, the charge is done");
     }
@@ -52,7 +52,7 @@ class TimingBarTest {
     @Test
     void recoveryDrainsAndTurnsIntoComboAfterAHit() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, new AttackTimings(1, 1, 4));
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 1, 4));
         m.tick();
         m.tick();
         assertEquals(Phase.RECOVERY, m.phase());
@@ -81,7 +81,7 @@ class TimingBarTest {
     @Test
     void kicksNeverChargeHeavy() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.KICK, new AttackTimings(5, 3, 10));
+        m.startAttack(AttackType.KICK, AttackTimings.ofTicks(5, 3, 10));
         assertEquals(TimingBar.Kind.WINDUP, bar(m, true).kind());
     }
 }

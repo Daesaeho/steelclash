@@ -7,6 +7,9 @@ import static com.steelclash.gametest.TestSupport.dummy;
 import static com.steelclash.gametest.TestSupport.face;
 
 import com.steelclash.SteelClash;
+import net.minecraft.world.entity.Mob;
+import com.steelclash.combat.MobCombat;
+import com.steelclash.combat.Combat;
 import com.steelclash.ai.ClashSpacingGoal;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackType;
@@ -97,5 +100,23 @@ public final class BotGameTests {
         zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET)); // no burning in daylight
         zombie.setTarget(target);
         return zombie;
+    }
+
+    /** Vindicators cross their arms (hiding them and the axe) unless flagged aggressive; fighters stay flagged while fighting. */
+    @GameTest(template = ARENA)
+    public static void fightingMobsStayInTheirFightingStance(GameTestHelper helper) {
+        Mob vindicator = helper.spawnWithNoFreeWill(EntityType.VINDICATOR, 2, 2, 4);
+        TrainingDummy target = dummy(helper, 5, 4, FACING_NEGATIVE_X);
+        vindicator.setAggressive(false);
+        vindicator.setTarget(target);
+        MobCombat.keepAggressive(vindicator, data(vindicator));
+        check(helper, vindicator.isAggressive(), "a vindicator with a target close by is aggressive (arms uncrossed)");
+        vindicator.setTarget(null);
+        MobCombat.keepAggressive(vindicator, data(vindicator));
+        check(helper, !vindicator.isAggressive(), "and calms down again once the fight is over");
+        Combat.requestAttack(vindicator, AttackType.SLASH);
+        MobCombat.keepAggressive(vindicator, data(vindicator));
+        check(helper, vindicator.isAggressive(), "swinging always counts as fighting");
+        helper.succeed();
     }
 }

@@ -129,18 +129,21 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
     }
 
     /**
-     * One attack of a profile. Timings are in ticks at {@link #referenceAttackSpeed}.
+     * One attack of a profile, timed at {@link #referenceAttackSpeed}: in ticks ({@code windup}, {@code release},
+     * {@code recovery}) or, more precisely, in milliseconds ({@code windup_ms}, {@code release_ms}, {@code recovery_ms}),
+     * which win where both are given. Milliseconds keep weapons apart that whole ticks would merge (370 vs 350 ms).
      *
      * @param staminaDamage stamina the defender loses when this attack is parried or shield-blocked
      * @param staminaCost   stamina the attacker loses when the attack hits nothing (whiff)
      */
     public record AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
                              float reachBonus, float staminaDamage, float staminaCost, List<ArcSpec> variants,
-                             Optional<DamageType> damageType) {
+                             Optional<DamageType> damageType, Optional<Integer> windupMs, Optional<Integer> releaseMs,
+                             Optional<Integer> recoveryMs) {
         public AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
                           float reachBonus, float staminaDamage, float staminaCost) {
             this(windup, release, recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, List.of(),
-                    Optional.empty());
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
         }
 
         /** How many different arcs this attack can be swung along (the main arc plus its variants). */
@@ -153,22 +156,41 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
             return variant > 0 && variant <= variants.size() ? variants.get(variant - 1) : arc;
         }
 
-        public static final Codec<AttackSpec> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.intRange(1, AttackTimings.MAX_TICKS).fieldOf("windup").forGetter(AttackSpec::windup),
-                Codec.intRange(1, AttackTimings.MAX_TICKS).fieldOf("release").forGetter(AttackSpec::release),
-                Codec.intRange(1, AttackTimings.MAX_TICKS).fieldOf("recovery").forGetter(AttackSpec::recovery),
+        /** A phase length in milliseconds (1 ms to 10 s). Declared before the codec that uses it. */
+        private static final Codec<Integer> MS_CODEC = Codec.intRange(1, AttackTimings.MAX_US / 1000);
+
+        private static final Codec<AttackSpec> FIELDS = RecordCodecBuilder.create(i -> i.group(
+                Codec.intRange(0, AttackTimings.MAX_TICKS).optionalFieldOf("windup", 0).forGetter(AttackSpec::windup),
+                Codec.intRange(0, AttackTimings.MAX_TICKS).optionalFieldOf("release", 0).forGetter(AttackSpec::release),
+                Codec.intRange(0, AttackTimings.MAX_TICKS).optionalFieldOf("recovery", 0).forGetter(AttackSpec::recovery),
                 Codec.floatRange(0f, 100f).optionalFieldOf("damage", 1f).forGetter(AttackSpec::damage),
-                ArcSpec.CODEC.fieldOf("arc").forGetter(AttackSpec::arc),
+                ArcSpec.CODEC.fieldOf("arc").forGetter((AttackSpec spec) -> spec.arc()),
                 Codec.intRange(1, 64).optionalFieldOf("max_targets", 1).forGetter(AttackSpec::maxTargets),
                 Codec.floatRange(-3f, 5f).optionalFieldOf("reach_bonus", 0f).forGetter(AttackSpec::reachBonus),
                 Codec.floatRange(0f, 1000f).optionalFieldOf("stamina_damage", 15f).forGetter(AttackSpec::staminaDamage),
                 Codec.floatRange(0f, 1000f).optionalFieldOf("stamina_cost", 6f).forGetter(AttackSpec::staminaCost),
                 ArcSpec.CODEC.listOf().optionalFieldOf("variants", List.of()).forGetter(AttackSpec::variants),
-                DAMAGE_TYPE_CODEC.optionalFieldOf("damage_type").forGetter(AttackSpec::damageType)
+                DAMAGE_TYPE_CODEC.optionalFieldOf("damage_type").forGetter(AttackSpec::damageType),
+                MS_CODEC.optionalFieldOf("windup_ms").forGetter(AttackSpec::windupMs),
+                MS_CODEC.optionalFieldOf("release_ms").forGetter(AttackSpec::releaseMs),
+                MS_CODEC.optionalFieldOf("recovery_ms").forGetter(AttackSpec::recoveryMs)
         ).apply(i, AttackSpec::new));
+        public static final Codec<AttackSpec> CODEC = FIELDS.validate(AttackSpec::checkTimed);
 
+        private static DataResult<AttackSpec> checkTimed(AttackSpec spec) {
+            if ((spec.windup <= 0 && spec.windupMs.isEmpty()) || (spec.release <= 0 && spec.releaseMs.isEmpty())
+                    || (spec.recovery <= 0 && spec.recoveryMs.isEmpty())) {
+                return DataResult.error(() -> "attack needs windup, release and recovery (ticks, or *_ms in milliseconds)");
+            }
+            return DataResult.success(spec);
+        }
+
+        /** Phase lengths in microseconds: milliseconds where given, otherwise ticks. */
         public AttackTimings timings() {
-            return new AttackTimings(windup, release, recovery);
+            return new AttackTimings(
+                    windupMs.map(ms -> ms * 1000).orElse(windup * AttackTimings.TICK_US),
+                    releaseMs.map(ms -> ms * 1000).orElse(release * AttackTimings.TICK_US),
+                    recoveryMs.map(ms -> ms * 1000).orElse(recovery * AttackTimings.TICK_US));
         }
     }
 

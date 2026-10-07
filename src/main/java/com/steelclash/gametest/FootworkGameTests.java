@@ -13,11 +13,15 @@ import static com.steelclash.gametest.TestSupport.swordsman;
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
+import com.steelclash.combat.Disarm;
 import com.steelclash.combat.Dodge;
 import com.steelclash.combat.HealthRegen;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingEvent;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Pose;
@@ -150,6 +154,61 @@ public final class FootworkGameTests {
             check(helper, left.x > 0 && Math.abs(left.z) < 1e-6, "strafing left at yaw 0 goes toward +X, got " + left);
             helper.succeed();
         });
+    }
+
+    @GameTest(template = ARENA, timeoutTicks = 60)
+    public static void dodgeRulesAndDisarmCooldowns(GameTestHelper helper) {
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        helper.runAfterDelay(5, () -> {
+            CombatData d = data(dummy);
+            long now = helper.getLevel().getGameTime();
+            Combat.start(dummy, d, AttackType.JAB);
+            int plainJab = d.machine.timings().windup();
+            d.machine.cancel();
+            check(helper, Dodge.perform(dummy, d), "dodge");
+            check(helper, !Combat.startParry(dummy, d), "no guard in the first half of the dash");
+            Combat.start(dummy, d, AttackType.JAB);
+            check(helper, d.machine.timings().windup() > plainJab, "a jab right after a dodge is slower");
+            d.machine.cancel();
+            d.dodgedAt = now - Dodge.DASH_TICKS;
+            check(helper, Combat.startParry(dummy, d), "the guard comes up once the dash is half done");
+            d.machine.cancel();
+            d.dodgeReadyAt = 0;
+            d.stamina.set(d.stamina.max());
+            Disarm.disarm(dummy);
+            check(helper, !Dodge.canDodge(dummy, d), "no dodge straight after being disarmed");
+            check(helper, !Combat.start(dummy, d, AttackType.JAB), "no jab either");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = ARENA)
+    public static void crouchingPausesStaminaRegeneration(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(player);
+        d.stamina.set(50);
+        player.setPose(Pose.CROUCHING);
+        advance(player, 60);
+        check(helper, d.stamina.current() == 50, "no regeneration while crouched, stamina " + d.stamina.current());
+        player.setPose(Pose.STANDING);
+        advance(player, 60);
+        check(helper, d.stamina.current() > 50, "regenerates again standing up");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void jumpingCostsStaminaOnlyWhileFighting(GameTestHelper helper) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        CombatData d = data(player);
+        long now = helper.getLevel().getGameTime();
+        d.lastCombatAt = now - 400; // a while since the last fight
+        NeoForge.EVENT_BUS.post(new LivingEvent.LivingJumpEvent(player));
+        check(helper, d.stamina.current() == d.stamina.max(), "jumping outside a fight is free");
+        d.lastCombatAt = now;
+        NeoForge.EVENT_BUS.post(new LivingEvent.LivingJumpEvent(player));
+        float spent = d.stamina.max() - d.stamina.current();
+        check(helper, Math.abs(spent - 12) < 0.01, "a jump mid-fight costs 12 stamina, cost " + spent);
+        helper.succeed();
     }
 
     /** A fixed variant so the arc height is known: variant 0 passes level through the middle of the swing. */

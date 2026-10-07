@@ -23,4 +23,17 @@ public final class Guard {
         double cos = (look.x() * dx + look.z() * dz) / len;
         return cos >= Math.cos(Math.toRadians(Math.min(360, coneDegrees) / 2));
     }
+
+    /** Windup (microseconds) of the weapon the base counter window is tuned for: the sword's slash, 500 ms. */
+    public static final int COUNTER_REFERENCE_WINDUP_US = 10 * AttackTimings.TICK_US;
+
+    /**
+     * Counter window against an attack with the given windup: faster weapons give a slightly smaller window, slower
+     * ones a slightly bigger one (Chivalry 2: "counter windows are variable depending on weapon speed"), within
+     * 70%–130% of the base.
+     */
+    public static int counterWindow(int baseTicks, int attackerWindupUs) {
+        double scale = Math.max(0.7, Math.min(1.3, attackerWindupUs / (double) COUNTER_REFERENCE_WINDUP_US));
+        return Math.max(1, (int) Math.round(baseTicks * scale));
+    }
 }

@@ -58,6 +58,13 @@ public final class Defense {
                 attacker.getX(), attacker.getZ(), guard.get().cone())) {
             return false;
         }
+        if (swing != null && swing.type() == AttackType.JAB && data.machine.type() == AttackType.JAB
+                && (data.machine.phase() == Phase.WINDUP || data.machine.phase() == Phase.RELEASE)) {
+            // Jabs block jabs (Chivalry 2): the incoming one is turned aside, the defender's carries on.
+            Feedback.parry(defender, attacker);
+            Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get() / 2, true);
+            return true;
+        }
         if (data.machine.isActiveParry()) {
             activeParry(defender, data, attacker, swing, guard.get());
             return true;
@@ -92,8 +99,11 @@ public final class Defense {
      */
     private static boolean tryCounter(LivingEntity defender, CombatData data, SwingContext.Active swing) {
         if (data.machine.phase() != Phase.WINDUP || data.machine.type() != swing.type()
-                || data.machine.phaseTick() > Config.COUNTER_WINDOW_TICKS.get()
-                || !(swing.attacker() instanceof LivingEntity attacker)) {
+                || !Combat.isWeaponAttack(swing.type()) || !(swing.attacker() instanceof LivingEntity attacker)) {
+            return false;
+        }
+        int attackerWindupUs = attacker.getData(ModAttachments.COMBAT).machine.timings().windupUs();
+        if (data.machine.phaseTick() > Guard.counterWindow(Config.COUNTER_WINDOW_TICKS.get(), attackerWindupUs)) {
             return false;
         }
         Optional<WeaponProfile.GuardSpec> guard = Combat.currentProfile(defender, data).flatMap(WeaponProfile::guard);

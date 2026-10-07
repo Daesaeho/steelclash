@@ -171,7 +171,7 @@ Checked on pose sheets (slash, mirrored slash, overhead, stab, parry; all three 
 
   Per-archetype styles vary twist, lean, step, overhead rear-back and chop, the thrust's side-on turn and lunge, and the off-arm pose. Examples: daggers are compact and leaning in; axes and blunt weapons swing wide and chop deep; rapiers turn side-on for long lunges with the off arm hanging back; spears lunge far. Kick, parry, stagger, special and throw clips are unchanged. `default` and `claw` (mobs, unmapped items) are unchanged.
 - **Grip width:** `grip_gap` in an animation file sets the pixels between the hands on a two-handed grip (default 2.5). Staff 8, polearm 7, spear 6, two_handed 3.5, so long weapons are held with the hands spread along the shaft (`AnimationSet.gripGap`, checked by `AnimationFilesTest`).
-- **Mobs take half the body turn** (`MobCombatPoses.MOB_BODY_SHARE`): a mob's body part is only the torso, whose arms and head don't turn with it, so the bigger twists would otherwise pull the torso away from its shoulders. This hasn't been checked on screen: the pose sheet only photographs the player.
+- ~~Mobs take half the body turn~~: replaced the same day, see "Mob whole-body rotation" below.
 - **Pose sheet:** it now takes several items (`-PposeSheetItem=a,b,c`, file names prefixed with the item's path) and warns about unknown ids instead of quietly using a sword. Spartan Weaponry's namespace is `spartan_weaponry_unofficial`.
 - **Checked on pose sheets:** iron axe, mace, trident, and the Spartan dagger, rapier, greatsword, halberd, quarterstaff and spear, for slash, overhead and stab, in all three views.
 
@@ -188,4 +188,74 @@ Sourced from `C:\dev\Chivalry_2_Combat_System_Maximum_Detail_Report_v2-1.md`. It
   - The fixed 350 ms *Holding* phase (§1.2 [D]) would add latency to every attack. The report itself calls it partly a measurement convention, and our windups are already tuned to feel right.
   - *Thwack* recovery (§1.8) is not done either.
   - Combo-replaces-recovery already exists.
-  - Variable counter windows by weapon speed (§4.4 [O]) are a possible follow-up.
+  - Variable counter windows were a possible follow-up; they're done now (part 2, below).
+
+### Part 2 (2026-10-07)
+- **Kicks** (§2.8, §5.1 [O]): a kick no longer interrupts a target that is winding up or releasing an attack. It still hurts and knocks back, but there's no stagger. The kick's damage is also exempt from the general flinch rule. Kicks block kicks [O]: a kick landing on someone mid-kick does nothing.
+- **Jabs block jabs** [O]: a jab hitting someone whose own jab is winding up or out is turned aside. The jabber reels back for half a parried stagger; the defender's jab carries on.
+- **Feint into a kick or jab** (§2.4 [O]): the kick or jab key during a weapon windup drops the attack, paying the feint's stamina, and starts the kick or jab. Predicted on the client like a morph.
+- **Variable counter windows** (§4.4 [O]): `Guard.counterWindow` scales `counterWindowTicks` by the attacker's actual windup relative to the sword's (10 ticks), clamped to 70–130%. A dagger slash gets 5 ticks, a sword 7, a greatsword 9.
+- **Dodge rules:** no guard during the first half of the 6-tick dash (2.11 [O]); a jab within 10 ticks of a dodge winds up 3 ticks slower (2.9 [O]); no dodge or jab for 30 ticks after being disarmed (2.5 [O]). The tick values are ours: the patches give no numbers.
+- **Queued retaliation** (§4.9 [O]): attack input during a stagger is buffered and starts the moment the stagger ends, on both the server and the client.
+- **Stamina** (§14 [O]/[W]): a jump costs 12 while fighting (within 100 ticks of attacking, guarding or being hit, so ordinary jumping stays free), crouching pauses regeneration, and stamina damage against a guard is +10% for chop and +25% for blunt (2.4.2 [O]).
+- **Fake players:** server-to-client packets now go only to connections that negotiated our channels (`ModNetwork.sendTo`). A GameTest with a mock server player crashed the server when the mod synced stamina to it, and other mods' fake players (machines) would hit the same crash.
+- **Still not done:**
+  - *Holding*, *Thwack* (no numbers in the report).
+  - Counter-feints already work through the existing morph.
+  - Spear/lance input families.
+  - Katar exceptions.
+  - No dodging during late counter windups (2.6).
+
+## Mob whole-body rotation (2026-10-07)
+A playtester saw zombies with "a weird skin". A screenshot showed the cause: during an attack the zombie's torso (the blue shirt) swung far away from its own head, arms and legs.
+- **Cause:** for players, a clip's `body` channel is the whole-model rotation (Player Animation Library rotates the pose stack). For mobs, `MobCombatPoses` rotated the `body` model part instead, which is only the torso cuboid, pivoting at the neck. Pitch swung its bottom out and yaw twisted it off the shoulders. Step E's bigger twists made it obvious; it was there before at smaller angles.
+- **Fix:** the mixin now also injects at the end of `LivingEntityRenderer#setupRotations` and applies the clip's body rotation to the pose stack exactly as PAL does for players (Z, Y, X about a point 0.75 blocks up). The weapon arm counters it like the player's rig does (`CombatPose.mobWeaponArm`, `bodyRotation`ᵀ times the arm), so the blade stays on the traced arc. The two-handed grip uses the blade direction in the rotated body frame. The legs take back half the turn (hip lag, as for players). The torso part only gets the clip's `torso` channel.
+- **Checked** with a new pose-sheet mode, `-PposeSheetMob=minecraft:husk` (a husk, because zombies burn at noon on the stage). It summons the mob without AI three blocks in front of the player, holding the item, clears last run's model first, and photographs it from the front and the side in first person. Slash, overhead and stab, wind-up to follow-through: the husk stays in one piece, leaning and twisting as a whole.
+- **Same day:** fighters are kept flagged aggressive while fighting (`MobCombat.keepAggressive`). Vindicators otherwise cross their arms, hiding the real arms and the axe, so their swings were invisible. As a fallback, illagers show their real arms whenever a combat pose is active.
+
+## Sub-tick combat timing (architecture plan §5, 2026-10-07)
+Attack phases are now timed in integer **microseconds** and resolved **inside** each 50 ms server tick, as the architecture report recommends. Before this, every phase was a whole number of ticks, so different weapon timings collapsed together: 330, 350 and 370 ms all became 7 ticks.
+- **`AttackTimings`** holds `windupUs`/`releaseUs`/`recoveryUs`, from 1 ms up to 10 s. `ofTicks`/`ofMillis` build it. The tick accessors (`windup()` and friends, rounded) remain for code that thinks in ticks: AI reaction times and HUDs.
+- **`CombatStateMachine.tick()`** spends 50 000 µs per tick, crossing as many phase boundaries as fall inside it. A windup ending 20 ms into a tick spends the remaining 30 ms in the release. The tick's `Sweep` covers exactly the release progress inside the tick, including a partial first or last slice, or the whole release when it is shorter than a tick. The blade tracer already swept intervals (`from`..`to`), so contact is sub-tick with no second game loop. `phaseTick()` rounds down, `phaseDuration()`/`ticksLeftInPhase()` round up.
+- **Unchanged:** guards, staggers, cooldowns, riposte and active-parry windows are still counted in ticks. Their boundaries fall on tick edges, so they behave as before. **Timings in whole ticks behave exactly as before** (unit-tested), which is why every existing test still passes unchanged.
+- **Now exact instead of rounded to ticks:** attack-speed scaling (Spartan Weaponry's lighter or heavier variants now differ by milliseconds), heavy windups, riposte windups, the slower jab after a dodge, and the counter window's weapon-speed scaling.
+- **Profiles:** `windup_ms`, `release_ms` and `recovery_ms` sit beside the tick fields. Milliseconds win, the two can be mixed, and an attack missing any phase is rejected (`profilesTakeMillisecondTimings` GameTest). The built-in profiles keep their tick values, so nothing about current weapons changes until someone retimes them in milliseconds.
+- **Network:** `CombatStatePayload` carries the elapsed time, duration and timings in microseconds, and the protocol version went from 5 to 6.
+- **Tests:** six new unit tests:
+  - whole-tick timings behave exactly as before;
+  - a release starts mid-tick;
+  - 350 vs 370 ms stay distinct;
+  - a release shorter than a tick is swept whole;
+  - the sweeps cover a release exactly once for 20–333 ms releases;
+  - progress interpolates in microseconds.
+
+  In a mutation check, all four mutants that changed behaviour were caught. A fifth was equivalent, and the redundant code it exposed was removed.
+- **Not done:** sub-tick *input* timestamps (§7.4). Inputs still take effect on the tick they arrive.
+
+## Combat benchmark and baseline (architecture plan §31/§41, 2026-10-07)
+`./gradlew runGameTestServer -Pbench` runs fixed scenes with `combat/CombatProfiler` switched on. Reports go to `run-gametest/steelclash-bench/<scene>.txt`. Without `-Pbench` the scenes pass at once, so ordinary test runs don't slow down.
+- **Profiler:** off by default (one field read per hook). It times server-side combat in exclusive sections (AI, state, broad, narrow, world, resolve, lag history, sync), counts live blades, candidates, contacts and packets, samples bytes allocated per section (`ThreadMXBean`), and keeps per-tick totals for percentiles.
+- **Scenes:**
+  - A–C: 2, 20 and 50 training dummies in facing pairs, attacking and parrying nonstop with no AI.
+  - D: 8 armed bots on one player.
+  - E: 40 bots.
+  - F: 150 bots, a stress scene beyond the plan.
+
+  Health and stamina are topped up so nobody dies or is disarmed. Each scene runs a 200-tick warm-up (1200 for the first, which also warms up the JIT) and then measures 600 ticks.
+- **Gotchas found while building it:**
+  - GameTest batches overlapped, and a scene in an earlier chunk deadlocked waiting for its turn. The scenes now share one batch and take turns, starting after the ordinary tests.
+  - GameTest can't take new per-tick callbacks while it runs them, so each scene has one callback driving its whole run.
+  - Training dummies count as monsters, which only cut the target they're fighting, so each dummy targets its partner.
+- **Baseline** (i5-12500H, Java 21; whole-scene average and worst tick; the plan's budget is 2.5 ms per tick):
+
+  | Scene | ms/tick | p99 | max | KB/tick | Biggest part |
+  |---|---|---|---|---|---|
+  | A: 2 dummies | 0.06 | 0.75 | 1.34 | 3 | resolve (cold path; tiny sample) |
+  | B: 20 dummies | 0.17 | 0.91 | 1.62 | 16 | resolve, narrow |
+  | C: 50 dummies | 0.11 | 0.48 | 1.21 | 25 | resolve, narrow (13 KB/tick there) |
+  | D: 1 vs 8 bots | 0.11 | 0.46 | 0.87 | 10 | AI |
+  | E: 1 vs 40 bots | 0.21 | 0.64 | 0.92 | 32 | AI (0.16 ms, 27 KB) |
+  | F: 1 vs 150 bots | 0.37 | 0.84 | 1.03 | 70 | AI (0.33 ms, 61 KB) |
+
+- **Verdict, by the plan's own rules:** every scene stays far inside the budget. Hit geometry (broad + narrow + world) never reaches 0.05 ms per tick, against the plan's 1–2 ms threshold for even considering Rust. **No native code; stay in Java.** The one cost that grows with crowd size is the bot brain, about 2 µs and about 0.4 KB of garbage per bot per tick, mostly its per-tick scan for incoming attacks. That's the first place to optimize if hordes grow much bigger. Bots mostly circle, because attack tokens let 2–3 swing at once, so blades stay few even at 150.
+- **Not measured:** packet encoding and sending (no real clients in GameTests), client-side rendering cost, and projectiles (plan scene E).

@@ -2,6 +2,7 @@ package com.steelclash.combat;
 
 import com.steelclash.Config;
 import com.steelclash.net.FeedbackPayload;
+import com.steelclash.net.ModNetwork;
 import com.steelclash.sound.ModSounds;
 import java.util.function.Supplier;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -13,7 +14,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Vector3f;
 
 /** Sounds, particles and per-player feel (camera shake, hit-stop) for combat events. Server side. */
@@ -96,7 +96,7 @@ public final class Feedback {
 
     private static void send(Entity entity, FeedbackPayload.Kind kind, float strength) {
         if (entity instanceof ServerPlayer player) {
-            PacketDistributor.sendToPlayer(player, new FeedbackPayload(kind, strength));
+            ModNetwork.sendTo(player, new FeedbackPayload(kind, strength));
         }
     }
 }

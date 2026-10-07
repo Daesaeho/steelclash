@@ -89,6 +89,9 @@ neoForge {
             if (project.hasProperty('poseSheet')) {
                 systemProperty 'steelclash.poseSheet', project.property('poseSheet').toString()
                 systemProperty 'steelclash.poseSheetQuit', 'true'
+                if (project.hasProperty('poseSheetMob')) {
+                    systemProperty 'steelclash.poseSheetMob', project.property('poseSheetMob').toString()
+                }
                 if (project.hasProperty('poseSheetDebug')) {
                     systemProperty 'steelclash.poseSheetDebug', 'true'
                 }
@@ -122,6 +125,10 @@ neoForge {
             // Own directory: configs tweaked while playing in run/ must not change test results
             gameDirectory = project.file('run-gametest')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // -Pbench runs the combat benchmark scenes (gametest/BenchmarkGameTests); reports in run-gametest/steelclash-bench/
+            if (project.hasProperty('bench')) {
+                systemProperty 'steelclash.bench', 'true'
+            }
         }
 
         data {
@@ -182,6 +189,10 @@ dependencies {
     if (!project.hasProperty('noCompat')) {
         localRuntime "maven.modrinth:spartan-weaponry-unofficial:${spartan_weaponry_version}"
         localRuntime "maven.modrinth:spartan-shields-unofficial:${spartan_shields_version}"
+    }
+    // Sodium, dev runs only: the renderer most players use, so we see the swings the way they will
+    if (!project.hasProperty('noSodium')) {
+        localRuntime "maven.modrinth:sodium:${sodium_version}"
     }
 
     // Plain JUnit for the Minecraft-free combat core

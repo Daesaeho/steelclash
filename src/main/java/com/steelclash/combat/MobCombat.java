@@ -72,6 +72,28 @@ public final class MobCombat {
         return options.get(mob.getRandom().nextInt(options.size()));
     }
 
+    /** A target this close keeps a fighter in its fighting stance between swings. */
+    private static final double FIGHTING_DISTANCE = 6;
+
+    /**
+     * Keeps a fighting mob flagged aggressive (synced to clients) while it fights. Vanilla only sets the flag while its
+     * own melee goal runs, but our spacing and bot goals often run instead. Without the flag, illagers cross their arms
+     * (their real arms and the weapon aren't drawn, so the swing is invisible) and zombies lower theirs. Clears the
+     * flag again once the fight is over, if we were the ones who set it.
+     */
+    public static void keepAggressive(Mob mob, CombatData data) {
+        LivingEntity target = mob.getTarget();
+        boolean fighting = data.machine.isBusy()
+                || (target != null && target.isAlive() && mob.distanceToSqr(target) <= FIGHTING_DISTANCE * FIGHTING_DISTANCE);
+        if (fighting && !mob.isAggressive()) {
+            mob.setAggressive(true);
+            data.forcedAggressive = true;
+        } else if (!fighting && data.forcedAggressive) {
+            data.forcedAggressive = false;
+            mob.setAggressive(false);
+        }
+    }
+
     /** Each tick: if someone is winding up an attack at this mob, maybe raise a parry just before it lands. */
     public static void tickDefense(LivingEntity mob, CombatData data, double parryChance) {
         if (parryChance <= 0 || !data.machine.canParry()) {

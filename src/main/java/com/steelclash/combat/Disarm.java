@@ -28,6 +28,11 @@ public final class Disarm {
         if (weapon.isEmpty()) {
             return;
         }
+        // No dodging or jabbing out of it straight away (Chivalry 2 2.5).
+        CombatData data = victim.getData(ModAttachments.COMBAT);
+        long now = victim.level().getGameTime();
+        data.dodgeReadyAt = Math.max(data.dodgeReadyAt, now + Dodge.POST_DISARM_COOLDOWN_TICKS);
+        data.jabReadyAt = Math.max(data.jabReadyAt, now + Dodge.POST_DISARM_COOLDOWN_TICKS);
         if (Config.DISARM_MODE.get() == Config.DisarmMode.HOLSTER) {
             int ticks = Config.HOLSTER_TICKS.get();
             if (victim instanceof Player player) {

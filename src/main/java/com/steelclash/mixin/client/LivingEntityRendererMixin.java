@@ -29,4 +29,11 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extend
                                             MultiBufferSource buffer, int packedLight, CallbackInfo ci) {
         MobCombatPoses.apply(entity, model, partialTick);
     }
+
+    /** Whole-body lean and twist of a mob's attack, after vanilla's body rotation (players: Player Animation Library). */
+    @Inject(method = "setupRotations", at = @At("RETURN"))
+    private void steelclash$applyBodyRotation(T entity, PoseStack poseStack, float bob, float yBodyRot, float partialTick,
+                                              float scale, CallbackInfo ci) {
+        MobCombatPoses.applyBodyRotation(entity, poseStack, partialTick);
+    }
 }

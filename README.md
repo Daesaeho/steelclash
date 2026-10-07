@@ -49,6 +49,7 @@ Weapons, mob rosters and mob gear are all data-driven: weapon profiles, item and
 ./gradlew runGameTestServer            # in-game tests, with the Spartan mods
 ./gradlew runGameTestServer -PnoCompat # in-game tests without them
 ./gradlew runClient / runClient2       # two dev clients (Dev1, Dev2) for LAN testing
+./gradlew runGameTestServer -Pbench    # combat benchmark scenes; reports in run-gametest/steelclash-bench/
 ```
 
 Developer docs: [plan](docs/PLAN.md), [findings](docs/spikes.md), [manual test checklists](docs/testing.md).

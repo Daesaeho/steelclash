@@ -135,6 +135,13 @@ public class Config {
     public static final ModConfigSpec.DoubleValue JAB_STAMINA_DAMAGE = BUILDER
             .comment("Stamina a parried jab costs the defender")
             .defineInRange("jabStaminaDamage", 8.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue JUMP_STAMINA_COST = BUILDER
+            .comment("Stamina a jump costs while fighting (Chivalry 2: 12). Only counts within a few seconds of attacking,",
+                    "guarding or being hit, so jumping around outside a fight stays free. 0 = off")
+            .defineInRange("jumpStaminaCost", 12.0, 0.0, 1000.0);
+    public static final ModConfigSpec.BooleanValue CROUCH_PAUSES_STAMINA_REGEN = BUILDER
+            .comment("Crouching pauses stamina regeneration (Chivalry 2)")
+            .define("crouchPausesStaminaRegen", true);
     public static final ModConfigSpec.DoubleValue KICK_STAMINA_COST = BUILDER
             .comment("Stamina spent on a kick or shield bash")
             .defineInRange("kickStaminaCost", 10.0, 0.0, 1000.0);
@@ -419,9 +426,9 @@ public class Config {
                         "visibly tumbles instead of rolling.")
                 .defineEnum("bladeTwistAxis", TwistAxis.Z);
 
-        public static final ModConfigSpec.BooleanValue TUTORIAL_HINT = BUILDER
-                .comment("Show a one-line controls hint the next time you join a world (turns itself off after showing)")
-                .define("tutorialHint", true);
+        public static final ModConfigSpec.BooleanValue HELP_ON_JOIN = BUILDER
+                .comment("Show the controls help (/steelclash_help) in chat every time you join a world")
+                .define("helpOnJoin", true);
 
         static final ModConfigSpec SPEC = BUILDER.build();
 

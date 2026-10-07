@@ -204,7 +204,7 @@ Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2`
 ## Manual in-game checklist (M8: release)
 | # | Check | Expected |
 |---|---|---|
-| 1 | Delete `run/config/steelclash-client.toml`, join a world | One grey chat line with your slash and parry keys and `/steelclash_help`. It doesn't appear on the next join (`tutorialHint` turned itself off). |
+| 1 | Join a world, leave, join again | Both times the full controls help (your actual key bindings) appears in chat, ending with how to turn it off. `helpOnJoin = false` in the client config stops it. |
 | 2 | `/steelclash_help` | Nine lines; the key names match your bindings (rebind one and run it again). |
 | 3 | Pick up a hay bale in survival, open the recipe book | Training Dummy recipe unlocked; crafting it gives the dummy, which places like a spawn egg. |
 | 4 | Mods → Steel Clash → Config | Readable names for every option and section, with descriptions on hover; changing one takes effect. |
@@ -281,7 +281,7 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | 1 | Third person, slow-motion feel: slash both ways with a sword | The body winds up, steps and follows through; the blade still runs along the red debug line (`/steelclash_debug`). |
 | 2 | First person: overhead and parry with a two-handed sword | Both hands on the hilt, the weapon clearly in view, arms not filling the screen. |
 | 3 | Halberd / quarterstaff in both views | Hands spread along the shaft. |
-| 4 | Watch an armed zombie or footman swing (third person) | Torso twists a little (half the player's), arms stay attached; two-handed mobs hold the grip with both hands. |
+| 4 | Watch an armed zombie, vindicator or footman swing (third person) | The whole body leans and twists as one piece (torso stays on the legs, arms and head attached); vindicators show their arms and axe on every swing; two-handed mobs hold the grip with both hands. |
 | 5 | F3+T after editing a clip or `grip_gap` | Reloads. |
 
 ## Chivalry 2 defence and movement (step F, added 2026-10-07)
@@ -297,3 +297,8 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | 7 | Hard difficulty footman: wind up heavies up close | It sometimes jabs you out of them. |
 | 8 | Fight, then step away hurt | Regeneration waits 6 s after your last swing or block, not just after your last hit, and stops at 40%. |
 | 9 | `blockMode = "TIMED"` | The old parry: drops by itself after ~0.6 s. |
+| 10 | Kick (Z) an Attack dummy while it winds up | It swings through the kick (no stagger). Kick it while idle: staggered. |
+| 11 | Start a slash, then press Z (or V) before it releases | The slash turns into a kick (or jab). |
+| 12 | Get parried, then mash attack during the stagger | Your attack starts the moment the stagger ends. |
+| 13 | Fight, then jump; walk away 5 s, then jump | The first jump costs stamina, the second doesn't. Crouching stops stamina from refilling. |
+| 14 | Counter a dagger, then a greatsword | Timing the dagger is noticeably tighter. |

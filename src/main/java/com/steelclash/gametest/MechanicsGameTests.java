@@ -8,11 +8,16 @@ import static com.steelclash.gametest.TestSupport.isHurt;
 import static com.steelclash.gametest.TestSupport.swing;
 import static com.steelclash.gametest.TestSupport.swordsman;
 
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
+import com.steelclash.combat.CombatData;
+import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
+import com.steelclash.profile.WeaponProfile;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
@@ -133,5 +138,33 @@ public final class MechanicsGameTests {
         check(helper, recipe.get().value().getResultItem(helper.getLevel().registryAccess())
                 .is(com.steelclash.entity.ModEntities.TRAINING_DUMMY_SPAWN_EGG.get()), "it should make a training dummy");
         helper.succeed();
+    }
+
+    /** Weapon profiles can time attacks in milliseconds (sub-tick); ticks still work, and both can be mixed. */
+    @GameTest(template = ARENA)
+    public static void profilesTakeMillisecondTimings(GameTestHelper helper) {
+        String arc = "\"arc\": {\"shape\": \"thrust\", \"width\": 1}";
+        WeaponProfile.AttackSpec ms = decode("{\"windup_ms\": 370, \"release_ms\": 120, \"recovery_ms\": 333, " + arc + "}");
+        check(helper, ms.timings().equals(AttackTimings.ofMillis(370, 120, 333)), "milliseconds: " + ms.timings());
+        WeaponProfile.AttackSpec mixed = decode("{\"windup\": 7, \"release_ms\": 75, \"recovery\": 9, " + arc + "}");
+        check(helper, mixed.timings().equals(new AttackTimings(350_000, 75_000, 450_000)), "mixed: " + mixed.timings());
+        boolean rejected = WeaponProfile.AttackSpec.CODEC.parse(JsonOps.INSTANCE,
+                JsonParser.parseString("{\"windup_ms\": 300, \"recovery\": 5, " + arc + "}")).error().isPresent();
+        check(helper, rejected, "an attack without a release time is rejected");
+
+        // A live attack: 370 ms of windup releases 20 ms into the 8th tick.
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(player);
+        d.machine.startAttack(AttackType.STAB, AttackTimings.ofMillis(370, 120, 333));
+        for (int tick = 0; tick < 8; tick++) {
+            d.machine.tick();
+        }
+        check(helper, d.machine.phase() == Phase.RELEASE && d.machine.phaseElapsedUs() == 30_000,
+                "30 ms into the release after 8 ticks, phase " + d.machine.phase() + " at " + d.machine.phaseElapsedUs() + " us");
+        helper.succeed();
+    }
+
+    private static WeaponProfile.AttackSpec decode(String json) {
+        return WeaponProfile.AttackSpec.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow();
     }
 }

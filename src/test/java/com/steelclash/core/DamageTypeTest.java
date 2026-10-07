@@ -36,4 +36,11 @@ class DamageTypeTest {
         assertTrue(DamageType.mountedChargeMultiplier(0.4) > 2.0, "a galloping lance hits more than twice as hard");
         assertEquals(2.5, DamageType.mountedChargeMultiplier(5), 1e-9, "capped");
     }
+
+    @Test
+    void chopsAndBluntDrainMoreStaminaFromAGuard() {
+        org.junit.jupiter.api.Assertions.assertEquals(1.0, DamageType.CUT.staminaDamageMultiplier(), 1e-9);
+        org.junit.jupiter.api.Assertions.assertEquals(1.10, DamageType.CHOP.staminaDamageMultiplier(), 1e-9);
+        org.junit.jupiter.api.Assertions.assertEquals(1.25, DamageType.BLUNT.staminaDamageMultiplier(), 1e-9);
+    }
 }

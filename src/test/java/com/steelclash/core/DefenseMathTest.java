@@ -51,4 +51,13 @@ class DefenseMathTest {
         }
         assertEquals(100, s.current(), 1e-6, "caps at max");
     }
+
+    @Test
+    void counterWindowShrinksAgainstFasterWeapons() {
+        org.junit.jupiter.api.Assertions.assertEquals(7, Guard.counterWindow(7, Guard.COUNTER_REFERENCE_WINDUP_US), "sword: the base window");
+        org.junit.jupiter.api.Assertions.assertTrue(Guard.counterWindow(7, 7 * AttackTimings.TICK_US) < 7, "dagger: smaller");
+        org.junit.jupiter.api.Assertions.assertTrue(Guard.counterWindow(7, 13 * AttackTimings.TICK_US) > 7, "greatsword: bigger");
+        org.junit.jupiter.api.Assertions.assertEquals(5, Guard.counterWindow(7, 1 * AttackTimings.TICK_US), "never below 70%");
+        org.junit.jupiter.api.Assertions.assertEquals(9, Guard.counterWindow(7, 40 * AttackTimings.TICK_US), "never above 130%");
+    }
 }

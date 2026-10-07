@@ -64,6 +64,16 @@ public final class SwingTracer {
 
     public static Result trace(LivingEntity attacker, CombatData data, WeaponProfile.AttackSpec spec,
                                CombatStateMachine.Sweep sweep) {
+        CombatProfiler.begin(CombatProfiler.Section.NARROW);
+        try {
+            return traceSwept(attacker, data, spec, sweep);
+        } finally {
+            CombatProfiler.end(CombatProfiler.Section.NARROW);
+        }
+    }
+
+    private static Result traceSwept(LivingEntity attacker, CombatData data, WeaponProfile.AttackSpec spec,
+                                     CombatStateMachine.Sweep sweep) {
         int remaining = spec.maxTargets() - data.hitThisSwing.size();
         List<LivingEntity> hits = new ArrayList<>();
 
@@ -78,9 +88,16 @@ public final class SwingTracer {
         int rewind = LagCompensation.rewindTicks(attacker);
         AABB searchBox = new AABB(pivotNow, pivotNow).inflate(length + 1.0 + rewind * MAX_SPEED_PER_TICK)
                 .minmax(new AABB(data.prevPivot, data.prevPivot));
-        List<Candidate> candidates = attacker.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-                        target -> isValidTarget(attacker, target) && !data.hitThisSwing.contains(target.getId()))
-                .stream().map(target -> new Candidate(target, LagCompensation.rewindOffset(target, rewind))).toList();
+        CombatProfiler.begin(CombatProfiler.Section.BROAD);
+        List<Candidate> candidates;
+        try {
+            candidates = attacker.level().getEntitiesOfClass(LivingEntity.class, searchBox,
+                            target -> isValidTarget(attacker, target) && !data.hitThisSwing.contains(target.getId()))
+                    .stream().map(target -> new Candidate(target, LagCompensation.rewindOffset(target, rewind))).toList();
+        } finally {
+            CombatProfiler.end(CombatProfiler.Section.BROAD);
+        }
+        CombatProfiler.count(CombatProfiler.Counter.CANDIDATES, candidates.size());
 
         // Include the very first blade position on the first release tick, otherwise only the swept positions.
         int firstStep = sweep.from() == 0 ? 0 : 1;
@@ -123,7 +140,13 @@ public final class SwingTracer {
                 Vec dir = blade.tip().subtract(blade.hilt());
                 double len = dir.length();
                 Vec tip = len > CLANK_LENGTH ? blade.hilt().add(dir.scale(CLANK_LENGTH / len)) : blade.tip();
-                Vec3 clank = wallHit(attacker, pivot3, CombatMath.toVec3(tip));
+                CombatProfiler.begin(CombatProfiler.Section.WORLD);
+                Vec3 clank;
+                try {
+                    clank = wallHit(attacker, pivot3, CombatMath.toVec3(tip));
+                } finally {
+                    CombatProfiler.end(CombatProfiler.Section.WORLD);
+                }
                 if (clank != null) {
                     return new Result(hits, clank);
                 }
