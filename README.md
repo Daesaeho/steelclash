@@ -2,7 +2,7 @@
 
 Chivalry 2-style melee combat for Minecraft 1.21.1 (NeoForge). Attacks have a windup, release and recovery and come from a direction. Parry them, riposte, feint, morph, counter, kick through guards, and manage your stamina, or you'll be disarmed. Mobs fight by the same rules, with a bot brain that spaces, parries, feints and takes turns in groups.
 
-**Status:** public beta (0.2.0-beta). PvE first; co-op multiplayer is lag-compensated.
+**Status:** public beta (0.3.0-beta). PvE first; co-op multiplayer is lag-compensated.
 
 ## Requirements
 
@@ -61,7 +61,7 @@ Every push and pull request is built and tested by GitHub Actions (`build.yml`);
 To publish a version:
 
 1. Set `mod_version` in `gradle.properties` and add a `# <version>` section at the top of `CHANGELOG.md`.
-2. Commit, then either push a matching tag (`git tag v0.2.0-beta && git push origin v0.2.0-beta`) or start **Actions > Release > Run workflow**, which creates the tag itself.
+2. Commit, then either push a matching tag (`git tag v0.3.0-beta && git push origin v0.3.0-beta`) or start **Actions > Release > Run workflow**, which creates the tag itself.
 
 `release.yml` then runs every test and creates the GitHub release, with the jar and that version's changelog section. Versions with `alpha` or `beta` in the name are marked as pre-releases. A tag that doesn't match `mod_version` fails the run. Once `MODRINTH_ID` / `CURSEFORGE_ID` (repository variables) and `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN` (secrets) are set, the same run also uploads to Modrinth and CurseForge.
 

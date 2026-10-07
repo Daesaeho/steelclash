@@ -1,6 +1,6 @@
 # Compatibility
 
-Steel Clash 0.2.0-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **both** the client and the server.
+Steel Clash 0.3.0-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **both** the client and the server.
 
 ## Mods
 

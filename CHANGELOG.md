@@ -1,4 +1,4 @@
-# Unreleased
+# 0.3.0-beta
 
 **Combat**
 - Chivalry 2 timings: every built-in weapon is retimed from the game's own data (as published by polehammer.net), in milliseconds. Windups include the 350 ms chamber, releases are about twice as long as before, recoveries are longer, and combos and ripostes have their own timings. Heavies add a fixed ~250 ms windup and a slightly longer recovery, ripostes and combos included. Overhead and stab damage follow the game's ratios to the slash.
