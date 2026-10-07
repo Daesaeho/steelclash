@@ -25,6 +25,7 @@ public final class StaminaHud {
     public static void register(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.CROSSHAIR, SteelClash.id("stamina"), StaminaHud::render);
         TimingHud.register(event); // positioned relative to the stamina layer, so registered right after it
+        DownedHud.register(event);
     }
 
     private static void render(GuiGraphics graphics, DeltaTracker deltaTracker) {

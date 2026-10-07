@@ -43,7 +43,7 @@ public final class Dodge {
 
     /** Spends the stamina, starts the cooldown and drops a windup or guard. Moving is up to the caller. */
     public static boolean perform(LivingEntity entity, CombatData data) {
-        if (!canDodge(entity, data)) {
+        if (data.isDowned() || !canDodge(entity, data)) {
             return false;
         }
         if (data.machine.phase() == Phase.WINDUP) {

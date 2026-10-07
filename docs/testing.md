@@ -359,3 +359,16 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | 4 | Kick your friend | Nothing happens. |
 | 5 | `playersAreAllies = false`, duel | Full damage, parries and ripostes work as against bots. |
 
+## Downed and revive (added 2026-10-07, LAN with two players)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Let zombies get you to zero health with your friend nearby | You crawl on the ground with a countdown; your friend gets "X is down!". Zombies wander off you. |
+| 2 | Try to attack, block, eat, place a block while down | Nothing happens. |
+| 3 | Friend crouches next to you | Both see a progress bar; after 3 s you stand up with 30% health. |
+| 4 | Hit the friend while they're reviving | The bar restarts. |
+| 5 | Let the countdown run out | "X bled out". |
+| 6 | Downed, get hit again | You die. |
+| 7 | Singleplayer, die | You die as before. |
+| 8 | Downed, disconnect | You're dead when you rejoin. |
+

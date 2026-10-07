@@ -4,6 +4,7 @@ import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.LagMath;
 import com.steelclash.net.CombatStatePayload;
+import com.steelclash.net.DownedPayload;
 import com.steelclash.net.FeedbackPayload;
 import com.steelclash.net.StaminaPayload;
 import com.steelclash.profile.WeaponProfiles;
@@ -11,6 +12,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class ClientPayloadHandler {
@@ -52,6 +55,21 @@ public final class ClientPayloadHandler {
     private static int ownLatency(Minecraft mc) {
         PlayerInfo info = mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(mc.player.getUUID());
         return info == null ? 0 : info.getLatency();
+    }
+
+    /** Downed state of a player: the crawl pose (the local player poses itself) and the HUD read it. */
+    public static void handleDowned(DownedPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level == null || !(mc.level.getEntity(payload.entityId()) instanceof Player player)) {
+                return;
+            }
+            CombatData data = player.getData(ModAttachments.COMBAT);
+            data.downedTicksLeft = payload.ticksLeft();
+            data.reviveTicks = payload.reviveTicks();
+            data.reviverId = payload.reviverId();
+            player.setForcedPose(data.isDowned() ? Pose.SWIMMING : null);
+        });
     }
 
     public static void handleFeedback(FeedbackPayload payload, IPayloadContext context) {

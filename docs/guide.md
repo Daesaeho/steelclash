@@ -154,6 +154,11 @@ Craft it with a carved pumpkin on top, a hay bale in the middle with a stick on 
 - Kicks, jabs and weapon slams pass allies by, and pets of you and your allies are never hit.
 - **Want to duel a friend?** Set `playersAreAllies = false` in the common config (or put yourselves on different teams), otherwise you fight as allies: a quarter damage and no parries.
 
+**Downed, not dead (Chivalry 2).** In multiplayer, a blow that would kill you puts you on the ground instead, as long as an ally is within 48 blocks. Downed, you crawl with 3 hearts, can't fight or use items, and mobs leave you alone. You bleed out after 30 seconds.
+- **Revive:** an ally crouches next to you for 3 seconds and you're back up with 30% health. A hit on them restarts it. Both of you see the progress.
+- Another lethal blow while you're down **finishes** you. Totems still work first; `/kill`, the void and logging out while downed kill outright.
+- Singleplayer (nobody to revive you) works as before. All of it is in the common config (`downed`, `bleedOutSeconds`, `reviveSeconds`, `reviveHealth`, `mobsIgnoreDowned` and more).
+
 
 Co-op works, with lag compensation. When you have a high ping, your swings hit what your screen showed. Hits on you wait (up to a round trip, 250 ms at most) so your parry can still arrive. Server owners can tune or disable this in the `network` section of the common config.
 

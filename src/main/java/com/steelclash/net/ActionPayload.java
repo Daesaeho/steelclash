@@ -33,7 +33,7 @@ public record ActionPayload(Action action) implements CustomPacketPayload {
     static void handle(ActionPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             var player = context.player();
-            if (!player.isAlive() || player.isSpectator()) {
+            if (!player.isAlive() || player.isSpectator() || !ModNetwork.allowInput(player)) {
                 return;
             }
             switch (payload.action()) {

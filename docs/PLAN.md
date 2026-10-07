@@ -53,7 +53,7 @@ MC runs at 20 TPS (50 ms per tick). Chivalry 2 timings of roughly 300–700 ms m
 | Mounted / lance | Uses SW's `DAMAGE_BONUS_RIDING` and adds a charge state while mounted. | M7 |
 | Cut / Blunt / Chop vs armor | Each profile has a damage type. Optional armor-class modifiers (light/medium/heavy) based on the target's total armor value. | M7 |
 
-Out of scope for v1: objectives/teams game mode, dismemberment beyond SW's `DECAPITATE`, voice commands, revives.
+Out of scope for v1: objectives/teams game mode, dismemberment beyond SW's `DECAPITATE`, voice commands. (Revives and the downed state were added on 2026-10-07; see docs/spikes.md.)
 
 ### Default controls (all rebindable)
 

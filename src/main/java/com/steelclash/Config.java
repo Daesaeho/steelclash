@@ -157,6 +157,32 @@ public class Config {
     public static final ModConfigSpec.IntValue FLINCH_TICKS = BUILDER
             .comment("Stagger when hit during your own windup (heavy attacks with hyper armor ignore this)")
             .defineInRange("flinchTicks", 8, 0, 100);
+    public static final ModConfigSpec.BooleanValue DOWNED = BUILDER
+            .comment("Chivalry 2 downed state: a lethal blow puts a player on the ground instead of killing them, if an ally",
+                    "is nearby to revive them. Downed players crawl, can't fight, and bleed out unless revived; another",
+                    "lethal blow finishes them. /kill, the void and logging out still kill")
+            .define("downed", true);
+    public static final ModConfigSpec.DoubleValue DOWNED_ALLY_RANGE = BUILDER
+            .comment("A player only goes down if an ally who could revive them is within this many blocks (0 = always)")
+            .defineInRange("downedAllyRange", 48.0, 0.0, 1024.0);
+    public static final ModConfigSpec.DoubleValue DOWNED_HEALTH = BUILDER
+            .comment("Health a downed player has left: the finishing blow has to take this")
+            .defineInRange("downedHealth", 6.0, 1.0, 1024.0);
+    public static final ModConfigSpec.IntValue BLEED_OUT_SECONDS = BUILDER
+            .comment("Seconds a downed player lasts before bleeding out")
+            .defineInRange("bleedOutSeconds", 30, 1, 3600);
+    public static final ModConfigSpec.DoubleValue REVIVE_SECONDS = BUILDER
+            .comment("Seconds an ally has to crouch next to a downed player to revive them (taking damage restarts it)")
+            .defineInRange("reviveSeconds", 3.0, 0.05, 60.0);
+    public static final ModConfigSpec.DoubleValue REVIVE_RANGE = BUILDER
+            .comment("How close (blocks) the crouching ally has to be")
+            .defineInRange("reviveRange", 2.5, 0.5, 16.0);
+    public static final ModConfigSpec.DoubleValue REVIVE_HEALTH = BUILDER
+            .comment("Share of max health a revived player gets back")
+            .defineInRange("reviveHealth", 0.3, 0.01, 1.0);
+    public static final ModConfigSpec.BooleanValue MOBS_IGNORE_DOWNED = BUILDER
+            .comment("Mobs don't go after downed players (so allies have a chance to revive); stray swings still land")
+            .define("mobsIgnoreDowned", true);
     public static final ModConfigSpec.BooleanValue PLAYERS_ARE_ALLIES = BUILDER
             .comment("All players fight on one side (co-op). Off: only players on the same scoreboard team are allies")
             .define("playersAreAllies", true);

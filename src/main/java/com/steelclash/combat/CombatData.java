@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.ai.BrainState;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.CombatStateMachine;
+import com.steelclash.core.InputLimit;
 import com.steelclash.core.Stamina;
 import com.steelclash.profile.WeaponProfile;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -24,6 +25,19 @@ public class CombatData {
     /** Profile of the weapon the current attack or parry was started with. */
     @Nullable
     public ResourceKey<WeaponProfile> profileKey;
+
+    /** Ticks left before a downed player bleeds out; -1 while standing ({@link Downed}). */
+    public int downedTicksLeft = -1;
+    /** Ticks an ally has spent reviving this downed player so far, and who (entity id, -1 for nobody). */
+    public int reviveTicks;
+    public int reviverId = -1;
+
+    /** Server: combat inputs from this player's client this tick ({@link InputLimit}). */
+    public final InputLimit inputs = new InputLimit();
+
+    public boolean isDowned() {
+        return downedTicksLeft >= 0;
+    }
 
     /** Attack input buffered during recovery; starts as soon as the fighter is free. */
     @Nullable

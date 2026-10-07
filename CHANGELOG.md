@@ -10,6 +10,11 @@
 
 **Co-op**
 - Team rules (Chivalry 2): all players are allies by default (`playersAreAllies`), or scoreboard teams decide. Allies' bodies are in the way of your swings: slashes carry on through them, stabs stop in them. Allies take 25% damage (`friendlyDamageScale`, 0 = off), their guards never parry you, and kicks, jabs and slams pass them by. **To duel another player, set `playersAreAllies = false`.**
+- Downed and revive (Chivalry 2): with an ally within 48 blocks, a lethal blow downs a player instead of killing them. Downed players crawl, can't fight, and bleed out after 30 s; an ally crouching beside them for 3 s revives them at 30% health. A second lethal blow finishes them; mobs leave the downed alone. `/kill`, the void and logging out still kill. Protocol 9.
+
+**Hardening**
+- The server takes at most 8 combat inputs per player per tick (guard releases always go through), so a modified client can't flood everyone nearby with combat-state updates.
+- Combat-state broadcasts skip fake players (other mods' machines) that can't receive them, instead of failing.
 
 **Mobs**
 - Archer sidearms (Chivalry 2): skeletons, strays and bogged carry a dagger next to their bow. They draw it when you close within 4 blocks and go back to the bow once you're 9 blocks away. The daggers are Spartan Weaponry's; set with `#steelclash:sidearm_users`, `#steelclash:mob_sidearms/tier_1..3` and `sidearmChance`.

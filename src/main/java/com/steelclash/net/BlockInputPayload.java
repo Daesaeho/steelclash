@@ -27,6 +27,9 @@ public record BlockInputPayload(boolean down) implements CustomPacketPayload {
                 return;
             }
             if (payload.down()) {
+                if (!ModNetwork.allowInput(player)) {
+                    return; // releasing a guard always goes through, so it can't get stuck up
+                }
                 if (player.isUsingItem()) {
                     player.stopUsingItem();
                 }

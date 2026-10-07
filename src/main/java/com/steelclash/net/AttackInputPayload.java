@@ -27,7 +27,7 @@ public record AttackInputPayload(AttackType attackType, int variant, boolean mir
     static void handle(AttackInputPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             var player = context.player();
-            if (!player.isAlive() || player.isSpectator()) {
+            if (!player.isAlive() || player.isSpectator() || !ModNetwork.allowInput(player)) {
                 return;
             }
             if (player.isUsingItem()) {

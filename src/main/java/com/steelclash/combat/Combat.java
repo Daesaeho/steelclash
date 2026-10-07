@@ -54,6 +54,9 @@ public final class Combat {
      * @param mirrored swing from the other side (left to right)
      */
     public static boolean start(LivingEntity entity, CombatData data, AttackType type, int variant, boolean mirrored) {
+        if (data.isDowned()) {
+            return false; // down on the ground: no fighting until revived
+        }
         if (isHolstered(entity, data) && type != AttackType.KICK) {
             return false;
         }
@@ -208,7 +211,7 @@ public final class Combat {
 
     /** Raises a weapon parry; during a windup this cancels the attack into the parry. */
     public static boolean startParry(LivingEntity entity, CombatData data) {
-        if (isHolstered(entity, data)) {
+        if (isHolstered(entity, data) || data.isDowned()) {
             return false;
         }
         Optional<WeaponProfiles.Resolved> resolved = WeaponProfiles.resolveFor(entity);
