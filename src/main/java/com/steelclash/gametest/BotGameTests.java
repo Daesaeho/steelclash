@@ -8,16 +8,17 @@ import static com.steelclash.gametest.TestSupport.dummy;
 import static com.steelclash.gametest.TestSupport.face;
 
 import com.steelclash.SteelClash;
-import com.steelclash.combat.CombatData;
-import com.steelclash.core.BotSkill;
-import com.steelclash.ai.ClashBrain;
 import com.steelclash.ai.BrainState;
-import net.minecraft.world.entity.Mob;
-import com.steelclash.combat.MobCombat;
-import com.steelclash.combat.Combat;
+import com.steelclash.ai.ClashBrain;
 import com.steelclash.ai.ClashSpacingGoal;
+import com.steelclash.combat.Combat;
+import com.steelclash.combat.CombatData;
+import com.steelclash.combat.CombatMath;
+import com.steelclash.combat.MobCombat;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.BotSkill;
+import com.steelclash.core.Guard;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import java.util.HashSet;
@@ -29,6 +30,8 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -157,6 +160,29 @@ public final class BotGameTests {
         }
         check(helper, z.machine.type() == AttackType.OVERHEAD,
                 "after " + skill.reactionTicks() + " ticks the bot's counter follows into the overhead, it has " + z.machine.type());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void threatLimitKeepsTheFirstWindupFacingTheBot(GameTestHelper helper) {
+        TrainingDummy away = dummy(helper, 1, 4, FACING_NEGATIVE_X);
+        TrainingDummy first = dummy(helper, 1, 3, FACING_POSITIVE_X);
+        TrainingDummy second = dummy(helper, 1, 5, FACING_POSITIVE_X);
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        zombie.setTarget(first);
+        for (TrainingDummy attacker : List.of(away, first, second)) {
+            Combat.start(attacker, data(attacker), AttackType.SLASH);
+        }
+        // The original query's first in-cone result is the bot's established priority, regardless of entity order.
+        LivingEntity expected = helper.getLevel().getEntitiesOfClass(LivingEntity.class, zombie.getBoundingBox().inflate(5),
+                        e -> e != zombie && e.hasData(ModAttachments.COMBAT) && data(e).machine.phase() == Phase.WINDUP)
+                .stream().filter(e -> Guard.inCone(CombatMath.viewYaw(e), e.getX(), e.getZ(), zombie.getX(), zombie.getZ(), 120))
+                .findFirst().orElseThrow();
+        check(helper, expected != away, "a windup facing away is outside the threat cone");
+        ClashBrain.tick(zombie, data(zombie));
+        check(helper, data(zombie).brain != null && data(zombie).brain.answeredAttacker == expected.getId(),
+                "limiting the query must keep the first valid threat, not the first windup outside the cone");
         helper.succeed();
     }
 }

@@ -16,7 +16,7 @@ public final class CombatProfiler {
         AI,
         /** State machines, stamina, movement slowdown: everything in a fighter's combat tick not listed below. */
         STATE,
-        /** Candidate search for a live blade: the entity query and lag-rewind offsets. */
+        /** Candidate search for a live blade: the entity query, lag-rewind offsets and prepared hitboxes. */
         BROAD,
         /** Swept blade against each candidate's box. */
         NARROW,

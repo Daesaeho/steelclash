@@ -42,22 +42,19 @@ public final class PositionHistory {
         if (size == 0) {
             return null;
         }
-        Vec best = null;
-        long bestTick = Long.MIN_VALUE;
-        Vec oldest = null;
-        long oldestTick = Long.MAX_VALUE;
+        int best = -1;
+        int oldest = -1;
         for (int i = 0; i < size; i++) {
             int idx = Math.floorMod(next - 1 - i, ticks.length);
             long t = ticks[idx];
-            if (t <= tick && t > bestTick) {
-                bestTick = t;
-                best = new Vec(xs[idx], ys[idx], zs[idx]);
+            if (t <= tick && (best < 0 || t > ticks[best])) {
+                best = idx;
             }
-            if (t < oldestTick) {
-                oldestTick = t;
-                oldest = new Vec(xs[idx], ys[idx], zs[idx]);
+            if (oldest < 0 || t < ticks[oldest]) {
+                oldest = idx;
             }
         }
-        return best != null ? best : oldest;
+        int chosen = best >= 0 ? best : oldest;
+        return new Vec(xs[chosen], ys[chosen], zs[chosen]);
     }
 }

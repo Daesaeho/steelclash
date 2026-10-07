@@ -10,6 +10,8 @@ import static com.steelclash.gametest.TestSupport.swordsman;
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
+import com.steelclash.core.ArcPath;
+import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
@@ -98,6 +100,35 @@ public final class VariantGameTests {
         check(helper, d.machine.isComboAllowed(), "the slash should land and allow a combo");
         Combat.requestAttack(player, AttackType.SLASH); // no explicit side: the combo picks it
         check(helper, d.machine.phase() == Phase.WINDUP && d.machine.isMirrored(), "the combo should swing from the other side");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void cachedPathsFollowVariantsSidesAndReplacementSpecs(GameTestHelper helper) {
+        WeaponProfile profile = WeaponProfiles.resolve(new ItemStack(Items.IRON_SWORD), helper.getLevel().registryAccess())
+                .orElseThrow().profile();
+        WeaponProfile.AttackSpec spec = profile.attack(AttackType.SLASH).orElseThrow();
+        CombatData d = new CombatData();
+        for (int variant = 0; variant <= spec.variantCount(); variant++) { // includes the out-of-range fallback
+            for (boolean mirrored : new boolean[]{false, true}) {
+                d.machine.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 1, 1), variant, mirrored);
+                ArcPath expected = spec.arc(variant).toPath();
+                if (mirrored) {
+                    expected = expected.mirrored();
+                }
+                ArcPath actual = Combat.currentPath(d, spec);
+                check(helper, actual.equals(expected), "cached path must follow variant " + variant + " and side " + mirrored);
+                check(helper, actual == Combat.currentPath(d, spec), "repeated calls reuse the immutable path");
+                d.machine.feint();
+            }
+        }
+        d.machine.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 1, 1), 0, false);
+        ArcPath before = Combat.currentPath(d, spec);
+        // A reload supplies a new ArcSpec, even while the attack's type/variant/side remain unchanged.
+        WeaponProfile.AttackSpec replacement = new WeaponProfile.AttackSpec(1, 1, 1, 1f,
+                new WeaponProfile.ArcSpec(WeaponProfile.ArcSpec.Shape.HORIZONTAL, 37f), 1, 0f, 1f, 1f);
+        ArcPath after = Combat.currentPath(d, replacement);
+        check(helper, after != before && after.equals(replacement.arc().toPath()), "a replacement spec invalidates the cached arc");
         helper.succeed();
     }
 }

@@ -52,16 +52,16 @@ public final class SwingTracer {
     public record Contact(LivingEntity target, double progress) {
     }
 
-    /** A possible target and where the attacker saw it, as an offset from where it is now. */
-    private record Candidate(LivingEntity target, Vec3 offset) {
-        AABB box() {
+    /** Geometry is fixed for this trace; reuse it for every blade sample and distance comparison. */
+    private record Candidate(LivingEntity target, Vec3 offset, AABB hitBox, Vec3 center) {
+        static Candidate of(LivingEntity target, int rewind, double duck) {
+            Vec3 offset = LagCompensation.rewindOffset(target, rewind);
             AABB box = target.getBoundingBox().move(offset);
             // Ducking (Chivalry 2): a crouching fighter is short enough for level slashes to pass over.
-            double duck = Config.DUCK_HEIGHT.get();
             if (duck > 0 && target.isCrouching()) {
                 box = box.setMaxY(Math.min(box.maxY, box.minY + duck));
             }
-            return box;
+            return new Candidate(target, offset, box.inflate(BLADE_RADIUS + target.getPickRadius()), box.getCenter());
         }
     }
 
@@ -92,16 +92,23 @@ public final class SwingTracer {
         AABB searchBox = new AABB(pivotNow, pivotNow).inflate(length + 1.0 + rewind * MAX_SPEED_PER_TICK)
                 .minmax(new AABB(data.prevPivot, data.prevPivot));
         CombatProfiler.begin(CombatProfiler.Section.BROAD);
-        List<Candidate> candidates;
+        List<Candidate> candidates = List.of();
         try {
-            candidates = attacker.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-                            target -> isValidTarget(attacker, target) && !data.hitThisSwing.contains(target.getId()))
-                    .stream().map(target -> new Candidate(target, LagCompensation.rewindOffset(target, rewind))).toList();
+            if (remaining > 0) {
+                List<LivingEntity> targets = attacker.level().getEntitiesOfClass(LivingEntity.class, searchBox,
+                        target -> isValidTarget(attacker, target) && !data.hitThisSwing.contains(target.getId()));
+                candidates = new ArrayList<>(targets.size());
+                double duck = Config.DUCK_HEIGHT.get();
+                for (LivingEntity target : targets) {
+                    candidates.add(Candidate.of(target, rewind, duck));
+                }
+            }
         } finally {
             CombatProfiler.end(CombatProfiler.Section.BROAD);
         }
         CombatProfiler.count(CombatProfiler.Counter.CANDIDATES, candidates.size());
 
+        List<Candidate> stepHits = new ArrayList<>();
         // Include the very first blade position on the first release tick, otherwise only the swept positions.
         int firstStep = sweep.from() == 0 ? 0 : 1;
         for (int step = firstStep; step <= SUB_STEPS; step++) {
@@ -115,19 +122,19 @@ public final class SwingTracer {
 
             boolean hitThisStep = false;
             if (hits.size() < remaining) {
-                List<Candidate> stepHits = new ArrayList<>();
+                stepHits.clear();
                 for (Candidate candidate : candidates) {
                     if (data.hitThisSwing.contains(candidate.target().getId())) {
                         continue;
                     }
-                    AABB box = candidate.box().inflate(BLADE_RADIUS + candidate.target().getPickRadius());
+                    AABB box = candidate.hitBox();
                     if (Blade.intersectsBox(blade.hilt(), blade.tip(),
                             new Vec(box.minX, box.minY, box.minZ), new Vec(box.maxX, box.maxY, box.maxZ))
                             && canReach(attacker, pivot3, candidate)) {
                         stepHits.add(candidate);
                     }
                 }
-                stepHits.sort(Comparator.comparingDouble(c -> c.box().getCenter().distanceToSqr(pivot3)));
+                stepHits.sort(Comparator.comparingDouble(c -> c.center().distanceToSqr(pivot3)));
                 for (Candidate candidate : stepHits) {
                     if (hits.size() >= remaining) {
                         break;
@@ -189,7 +196,7 @@ public final class SwingTracer {
 
     /** No hitting through walls: the target's center or eyes must be visible from the blade pivot. */
     private static boolean canReach(Entity attacker, Vec3 pivot, Candidate candidate) {
-        return isClear(attacker, pivot, candidate.box().getCenter())
+        return isClear(attacker, pivot, candidate.center())
                 || isClear(attacker, pivot, candidate.target().getEyePosition().add(candidate.offset()));
     }
 

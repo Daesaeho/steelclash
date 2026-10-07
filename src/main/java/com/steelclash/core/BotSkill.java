@@ -32,13 +32,20 @@ public record BotSkill(int reactionTicks, double parryChance, double feintChance
     }
 
     public BotSkill withParryChance(double chance) {
+        if (Double.compare(chance, parryChance) == 0) {
+            return this;
+        }
         return new BotSkill(reactionTicks, chance, feintChance, morphChance, heavyChance, comboChance, counterChance,
                 kickAfterTicks, attackers, swingTrickChance);
     }
 
     public BotSkill withAttackers(int count) {
+        count = Math.max(1, count);
+        if (count == attackers) {
+            return this;
+        }
         return new BotSkill(reactionTicks, parryChance, feintChance, morphChance, heavyChance, comboChance, counterChance,
-                kickAfterTicks, Math.max(1, count), swingTrickChance);
+                kickAfterTicks, count, swingTrickChance);
     }
 
     /** Has the bot seen enough of this windup to react to it? */

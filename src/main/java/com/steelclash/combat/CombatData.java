@@ -2,6 +2,7 @@ package com.steelclash.combat;
 
 import com.steelclash.Config;
 import com.steelclash.ai.BrainState;
+import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.InputLimit;
@@ -25,6 +26,28 @@ public class CombatData {
     /** Profile of the weapon the current attack or parry was started with. */
     @Nullable
     public ResourceKey<WeaponProfile> profileKey;
+
+    /** Paths for the last arc used on this entity; a new profile/variant invalidates them by identity. */
+    @Nullable
+    private WeaponProfile.ArcSpec cachedArc;
+    private ArcPath cachedPath;
+    @Nullable
+    private ArcPath cachedMirroredPath;
+
+    ArcPath pathFor(WeaponProfile.ArcSpec arc, boolean mirrored) {
+        if (cachedArc != arc) {
+            cachedPath = arc.toPath();
+            cachedMirroredPath = null;
+            cachedArc = arc;
+        }
+        if (!mirrored) {
+            return cachedPath;
+        }
+        if (cachedMirroredPath == null) {
+            cachedMirroredPath = cachedPath.mirrored();
+        }
+        return cachedMirroredPath;
+    }
 
     /** Ticks left before a downed player bleeds out; -1 while standing ({@link Downed}). */
     public int downedTicksLeft = -1;

@@ -68,7 +68,13 @@ public final class ModNetwork {
             return;
         }
         List<ServerPlayer> watchers = level.players();
-        boolean allReal = watchers.stream().allMatch(p -> p.connection != null && p.connection.hasChannel(payload));
+        boolean allReal = true;
+        for (ServerPlayer watcher : watchers) {
+            if (watcher.connection == null || !watcher.connection.hasChannel(payload)) {
+                allReal = false;
+                break;
+            }
+        }
         CombatProfiler.begin(CombatProfiler.Section.SYNC);
         try {
             if (allReal) {

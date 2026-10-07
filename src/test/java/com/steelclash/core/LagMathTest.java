@@ -54,4 +54,29 @@ class LagMathTest {
         h.record(5, 2, 0, 0);
         assertEquals(2, h.at(5).x(), 1e-9);
     }
+
+    @Test
+    void historyUsesTimestampsEvenWhenRecordsArriveOutOfOrder() {
+        PositionHistory h = new PositionHistory(3);
+        h.record(4, 40, 4, -4);
+        h.record(12, 120, 12, -12);
+        h.record(8, 80, 8, -8);
+        assertEquals(new Vec(80, 8, -8), h.at(10));
+        assertEquals(new Vec(120, 12, -12), h.at(100));
+        assertEquals(new Vec(40, 4, -4), h.at(0));
+        h.record(20, 200, 20, -20); // evicts tick 4, so tick 8 is now the oldest timestamp
+        assertEquals(new Vec(80, 8, -8), h.at(0));
+        assertEquals(new Vec(120, 12, -12), h.at(15));
+    }
+
+    @Test
+    void oneSlotHistoryWrapsAndUpdatesAllCoordinates() {
+        PositionHistory h = new PositionHistory(1);
+        h.record(1, 10, 20, 30);
+        h.record(2, 40, 50, 60);
+        h.record(2, 70, 80, 90);
+        assertEquals(new Vec(70, 80, 90), h.at(1));
+        assertEquals(new Vec(70, 80, 90), h.at(2));
+        assertEquals(new Vec(70, 80, 90), h.at(3));
+    }
 }

@@ -3,6 +3,7 @@ package com.steelclash.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,25 @@ class BotLogicTest {
     void reactionNeedsEnoughWindup() {
         assertFalse(BotSkill.EASY.canReact(7), "a dagger's 7-tick windup beats an easy bot");
         assertTrue(BotSkill.HARD.canReact(7));
+    }
+
+    @Test
+    void defaultSkillOverridesReuseTheImmutablePreset() {
+        for (BotSkill skill : new BotSkill[]{BotSkill.EASY, BotSkill.NORMAL, BotSkill.HARD}) {
+            assertSame(skill, skill.withParryChance(skill.parryChance()).withAttackers(skill.attackers()));
+        }
+        assertSame(BotSkill.EASY, BotSkill.EASY.withAttackers(0), "the clamped value is already the preset's value");
+    }
+
+    @Test
+    void skillOverridesStillApplyAndKeepThePresetUnchanged() {
+        BotSkill adjusted = BotSkill.NORMAL.withParryChance(0.8).withAttackers(5);
+        assertEquals(0.8, adjusted.parryChance(), 1e-9);
+        assertEquals(5, adjusted.attackers());
+        assertEquals(BotSkill.NORMAL.reactionTicks(), adjusted.reactionTicks());
+        assertEquals(1, adjusted.withAttackers(-5).attackers());
+        assertEquals(0.35, BotSkill.NORMAL.parryChance(), 1e-9);
+        assertEquals(2, BotSkill.NORMAL.attackers());
     }
 
     // ---- opponent memory

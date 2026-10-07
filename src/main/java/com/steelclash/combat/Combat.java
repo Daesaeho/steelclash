@@ -510,8 +510,7 @@ public final class Combat {
 
     /** The arc the current attack follows: its variant, mirrored if swung from the other side. */
     public static ArcPath currentPath(CombatData data, WeaponProfile.AttackSpec spec) {
-        ArcPath path = spec.arc(data.machine.variant()).toPath();
-        return data.machine.isMirrored() ? path.mirrored() : path;
+        return data.pathFor(spec.arc(data.machine.variant()), data.machine.isMirrored());
     }
 
     public static Optional<WeaponProfile> currentProfile(LivingEntity entity, CombatData data) {

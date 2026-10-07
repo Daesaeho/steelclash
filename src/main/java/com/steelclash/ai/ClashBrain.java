@@ -24,6 +24,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.InteractionHand;
 import net.neoforged.neoforge.common.ItemAbilities;
 
@@ -261,12 +262,12 @@ public final class ClashBrain {
 
     private static List<LivingEntity> threats(PathfinderMob mob) {
         List<LivingEntity> result = new ArrayList<>();
-        for (LivingEntity e : mob.level().getEntitiesOfClass(LivingEntity.class, mob.getBoundingBox().inflate(THREAT_RADIUS),
-                e -> e != mob && e.hasData(ModAttachments.COMBAT) && e.getData(ModAttachments.COMBAT).machine.phase() == Phase.WINDUP)) {
-            if (Guard.inCone(CombatMath.viewYaw(e), e.getX(), e.getZ(), mob.getX(), mob.getZ(), THREAT_CONE)) {
-                result.add(e);
-            }
-        }
+        // defend answers only the first threat. Filter the cone before the limit, and preserve the level query's order.
+        mob.level().getEntities(EntityTypeTest.forClass(LivingEntity.class), mob.getBoundingBox().inflate(THREAT_RADIUS),
+                e -> e != mob && e.hasData(ModAttachments.COMBAT)
+                        && e.getData(ModAttachments.COMBAT).machine.phase() == Phase.WINDUP
+                        && Guard.inCone(CombatMath.viewYaw(e), e.getX(), e.getZ(), mob.getX(), mob.getZ(), THREAT_CONE),
+                result, 1);
         return result;
     }
 

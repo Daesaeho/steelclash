@@ -259,6 +259,30 @@ Attack phases are now timed in integer **microseconds** and resolved **inside** 
 
 - **Verdict, by the plan's own rules:** every scene stays far inside the budget. Hit geometry (broad + narrow + world) never reaches 0.05 ms per tick, against the plan's 1–2 ms threshold for even considering Rust. **No native code; stay in Java.** The one cost that grows with crowd size is the bot brain, about 2 µs and about 0.4 KB of garbage per bot per tick, mostly its per-tick scan for incoming attacks. That's the first place to optimize if hordes grow much bigger. Bots mostly circle, because attack tokens let 2–3 swing at once, so blades stay few even at 150.
 - **Not measured:** packet encoding and sending (no real clients in GameTests), client-side rendering cost, and projectiles (plan scene E).
+- **Optimization pass (2026-10-07, after 0.3.0-beta):** an outside patch, reviewed and applied with tidied imports. It doesn't change behaviour:
+  - the bot's threat scan stops at the first windup in its cone, since `defend` only ever answers the first;
+  - arc paths, and their mirrored copies, are cached per fighter by `ArcSpec` identity, so a datapack reload invalidates them;
+  - the swing tracer builds each candidate's hitbox and centre once per trace instead of once per sub-step, and skips the entity query when the target limit is already reached;
+  - `BotSkill` reuses the preset when an override changes nothing;
+  - `PositionHistory` no longer allocates while searching.
+
+  It adds tests for the threat limit, cache invalidation (variant, side, reloaded spec), unchanged presets and out-of-order history. Same machine, same code, run back to back with and without it:
+
+  | Scene | ms/tick before → after | p99 before → after | KB/tick before → after |
+  |---|---|---|---|
+  | B: 20 dummies | 0.149 → 0.071 | 0.61 → 0.32 | 18.2 → 16.7 |
+  | C: 50 dummies | 0.093 → 0.061 | 0.30 → 0.27 | 20.1 → 17.4 |
+  | D: 1 vs 8 bots | 0.109 → 0.056 | 0.34 → 0.22 | 11.0 → 8.4 |
+  | E: 1 vs 40 bots | 0.255 → 0.163 | 0.61 → 0.32 | 36.2 → 27.7 |
+  | F: 1 vs 150 bots | 0.455 → 0.266 | 0.96 → 0.43 | 72.1 → 55.5 |
+
+  The bot AI, the biggest cost, dropped by about 44% at 150 bots. One tick in F's run peaked at 3.8 ms (before: 1.1). That's a single outlier with p99 halved, consistent with a GC or JIT pause, not a regression.
+
+  Of the review's four further candidates, two were done the same day:
+  - **Mob pose once per frame.** Vanilla turns the body (`setupRotations`) before it poses the model (`setupAnim`), and both hooks computed the full `CombatPose`. `MobCombatPoses.applyBodyRotation` now hands its pose to `apply` in the same render call, keyed by entity and partial tick, with a fresh computation as the fallback. Checked with a temporary comparison during a husk pose sheet: 4,600 handed-on poses, all equal to a fresh one, and none needed recomputing. Screenshots alone can't show it: particles differ between runs.
+  - **Broadcast check without a stream.** `sendToTrackingAndSelf` checks for fake players with a plain loop.
+
+  Skipped: the telegraph labels are opt-in and cost microseconds. Per-entity position history is about 0.8 KB per entity, and recording only some entities risks missing the history a lagged swing needs.
 
 ## Cleave and thwack (architecture plan §18, 2026-10-07)
 - **Rule** (`core/ContactPolicy`): each weapon attack (slash, overhead, stab) is `cleave`, `thwack` or `cleave_on_kill`. Unset, blunt attacks are `cleave_on_kill` (Chivalry 2 since Fight Knight) and everything else cleaves. Heavies always cleave. Kicks, jabs, throws and specials are untouched.

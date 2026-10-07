@@ -1,3 +1,9 @@
+# Unreleased
+
+**Performance**
+- Combat on the server costs about 40% less at large fights: bots stop scanning for threats once they've found the one they'll answer, swing hitboxes and arc paths are computed once instead of every sub-step, and less garbage is made per tick (150-bot benchmark: 0.46 → 0.27 ms per tick).
+- Fighting mobs on screen work out their combat pose once per frame instead of twice (body lean and arms shared it), and combat packets no longer make garbage checking for fake players.
+
 # 0.3.0-beta
 
 **Combat**

@@ -22,6 +22,16 @@ public final class MobCombatPoses {
     /** Whole-body rotation pivot height, blocks above the feet (as Player Animation Library uses for players). */
     private static final float BODY_PIVOT = 0.75f;
 
+    /**
+     * The pose {@link #applyBodyRotation} worked out, handed on to {@link #apply} in the same render call (vanilla
+     * turns the body before it poses the model), so each frame computes a mob's pose once. Render thread only.
+     */
+    @Nullable
+    private static LivingEntity posedEntity;
+    private static float posedPartialTick;
+    @Nullable
+    private static CombatPose posed;
+
     private MobCombatPoses() {
     }
 
@@ -33,7 +43,7 @@ public final class MobCombatPoses {
         if (parts == null) {
             return;
         }
-        CombatPose pose = CombatPose.of(entity, partialTick).orElse(null);
+        CombatPose pose = takePose(entity, partialTick);
         if (pose == null) {
             return;
         }
@@ -79,6 +89,9 @@ public final class MobCombatPoses {
             return;
         }
         CombatPose pose = CombatPose.of(entity, partialTick).orElse(null);
+        posedEntity = entity;
+        posedPartialTick = partialTick;
+        posed = pose;
         if (pose == null) {
             return;
         }
@@ -90,6 +103,16 @@ public final class MobCombatPoses {
         poseStack.mulPose(new Quaternionf().rotationZYX((float) Math.toRadians(body[2]), (float) Math.toRadians(body[1]),
                 (float) Math.toRadians(body[0])));
         poseStack.translate(0, -BODY_PIVOT, 0);
+    }
+
+    /** The pose {@link #applyBodyRotation} just computed for this entity and frame, or a fresh one. */
+    @Nullable
+    private static CombatPose takePose(LivingEntity entity, float partialTick) {
+        boolean handedOn = posedEntity == entity && posedPartialTick == partialTick;
+        CombatPose pose = handedOn ? posed : CombatPose.of(entity, partialTick).orElse(null);
+        posedEntity = null;
+        posed = null;
+        return pose;
     }
 
     private record Parts(ModelPart rightArm, ModelPart leftArm, ModelPart rightLeg, ModelPart leftLeg, ModelPart head,
