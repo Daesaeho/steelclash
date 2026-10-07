@@ -595,7 +595,10 @@ public final class ClientInput {
                 PacketDistributor.sendToServer(new AttackInputPayload(type, 0, false));
                 return;
             }
-            if (type != data.machine.type() && Combat.morph(player, data, type, variant, mirrored)) {
+            // The same attack from the other side only with an explicit side key (two-slash-key scheme): a counter-feint
+            // to the alternate side. A second press of the single slash key mustn't restart the windup by accident.
+            boolean otherSide = forcedMirrored != null && type == data.machine.type() && mirrored != data.machine.isMirrored();
+            if ((type != data.machine.type() || otherSide) && Combat.morph(player, data, type, variant, mirrored)) {
                 hold = source;
                 lastMirrored = mirrored;
                 PacketDistributor.sendToServer(new AttackInputPayload(type, variant, mirrored));

@@ -209,7 +209,7 @@ Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2`
 | 3 | Pick up a hay bale in survival, open the recipe book | Training Dummy recipe unlocked; crafting it gives the dummy, which places like a spawn egg. |
 | 4 | Mods → Steel Clash → Config | Readable names for every option and section, with descriptions on hover; changing one takes effect. |
 | 5 | `./gradlew runClient -PnoCompat` | Boots and plays without Spartan Weaponry/Shields; vanilla swords, axes, the mace and the trident all have movesets. |
-| 6 | Drop `build/libs/steelclash-0.1.0-beta.jar` and Player Animation Library 1.1.6 into a normal NeoForge 21.1 instance | Loads outside the dev environment; the mod list shows the Steel Clash License, 0.1.0-beta, the author and the credits. |
+| 6 | Drop `build/libs/steelclash-0.2.0-beta.jar` and Player Animation Library 1.1.6 into a normal NeoForge 21.1 instance | Loads outside the dev environment; the mod list shows the Steel Clash License, 0.2.0-beta, the author and the credits. |
 
 ## Control schemes and gesture attacks (added 2026-10-06)
 Client config (Mods → Steel Clash → Config → client).

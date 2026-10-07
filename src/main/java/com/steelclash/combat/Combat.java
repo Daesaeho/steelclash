@@ -7,6 +7,7 @@ import com.steelclash.core.AttackType;
 import com.steelclash.core.ContactPolicy;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.DamageType;
+import com.steelclash.core.Guard;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.ThrownWeapon;
 import com.steelclash.net.CombatStatePayload;
@@ -31,6 +32,9 @@ import net.minecraft.world.phys.Vec3;
 public final class Combat {
     /** Holding an attack input this many ticks into the windup turns it into a heavy. */
     public static final int HEAVY_HOLD_TICKS = 3;
+    /** How close and how squarely an attacker must face someone for their windup to count as incoming (counter-feints). */
+    private static final double INCOMING_RADIUS = 5.0;
+    private static final double INCOMING_CONE = 120;
 
     private Combat() {
     }
@@ -162,12 +166,35 @@ public final class Combat {
         }
         Optional<WeaponProfile> profile = currentProfile(entity, data);
         Optional<WeaponProfile.AttackSpec> spec = profile.flatMap(p -> p.attack(newType));
-        if (spec.isEmpty() || !data.machine.morph(newType, CombatMath.timings(entity, profile.get(), spec.get()),
-                Math.floorMod(variant, spec.get().variantCount()), mirrored)) {
+        if (spec.isEmpty()) {
+            return false;
+        }
+        AttackTimings timings = CombatMath.timings(entity, profile.get(), spec.get());
+        int arc = Math.floorMod(variant, spec.get().variantCount());
+        // A plain morph first; failing that (already morphed, or the same attack from the other side), a counter-feint
+        // if that attack is coming at us.
+        if (!data.machine.morph(newType, timings, arc, mirrored)
+                && !(isIncoming(entity, newType) && data.machine.counterFeint(newType, timings, arc, mirrored))) {
             return false;
         }
         spend(entity, data, Config.MORPH_STAMINA_COST.get());
         return true;
+    }
+
+    /**
+     * Whether an attack of this type is winding up at the entity: someone close, facing it, in that attack's windup.
+     * What a counter-feint may answer. Works on both sides (clients know other fighters' phases from sync).
+     */
+    public static boolean isIncoming(LivingEntity entity, AttackType type) {
+        for (LivingEntity attacker : entity.level().getEntitiesOfClass(LivingEntity.class,
+                entity.getBoundingBox().inflate(INCOMING_RADIUS), e -> e != entity && e.hasData(ModAttachments.COMBAT))) {
+            CombatStateMachine m = attacker.getData(ModAttachments.COMBAT).machine;
+            if (m.phase() == Phase.WINDUP && m.type() == type
+                    && Guard.inCone(CombatMath.viewYaw(attacker), attacker.getX(), attacker.getZ(), entity.getX(), entity.getZ(), INCOMING_CONE)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Raises a weapon parry; during a windup this cancels the attack into the parry. */
@@ -240,7 +267,7 @@ public final class Combat {
             if (feintInto(entity, data, type)) {
                 onAttackStarted(entity, data);
                 sync(entity, data, false);
-            } else if (type != machine.type() && morph(entity, data, type, variant, mirrored)) {
+            } else if ((type != machine.type() || mirrored != machine.isMirrored()) && morph(entity, data, type, variant, mirrored)) {
                 sync(entity, data, false);
             }
             return;

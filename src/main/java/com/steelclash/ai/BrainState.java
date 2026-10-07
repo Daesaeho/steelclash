@@ -45,6 +45,10 @@ public class BrainState {
     public Answer answer = Answer.NONE;
     public int answeredAttacker = -1;
     public int answeredSerial = -1;
+    /** The attacker this bot is countering (its counter-feints follow that attacker's morphs), or -1. */
+    public int counterTarget = -1;
+    /** The bot's own attack that is the counter (its attack serial). */
+    public int counterSerial = -1;
     /** Attack serial whose combo chance was already rolled. */
     public int comboRolledFor = -1;
     /** Accel or drag planned for the current attack (turning the head during the release). */

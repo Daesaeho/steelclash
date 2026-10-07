@@ -6,7 +6,8 @@ import org.jetbrains.annotations.Nullable;
  * The combat lifecycle shared by players and mobs.
  * <pre>
  * attack:  IDLE → WINDUP → RELEASE → RECOVERY → IDLE
- *            WINDUP: feint → IDLE, morph → WINDUP (other type), heavy → longer WINDUP, counter → shorter WINDUP
+ *            WINDUP: feint → IDLE, morph → WINDUP (other type), heavy → longer WINDUP, counter → shorter WINDUP,
+ *                    counter-feint → WINDUP (re-matching an incoming attack, once, even after a morph)
  *            RECOVERY after a landed hit: attack again immediately (combo)
  * parry:   IDLE/RECOVERY → PARRY (catches any number of hits while up; each opens the riposte window)
  *                            → attack = riposte straight out of the guard (or, before a catch, a counter attempt)
@@ -57,6 +58,8 @@ public final class CombatStateMachine {
     private int activeParryTicks;
     /** The current attack was started out of a raised guard (a riposte or a counter attempt). */
     private boolean fromGuard;
+    /** The current windup has used its counter-feint. */
+    private boolean counterFeinted;
     /** The current attack stopped in a body ({@link #thwack}). */
     private boolean thwacked;
     /** Release progress the recovery starts from: 1 normally, the contact point after a thwack. */
@@ -91,6 +94,7 @@ public final class CombatStateMachine {
         this.comboAllowed = false;
         this.thwacked = false;
         this.recoverFrom = 1;
+        this.counterFeinted = false;
         enterUs(Phase.WINDUP, attackTimings.windupUs());
         return true;
     }
@@ -124,6 +128,27 @@ public final class CombatStateMachine {
         if (phase != Phase.WINDUP || morphed || newType == type) {
             return false;
         }
+        variant = Math.max(0, arcVariant);
+        mirrored = mirror;
+        type = newType;
+        timings = newTimings;
+        morphed = true;
+        heavy = false;
+        enterUs(Phase.WINDUP, newTimings.windupUs());
+        return true;
+    }
+
+    /**
+     * Counter-feint (Chivalry 2): the attack being countered changed, so the counter changes with it. Like a morph the
+     * windup starts over, but it is allowed once more after a morph, and may also switch to the other side of the same
+     * attack (Chivalry 2's alternate counter: a second chance at the timing). The caller decides that an attack of the
+     * new type is actually coming ({@code Combat.morph}).
+     */
+    public boolean counterFeint(AttackType newType, AttackTimings newTimings, int arcVariant, boolean mirror) {
+        if (phase != Phase.WINDUP || counterFeinted || (newType == type && mirror == mirrored)) {
+            return false;
+        }
+        counterFeinted = true;
         variant = Math.max(0, arcVariant);
         mirrored = mirror;
         type = newType;
@@ -467,6 +492,10 @@ public final class CombatStateMachine {
 
     public boolean isComboAllowed() {
         return comboAllowed;
+    }
+
+    public boolean isCounterFeinted() {
+        return counterFeinted;
     }
 
     /** The current attack stopped in a body and is in (or past) its thwack recovery. */

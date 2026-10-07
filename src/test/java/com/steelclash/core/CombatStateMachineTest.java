@@ -582,4 +582,49 @@ class CombatStateMachineTest {
         assertFalse(m.isThwacked());
         assertEquals(1, m.recoverFrom(), 1e-9);
     }
+
+    // ---- counter-feint (architecture plan section 13.1)
+
+    @Test
+    void counterFeintIsAllowedOnceEvenAfterAMorph() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        assertTrue(m.morph(AttackType.OVERHEAD, TIMINGS));
+        assertFalse(m.morph(AttackType.STAB, TIMINGS), "a plain morph only once");
+        m.tick();
+        assertTrue(m.counterFeint(AttackType.STAB, TIMINGS, 0, false));
+        assertEquals(AttackType.STAB, m.type());
+        assertEquals(Phase.WINDUP, m.phase());
+        assertEquals(0, m.phaseElapsedUs(), "the windup starts over");
+        assertTrue(m.isCounterFeinted());
+        assertFalse(m.counterFeint(AttackType.SLASH, TIMINGS, 0, false), "only one counter-feint");
+    }
+
+    @Test
+    void counterFeintCanSwitchToTheOtherSideOfTheSameAttack() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS, 0, false);
+        assertFalse(m.counterFeint(AttackType.SLASH, TIMINGS, 0, false), "same attack, same side: nothing to change");
+        assertTrue(m.counterFeint(AttackType.SLASH, TIMINGS, 0, true));
+        assertTrue(m.isMirrored());
+    }
+
+    @Test
+    void counterFeintOnlyDuringTheWindupAndResetsWithTheNextAttack() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertFalse(m.counterFeint(AttackType.STAB, TIMINGS, 0, false), "idle");
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        for (int i = 0; i < 3; i++) {
+            m.tick();
+        }
+        assertEquals(Phase.RELEASE, m.phase());
+        assertFalse(m.counterFeint(AttackType.STAB, TIMINGS, 0, false), "too late: the blade is coming");
+        CombatStateMachine n = new CombatStateMachine();
+        n.startAttack(AttackType.SLASH, TIMINGS);
+        n.counterFeint(AttackType.STAB, TIMINGS, 0, false);
+        n.cancel();
+        n.startAttack(AttackType.SLASH, TIMINGS);
+        assertFalse(n.isCounterFeinted());
+        assertTrue(n.counterFeint(AttackType.STAB, TIMINGS, 0, false), "a new attack gets its own counter-feint");
+    }
 }

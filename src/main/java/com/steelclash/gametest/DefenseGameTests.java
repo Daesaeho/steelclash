@@ -1,5 +1,6 @@
 package com.steelclash.gametest;
 
+import static com.steelclash.gametest.TestSupport.finish;
 import static com.steelclash.gametest.TestSupport.FACING_NEGATIVE_X;
 import static com.steelclash.gametest.TestSupport.FACING_POSITIVE_X;
 import static com.steelclash.gametest.TestSupport.advance;
@@ -324,5 +325,42 @@ public final class DefenseGameTests {
         arrow.setPos(from);
         arrow.shoot(1, 0, 0, 2.0f, 0);
         helper.getLevel().addFreshEntity(arrow);
+    }
+
+    // ---- counter-feint (architecture plan section 13.1)
+
+    @GameTest(template = ARENA)
+    public static void counterFeintFollowsAFeintedAttack(GameTestHelper helper) {
+        // The attacker must be in the level for "an attack is coming" to see it (mock players aren't): a dummy.
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        TrainingDummy attacker = dummy(helper, 1, 4, FACING_POSITIVE_X);
+        attacker.setTarget(defender);
+        CombatData a = data(attacker);
+        CombatData d = data(defender);
+        Combat.start(attacker, a, AttackType.SLASH);
+        Combat.start(defender, d, AttackType.OVERHEAD);
+        check(helper, Combat.morph(defender, d, AttackType.SLASH), "the defender morphs to counter the slash");
+        check(helper, Combat.morph(attacker, a, AttackType.STAB), "the attacker feints into a stab");
+        check(helper, !Combat.morph(defender, d, AttackType.OVERHEAD), "no counter-feint into an attack nobody is making");
+        check(helper, Combat.morph(defender, d, AttackType.STAB), "counter-feint into the stab, although already morphed");
+        check(helper, d.machine.isCounterFeinted(), "it was a counter-feint");
+        finish(attacker);
+        check(helper, a.machine.phase() == Phase.STAGGER, "the stab is countered, attacker phase " + a.machine.phase());
+        check(helper, !isHurt(defender), "and the defender isn't hit");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void counterFeintToTheOtherSide(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        TrainingDummy attacker = dummy(helper, 1, 4, FACING_POSITIVE_X);
+        CombatData d = data(defender);
+        Combat.start(attacker, data(attacker), AttackType.SLASH);
+        Combat.start(defender, d, AttackType.SLASH, 0, false);
+        advance(defender, 3);
+        Combat.requestAttack(defender, AttackType.SLASH, 0, true);
+        check(helper, d.machine.isMirrored() && d.machine.isCounterFeinted(), "the counter switches sides");
+        check(helper, d.machine.phaseTick() == 0, "and its windup starts over: a second chance at the timing");
+        helper.succeed();
     }
 }

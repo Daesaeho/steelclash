@@ -52,6 +52,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Buffered retaliation:** press an attack while staggered (after being parried, say) and it starts the moment the stagger ends.
 - **Shields:** with a shield in your offhand, the parry key raises it. Shields hold for as long as you keep the key down, but every block costs stamina. Tower shields (Spartan Shields) cover more and stop arrows from the front only.
 - **Kick / shield bash** (Z): can't be parried. It breaks a raised parry or shield and staggers an idle target. Use it on turtles. It does **not** interrupt someone who is already attacking (they swing straight through it), and two kicks meeting cancel out.
+- **Counter-feint:** if the attacker feints into a different attack while you're countering, switch your counter to match it. You get this switch even if you already changed attack once. Your windup starts over, so time it to their new attack. With the two-slash-key scheme you can also switch your counter slash to the other side, which gives you a second try at the timing. It only works against an attack actually coming at you. Bots counter-feint too, once they've seen your new windup.
 - **Counter windows depend on the attacker's weapon:** against fast weapons (daggers) you have slightly less time to counter, against slow ones (greatswords, heavies) slightly more.
 
 ## Footwork
@@ -106,7 +107,7 @@ Zombies, skeletons, piglins, vindicators, endermen, spiders, ravagers, golems an
 - parry with reaction times that depend on difficulty (Easy is slow, Hard is sharp);
 - feint, riposte, and kick players who hide behind shields;
 - accel and drag their slashes by turning their heads mid-swing (Normal now and then, Hard often), so watch the blade, not just the windup;
-- notice your habits: feint too often and they parry later, spam one attack and they start countering it;
+- notice your habits: feint too often and they parry later, spam one attack and they start countering it (and follow a feint with their counter);
 - take turns in groups (1/2/3 attackers at once on Easy/Normal/Hard) so big fights stay readable.
 
 Mobs spawn armed far more often than in vanilla, and Spartan weapons join the pools if installed.

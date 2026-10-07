@@ -137,6 +137,20 @@ public final class ClashBrain {
                     brain.evadeUntil = mob.tickCount + 10; // won't parry this one: step out of reach instead
                 }
             }
+            // Counter-feint: the attack being countered changed type; once the bot has seen the new windup for its
+            // reaction time, its counter changes to match.
+            if (brain.counterTarget == attacker.getId() && brain.counterSerial == data.machine.attackSerial()
+                    && data.machine.phase() == Phase.WINDUP
+                    && Combat.isWeaponAttack(data.machine.type()) && Combat.isWeaponAttack(incoming.type())
+                    && incoming.type() != data.machine.type()) {
+                if (skill.canReact(incoming.phaseTick())) {
+                    brain.counterTarget = -1;
+                    if (Combat.morph(mob, data, incoming.type())) {
+                        Combat.sync(mob, data, false);
+                    }
+                }
+                return;
+            }
             // Carrying a shield: raise it as soon as the windup has been read (a shield needs 5 ticks to come up).
             if (hasShield(mob) && (brain.answer == BrainState.Answer.PARRY || brain.answer == BrainState.Answer.LATE_PARRY)) {
                 if (skill.canReact(incoming.phaseTick()) && freeToDefend(mob, data, incoming)) {
@@ -165,6 +179,8 @@ public final class ClashBrain {
                     if (incoming.phase() == Phase.WINDUP && incoming.ticksLeftInPhase() <= 5 && data.machine.canStartAttack()) {
                         Combat.requestAttack(mob, incoming.type());
                         brain.answer = BrainState.Answer.NONE;
+                        brain.counterTarget = attacker.getId();
+                        brain.counterSerial = data.machine.attackSerial();
                     }
                 }
                 case PARRY -> {

@@ -1,5 +1,6 @@
 package com.steelclash.gametest;
 
+import static com.steelclash.gametest.TestSupport.FACING_POSITIVE_X;
 import static com.steelclash.gametest.TestSupport.FACING_NEGATIVE_X;
 import static com.steelclash.gametest.TestSupport.check;
 import static com.steelclash.gametest.TestSupport.data;
@@ -7,6 +8,10 @@ import static com.steelclash.gametest.TestSupport.dummy;
 import static com.steelclash.gametest.TestSupport.face;
 
 import com.steelclash.SteelClash;
+import com.steelclash.combat.CombatData;
+import com.steelclash.core.BotSkill;
+import com.steelclash.ai.ClashBrain;
+import com.steelclash.ai.BrainState;
 import net.minecraft.world.entity.Mob;
 import com.steelclash.combat.MobCombat;
 import com.steelclash.combat.Combat;
@@ -117,6 +122,41 @@ public final class BotGameTests {
         Combat.requestAttack(vindicator, AttackType.SLASH);
         MobCombat.keepAggressive(vindicator, data(vindicator));
         check(helper, vindicator.isAggressive(), "swinging always counts as fighting");
+        helper.succeed();
+    }
+
+    /** A bot countering a slash follows the attacker's feint into an overhead once it has seen it for its reaction time. */
+    @GameTest(template = ARENA)
+    public static void botCounterFeints(GameTestHelper helper) {
+        TrainingDummy attacker = dummy(helper, 1, 4, FACING_POSITIVE_X); // in the level, so the bot sees it coming
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        face(zombie, FACING_NEGATIVE_X);
+        zombie.setTarget(attacker);
+        CombatData a = data(attacker);
+        CombatData z = data(zombie);
+        Combat.start(attacker, a, AttackType.SLASH);
+        while (a.machine.phase() == Phase.WINDUP && a.machine.ticksLeftInPhase() > 5) {
+            Combat.tickServer(attacker, a);
+        }
+        // The bot has decided to counter this attack (normally a dice roll on its read of the attacker's habits).
+        BrainState brain = z.brain != null ? z.brain : (z.brain = new BrainState());
+        brain.answeredAttacker = attacker.getId();
+        brain.answeredSerial = a.machine.attackSerial();
+        brain.answer = BrainState.Answer.COUNTER;
+        ClashBrain.tick(zombie, z);
+        check(helper, z.machine.phase() == Phase.WINDUP && z.machine.type() == AttackType.SLASH, "the bot counters the slash");
+        Combat.morph(attacker, a, AttackType.OVERHEAD);
+        BotSkill skill = ClashBrain.skill(zombie);
+        ClashBrain.tick(zombie, z);
+        check(helper, z.machine.type() == AttackType.SLASH, "no reaction before the bot has seen the feint");
+        for (int tick = 0; tick < skill.reactionTicks() && a.machine.phase() == Phase.WINDUP; tick++) {
+            Combat.tickServer(attacker, a);
+            ClashBrain.tick(zombie, z);
+        }
+        check(helper, z.machine.type() == AttackType.OVERHEAD,
+                "after " + skill.reactionTicks() + " ticks the bot's counter follows into the overhead, it has " + z.machine.type());
         helper.succeed();
     }
 }
