@@ -6,6 +6,8 @@ import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.compat.Compat;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.Phase;
+import com.steelclash.profile.WeaponProfile;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.Optional;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -200,24 +202,22 @@ public final class SwingGameTests {
 
     @GameTest(template = ARENA)
     public static void thwackSkipsTheRestOfTheRelease(GameTestHelper helper) {
-        Player whiffer = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X, 1);
-        int whiff = ticksToFinish(whiffer, AttackType.SLASH);
         Player hitter = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X);
         helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
-        int hit = ticksToFinish(hitter, AttackType.SLASH);
-        TestSupport.check(helper, TestSupport.data(hitter).machine.isThwacked(), "the hit thwacked");
-        TestSupport.check(helper, hit < whiff, "thwacking ends the attack sooner: " + hit + " ticks vs " + whiff + " for a whiff");
+        CombatData data = TestSupport.data(hitter);
+        Combat.requestAttack(hitter, AttackType.SLASH);
+        for (int tick = 0; tick < 200 && data.machine.isAttacking() && !data.machine.isThwacked(); tick++) {
+            Combat.tickServer(hitter, data);
+        }
+        TestSupport.check(helper, data.machine.isThwacked(), "the hit thwacked");
+        TestSupport.check(helper, data.machine.phase() == Phase.RECOVERY && data.machine.recoverFrom() < 1,
+                "the release ended at the contact, " + data.machine.recoverFrom() + " of the way through");
+        WeaponProfile.AttackSpec spec = Combat.currentSpec(hitter, data).orElseThrow();
+        TestSupport.check(helper, spec.thwackMs().isPresent(), "the blunt profile should set thwack_ms");
+        long expected = spec.thwackUs(data.machine.timings().recoveryUs());
+        TestSupport.check(helper, data.machine.phaseDurationUs() == expected,
+                "the thwack recovery " + data.machine.phaseDurationUs() + " should be thwack_ms, " + expected);
         helper.succeed();
     }
 
-    private static int ticksToFinish(Player player, AttackType type) {
-        CombatData data = TestSupport.data(player);
-        Combat.requestAttack(player, type);
-        int ticks = 0;
-        while (ticks < 200 && data.machine.isAttacking()) {
-            Combat.tickServer(player, data);
-            ticks++;
-        }
-        return ticks;
-    }
 }

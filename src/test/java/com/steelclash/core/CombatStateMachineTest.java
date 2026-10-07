@@ -363,17 +363,34 @@ class CombatStateMachineTest {
     }
 
     @Test
-    void comboSkipsRecoveryOnlyAfterLandedHit() {
+    void comboSkipsRecoveryAfterAnUnblockedAttack() {
         CombatStateMachine m = new CombatStateMachine();
         m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 1, 10));
         m.tick();
         m.tick();
         assertEquals(Phase.RECOVERY, m.phase());
-        assertFalse(m.startAttack(AttackType.STAB, TIMINGS), "whiffed: must sit out recovery");
-        m.allowCombo();
-        assertTrue(m.startAttack(AttackType.STAB, TIMINGS), "landed: combo");
+        assertTrue(m.isComboAllowed(), "Chivalry 2: even a whiff can be comboed");
+        assertTrue(m.startAttack(AttackType.STAB, TIMINGS), "combo");
         assertEquals(Phase.WINDUP, m.phase());
         assertFalse(m.isComboAllowed(), "combo flag resets with the new attack");
+    }
+
+    @Test
+    void kicksAndBlockedAttacksDontCombo() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.KICK, AttackTimings.ofTicks(1, 1, 10));
+        m.tick();
+        m.tick();
+        assertEquals(Phase.RECOVERY, m.phase());
+        assertFalse(m.isComboAllowed());
+        assertFalse(m.startAttack(AttackType.STAB, TIMINGS), "a kick's recovery must be sat out");
+
+        CombatStateMachine blocked = new CombatStateMachine();
+        blocked.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 3, 10));
+        blocked.tick();
+        blocked.stagger(5, false);
+        assertFalse(blocked.isComboAllowed(), "a blocked attack is staggered, not comboed");
+        assertFalse(blocked.startAttack(AttackType.STAB, TIMINGS));
     }
 
     @Test

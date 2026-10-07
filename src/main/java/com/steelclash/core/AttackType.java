@@ -24,6 +24,11 @@ public enum AttackType {
     /** The three weapon attacks (everything but the kick). */
     public static final AttackType[] WEAPON_ATTACKS = {SLASH, OVERHEAD, STAB};
 
+    /** Slash, overhead or stab: an attack the weapon profile defines (not a kick, special, throw or jab). */
+    public boolean isWeaponAttack() {
+        return this == SLASH || this == OVERHEAD || this == STAB;
+    }
+
     public static AttackType byId(int id) {
         return id >= 0 && id < VALUES.length ? VALUES[id] : SLASH;
     }

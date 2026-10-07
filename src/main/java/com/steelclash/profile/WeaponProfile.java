@@ -2,6 +2,7 @@ package com.steelclash.profile;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackTimings;
@@ -107,14 +108,39 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
         return Optional.ofNullable(attacks.get(type));
     }
 
-    /** Heavy (held) attack multipliers. */
-    public record HeavySpec(float windupMult, float damageMult, float staminaDamageMult) {
+    /**
+     * Heavy (held) attacks. The windup either grows by {@code windup_extra_ms} (Chivalry 2: a heavy adds a fixed time to
+     * whatever windup it started from, riposte or combo included) or, when that isn't set, is scaled by
+     * {@code windup_mult}. {@code recovery_extra_ms} lengthens the recovery.
+     */
+    public record HeavySpec(float windupMult, float damageMult, float staminaDamageMult, Optional<Integer> windupExtraMs,
+                            Optional<Integer> recoveryExtraMs) {
         public static final HeavySpec DEFAULT = new HeavySpec(1.6f, 1.5f, 1.6f);
+        private static final Codec<Integer> EXTRA_MS_CODEC = Codec.intRange(0, AttackTimings.MAX_US / 1000);
         public static final Codec<HeavySpec> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.floatRange(1f, 5f).optionalFieldOf("windup_mult", DEFAULT.windupMult).forGetter(HeavySpec::windupMult),
                 Codec.floatRange(0f, 10f).optionalFieldOf("damage_mult", DEFAULT.damageMult).forGetter(HeavySpec::damageMult),
-                Codec.floatRange(0f, 10f).optionalFieldOf("stamina_damage_mult", DEFAULT.staminaDamageMult).forGetter(HeavySpec::staminaDamageMult)
+                Codec.floatRange(0f, 10f).optionalFieldOf("stamina_damage_mult", DEFAULT.staminaDamageMult).forGetter(HeavySpec::staminaDamageMult),
+                EXTRA_MS_CODEC.optionalFieldOf("windup_extra_ms").forGetter(HeavySpec::windupExtraMs),
+                EXTRA_MS_CODEC.optionalFieldOf("recovery_extra_ms").forGetter(HeavySpec::recoveryExtraMs)
         ).apply(i, HeavySpec::new));
+
+        public HeavySpec(float windupMult, float damageMult, float staminaDamageMult) {
+            this(windupMult, damageMult, staminaDamageMult, Optional.empty(), Optional.empty());
+        }
+
+        /** The heavy's windup for a light windup of {@code windupUs}; {@code speedScale} stretches the extra time. */
+        public int windupUs(int windupUs, double speedScale) {
+            long us = windupExtraMs.map(ms -> windupUs + Math.round(ms * 1000 * speedScale))
+                    .orElseGet(() -> Math.round(windupUs * (double) windupMult));
+            return (int) Math.min(AttackTimings.MAX_US, us);
+        }
+
+        /** The heavy's recovery for a light recovery of {@code recoveryUs}. */
+        public int recoveryUs(int recoveryUs, double speedScale) {
+            long us = recoveryUs + recoveryExtraMs.map(ms -> Math.round(ms * 1000 * speedScale)).orElse(0L);
+            return (int) Math.min(AttackTimings.MAX_US, us);
+        }
     }
 
     /**
@@ -145,15 +171,21 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
      *                      ({@link ContactPolicy#defaultFor})
      * @param thwackMs      recovery after a thwack, from the moment of contact, in milliseconds; unset uses the
      *                      attack's normal recovery (so a thwack saves the rest of the release)
+     * @param comboMs       windup of this attack when it's chained out of the previous attack's recovery (Chivalry 2
+     *                      combo timing, which replaces the windup); unset uses the normal windup
+     * @param riposteMs     windup of this attack as a riposte (Chivalry 2 riposte timing); unset scales the normal
+     *                      windup by the profile's {@code riposte_windup_mult}
      */
     public record AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
                              float reachBonus, float staminaDamage, float staminaCost, List<ArcSpec> variants,
                              Optional<DamageType> damageType, Optional<Integer> windupMs, Optional<Integer> releaseMs,
-                             Optional<Integer> recoveryMs, Optional<ContactPolicy> contact, Optional<Integer> thwackMs) {
+                             Optional<Integer> recoveryMs, Optional<ContactPolicy> contact, Optional<Integer> thwackMs,
+                             Optional<Integer> comboMs, Optional<Integer> riposteMs) {
         public AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
                           float reachBonus, float staminaDamage, float staminaCost) {
             this(windup, release, recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, List.of(),
-                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.empty(), Optional.empty());
         }
 
         /** How many different arcs this attack can be swung along (the main arc plus its variants). */
@@ -176,6 +208,15 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                         .orElseGet(() -> DataResult.error(() -> "Unknown contact: " + name + " (cleave, thwack, cleave_on_kill)")),
                 ContactPolicy::serializedName);
 
+        /** The timings that replace a phase in some situation; a separate map because a codec group takes 16 fields. */
+        private record Replacements(Optional<Integer> thwackMs, Optional<Integer> comboMs, Optional<Integer> riposteMs) {
+            static final MapCodec<Replacements> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+                    MS_CODEC.optionalFieldOf("thwack_ms").forGetter(Replacements::thwackMs),
+                    MS_CODEC.optionalFieldOf("combo_ms").forGetter(Replacements::comboMs),
+                    MS_CODEC.optionalFieldOf("riposte_ms").forGetter(Replacements::riposteMs)
+            ).apply(i, Replacements::new));
+        }
+
         private static final Codec<AttackSpec> FIELDS = RecordCodecBuilder.create(i -> i.group(
                 Codec.intRange(0, AttackTimings.MAX_TICKS).optionalFieldOf("windup", 0).forGetter(AttackSpec::windup),
                 Codec.intRange(0, AttackTimings.MAX_TICKS).optionalFieldOf("release", 0).forGetter(AttackSpec::release),
@@ -192,8 +233,11 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                 MS_CODEC.optionalFieldOf("release_ms").forGetter(AttackSpec::releaseMs),
                 MS_CODEC.optionalFieldOf("recovery_ms").forGetter(AttackSpec::recoveryMs),
                 CONTACT_CODEC.optionalFieldOf("contact").forGetter(AttackSpec::contact),
-                MS_CODEC.optionalFieldOf("thwack_ms").forGetter(AttackSpec::thwackMs)
-        ).apply(i, AttackSpec::new));
+                Replacements.MAP_CODEC.forGetter(spec -> new Replacements(spec.thwackMs, spec.comboMs, spec.riposteMs))
+        ).apply(i, (windup, release, recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, variants,
+                    damageType, windupMs, releaseMs, recoveryMs, contact, replacements) -> new AttackSpec(windup, release,
+                recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, variants, damageType, windupMs,
+                releaseMs, recoveryMs, contact, replacements.thwackMs, replacements.comboMs, replacements.riposteMs)));
         public static final Codec<AttackSpec> CODEC = FIELDS.validate(AttackSpec::checkTimed);
 
         private static DataResult<AttackSpec> checkTimed(AttackSpec spec) {
@@ -209,11 +253,29 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
          * for attack speed): {@code thwack_ms} scaled the same way, else that recovery.
          */
         public int thwackUs(int recoveryUs) {
-            if (thwackMs.isEmpty()) {
-                return recoveryUs;
+            return scaled(thwackMs, recoveryUs, timings().recoveryUs());
+        }
+
+        /**
+         * Windup in microseconds when this attack is a combo, for an attack whose normal windup lasts {@code windupUs}
+         * (already scaled for attack speed): {@code combo_ms} scaled the same way, else that windup.
+         */
+        public int comboUs(int windupUs) {
+            return scaled(comboMs, windupUs, timings().windupUs());
+        }
+
+        /** As {@link #comboUs}, for a riposte; empty when {@code riposte_ms} isn't set. */
+        public Optional<Integer> riposteUs(int windupUs) {
+            return riposteMs.map(ms -> scaled(riposteMs, windupUs, timings().windupUs()));
+        }
+
+        /** {@code ms} stretched as the attack's speed stretched {@code baseUs} into {@code scaledUs}; else scaledUs. */
+        private static int scaled(Optional<Integer> ms, int scaledUs, int baseUs) {
+            if (ms.isEmpty()) {
+                return scaledUs;
             }
-            double speedScale = recoveryUs / (double) timings().recoveryUs();
-            return (int) Math.max(AttackTimings.MIN_US, Math.min(AttackTimings.MAX_US, Math.round(thwackMs.get() * 1000 * speedScale)));
+            double speedScale = scaledUs / (double) baseUs;
+            return (int) Math.max(AttackTimings.MIN_US, Math.min(AttackTimings.MAX_US, Math.round(ms.get() * 1000 * speedScale)));
         }
 
         /** Phase lengths in microseconds: milliseconds where given, otherwise ticks. */

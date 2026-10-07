@@ -52,7 +52,7 @@ class TimingBarTest {
     @Test
     void recoveryDrainsAndTurnsIntoComboAfterAHit() {
         CombatStateMachine m = new CombatStateMachine();
-        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 1, 4));
+        m.startAttack(AttackType.KICK, AttackTimings.ofTicks(1, 1, 4)); // a kick's recovery can't be comboed
         m.tick();
         m.tick();
         assertEquals(Phase.RECOVERY, m.phase());

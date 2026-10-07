@@ -56,6 +56,10 @@ public record AttackTimings(int windupUs, int releaseUs, int recoveryUs) {
         return new AttackTimings((int) Math.min(Integer.MAX_VALUE, newWindupUs), releaseUs, recoveryUs);
     }
 
+    public AttackTimings withRecoveryUs(long newRecoveryUs) {
+        return new AttackTimings(windupUs, releaseUs, (int) Math.min(Integer.MAX_VALUE, newRecoveryUs));
+    }
+
     /**
      * Scales the timings for a wielder whose attack speed differs from the speed the profile was tuned for.
      * Faster wielders get shorter phases. {@code exponent} softens the effect (0 = ignore attack speed, 1 = fully

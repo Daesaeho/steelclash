@@ -302,3 +302,50 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | 12 | Get parried, then mash attack during the stagger | Your attack starts the moment the stagger ends. |
 | 13 | Fight, then jump; walk away 5 s, then jump | The first jump costs stamina, the second doesn't. Crouching stops stamina from refilling. |
 | 14 | Counter a dagger, then a greatsword | Timing the dagger is noticeably tighter. |
+
+## Cleave, thwack and counter-feint (0.2.0-beta, added 2026-10-07)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Light slash with a mace into two zombies standing side by side | The mace stops in the first zombie (it jolts, the swing ends there and recovers early); the second one isn't hit. |
+| 2 | Same, but the first zombie dies from the hit | The mace carries on and hits the second one too. |
+| 3 | Heavy (hold) slash with the mace into two zombies | Both hit (heavies always cleave). |
+| 4 | Sword slash into two zombies | Both hit; no early stop (swords cleave). |
+| 5 | Mace thwack into a wall right behind a zombie | No clank: the swing stopped in the body before reaching the wall. |
+| 6 | Attack dummy winding up an overhead at you: start a slash, then press overhead | You morph into an overhead. Press slash again: a second switch (counter-feint) restarts the windup. A third switch isn't allowed. |
+| 7 | Dummy winding up a slash at you while you wind up a slash: tap the other side's slash key | Your slash switches side (counter-feint), costs stamina, windup restarts. With nobody attacking you this doesn't work. |
+| 8 | Hard footman: wind up a slash, then morph to an overhead | The footman sometimes switches its own attack to follow yours. |
+| 9 | Multiplayer (LAN): thwack with a mace | The other player sees the swing stop in the body too; no snap-back. |
+
+## Chivalry 2 timings (added 2026-10-07)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | `/steelclash_debug` timing bar, sword slash into the air | Windup ~0.5 s, the blade sweeps for ~0.4 s, recovery ~0.75 s. A greatsword or halberd is clearly slower in every phase. |
+| 2 | Whiff a slash, then press stab during the recovery | The stab starts at once (combo), from the other side. Bar shows the combo window right after the release. |
+| 3 | Swing into a dummy's raised guard, then attack again | No combo: you're staggered first. |
+| 4 | Hold for a heavy with a sword | Windup ~0.25 s longer than the light; recovery a bit longer. |
+| 5 | Parry, then riposte with a sword, then with a halberd/spear | The sword riposte winds up like a normal attack; the halberd/spear riposte is quicker than its normal attack. |
+| 6 | Bots (Hard footman) whiff, then follow up | They sometimes combo after a whiff too. |
+
+## Archer sidearms (added 2026-10-07, needs Spartan Weaponry)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Spawn-egg a skeleton, let it shoot, then walk up to it | Within ~4 blocks it swaps the bow for a dagger and fights with the bot brain (parries, feints). |
+| 2 | Back off past ~9 blocks | It swaps back to the bow and shoots again. |
+| 3 | Stand right at ~5–8 blocks | No back-and-forth swapping. |
+| 4 | Save and reload with a skeleton that has its dagger out | After the reload it still has the dagger in hand and goes back to its bow once you leave. |
+| 5 | Without Spartan Weaponry | Skeletons only have their bow; nothing breaks. |
+
+## Projectile defence and headshots (added 2026-10-07)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Face a skeleton; start a slash just as its arrow arrives | The arrow bounces off; parry sound; you take nothing and the slash continues. |
+| 2 | Hold the weapon guard against its arrows | You take about 30% less; stamina drops a little; even at zero stamina you're never disarmed. |
+| 3 | Turn your back with the guard up | Full damage. |
+| 4 | Shoot a zombie in the head, then in the body | Head: a ding and noticeably more damage. |
+| 5 | Draw a bow and let a zombie hit you | The draw drops; keep holding to start again. |
+| 6 | Hit a skeleton that's drawing | Its shot is lost. |
+

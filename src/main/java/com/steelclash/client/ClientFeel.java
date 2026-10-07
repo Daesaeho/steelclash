@@ -7,6 +7,8 @@ import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.net.FeedbackPayload;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -44,6 +46,19 @@ public final class ClientFeel {
             case CLANK -> {
                 hitStop();
                 addShake(0.7f * strength);
+            }
+            case HEADSHOT -> {
+                LocalPlayer player = Minecraft.getInstance().player;
+                if (player != null) {
+                    player.playSound(SoundEvents.ARROW_HIT_PLAYER, 0.8f, 1.3f); // vanilla's arrow "ding", pitched up
+                }
+            }
+            case DRAW_INTERRUPTED -> {
+                LocalPlayer player = Minecraft.getInstance().player;
+                if (player != null) {
+                    player.stopUsingItem(); // the server already dropped the draw; holding the key starts a new one
+                }
+                addShake(0.3f * strength);
             }
         }
     }

@@ -1,0 +1,12 @@
+{
+  "values": [
+    {
+      "id": "spartan_weaponry_unofficial:iron_dagger",
+      "required": false
+    },
+    {
+      "id": "spartan_weaponry_unofficial:diamond_dagger",
+      "required": false
+    }
+  ]
+}

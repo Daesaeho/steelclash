@@ -110,17 +110,17 @@ public final class OffenseGameTests {
     }
 
     @GameTest(template = ARENA)
-    public static void whiffMustSitOutRecovery(GameTestHelper helper) {
+    public static void whiffCanBeComboed(GameTestHelper helper) {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         Combat.requestAttack(player, AttackType.SLASH);
         CombatData d = data(player);
         for (int i = 0; i < 100 && d.machine.phase() != Phase.RECOVERY; i++) {
             Combat.tickServer(player, d);
         }
-        Combat.requestAttack(player, AttackType.OVERHEAD);
-        check(helper, d.machine.phase() == Phase.RECOVERY, "a whiff can't combo; the next attack waits");
-        check(helper, d.queuedAttack == AttackType.OVERHEAD, "but it is buffered");
         check(helper, d.stamina.current() < d.stamina.max(), "whiffing costs stamina");
+        Combat.requestAttack(player, AttackType.OVERHEAD);
+        check(helper, d.machine.phase() == Phase.WINDUP && d.machine.type() == AttackType.OVERHEAD,
+                "Chivalry 2: a whiff can be comboed");
         helper.succeed();
     }
 

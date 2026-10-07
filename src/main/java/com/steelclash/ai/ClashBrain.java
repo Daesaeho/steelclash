@@ -300,7 +300,7 @@ public final class ClashBrain {
             startAttack(mob, brain, skill, profile.get(), target, false);
             return;
         }
-        // Combo after a landed hit.
+        // Combo after an attack that wasn't blocked (Chivalry 2: a whiff can be comboed too).
         if (m.phase() == Phase.RECOVERY && m.isComboAllowed() && brain.comboRolledFor != m.attackSerial()) {
             brain.comboRolledFor = m.attackSerial();
             if (inReach && random.nextDouble() < skill.comboChance()) {

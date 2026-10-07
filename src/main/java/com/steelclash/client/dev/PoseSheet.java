@@ -244,7 +244,8 @@ public final class PoseSheet {
         }
         AttackTimings timings = spec.get().timings();
         if (shot.heavy()) {
-            timings = timings.withWindupUs(Math.round(timings.windupUs() * (double) profile.heavy().windupMult()));
+            timings = timings.withWindupUs(profile.heavy().windupUs(timings.windupUs(), 1))
+                    .withRecoveryUs(profile.heavy().recoveryUs(timings.recoveryUs(), 1));
         }
         long duration = switch (shot.phase()) {
             case WINDUP -> timings.windupUs();

@@ -3,6 +3,7 @@ package com.steelclash.combat;
 import com.steelclash.SteelClash;
 import com.steelclash.core.PositionHistory;
 import java.util.function.Supplier;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -19,6 +20,10 @@ public final class ModAttachments {
     /** Server only, not serialized: recent positions for lag-compensated hit detection. */
     public static final Supplier<AttachmentType<PositionHistory>> POSITION_HISTORY = ATTACHMENT_TYPES.register(
             "position_history", () -> AttachmentType.builder(() -> new PositionHistory(LagCompensation.HISTORY_TICKS)).build());
+
+    /** The weapon an archer mob isn't holding: its melee sidearm, or its bow while the sidearm is out ({@link Sidearms}). */
+    public static final Supplier<AttachmentType<ItemStack>> SIDEARM = ATTACHMENT_TYPES.register(
+            "sidearm", () -> AttachmentType.builder(() -> ItemStack.EMPTY).serialize(ItemStack.OPTIONAL_CODEC).build());
 
     private ModAttachments() {
     }

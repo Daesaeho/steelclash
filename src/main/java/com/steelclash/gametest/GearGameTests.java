@@ -5,6 +5,12 @@ import static com.steelclash.gametest.TestSupport.dummy;
 
 import com.steelclash.SteelClash;
 import com.steelclash.ai.BotStyles;
+import com.steelclash.combat.Combat;
+import com.steelclash.combat.CombatData;
+import com.steelclash.combat.ModAttachments;
+import com.steelclash.combat.Sidearms;
+import com.steelclash.compat.Compat;
+import com.steelclash.core.AttackType;
 import com.steelclash.core.BotStyle;
 import com.steelclash.entity.TrainingDummy;
 import com.steelclash.profile.WeaponProfiles;
@@ -17,9 +23,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.monster.Skeleton;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ProjectileWeaponItem;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -51,6 +59,76 @@ public final class GearGameTests {
         // Normal: 50% chance each, so 40 spawns land well inside [10, 32] unless arming is broken.
         check(helper, armed >= 10 && armed <= 32, "expected about half of 40 zombies armed on Normal, got " + armed);
         helper.succeed();
+    }
+
+    /** Skeletons carry a dagger sidearm next to their bow (Spartan Weaponry daggers; vanilla has none). */
+    @GameTest(template = ARENA)
+    public static void spawnedSkeletonsCarryASidearm(GameTestHelper helper) {
+        BlockPos pos = helper.absolutePos(new BlockPos(3, 2, 4));
+        Skeleton skeleton = EntityType.SKELETON.spawn(helper.getLevel(), pos, MobSpawnType.SPAWN_EGG);
+        check(helper, skeleton != null, "spawn");
+        skeleton.setNoAi(true);
+        ItemStack sidearm = Sidearms.stowed(skeleton);
+        check(helper, skeleton.getMainHandItem().getItem() instanceof ProjectileWeaponItem,
+                "the bow (or Spartan Weaponry's longbow) stays in hand: " + skeleton.getMainHandItem());
+        if (Compat.SPARTAN_WEAPONRY.isLoaded()) {
+            String profile = WeaponProfiles.resolve(sidearm, helper.getLevel().registryAccess())
+                    .map(r -> r.profile().archetype()).orElse("none");
+            check(helper, profile.equals("dagger"), "expected a dagger sidearm, got " + sidearm + " (" + profile + ")");
+        } else {
+            check(helper, sidearm.isEmpty(), "no daggers without Spartan Weaponry, got " + sidearm);
+        }
+        skeleton.discard();
+        helper.succeed();
+    }
+
+    /** Chivalry 2 archers draw their sidearm when someone closes in, and go back to the bow once they're clear. */
+    @GameTest(template = ARENA)
+    public static void skeletonDrawsItsSidearmUpClose(GameTestHelper helper) {
+        Skeleton skeleton = helper.spawn(EntityType.SKELETON, 1, 2, 4);
+        skeleton.setNoAi(true);
+        skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+        skeleton.setData(ModAttachments.SIDEARM, new ItemStack(Items.IRON_SWORD));
+        CombatData data = TestSupport.data(skeleton);
+        TrainingDummy far = dummy(helper, 7, 4, TestSupport.FACING_NEGATIVE_X);
+        TrainingDummy near = dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X);
+
+        skeleton.setTarget(far);
+        Sidearms.tick(skeleton, data);
+        check(helper, skeleton.getMainHandItem().is(Items.BOW), "6 blocks away: keep shooting");
+
+        skeleton.setTarget(near);
+        Sidearms.tick(skeleton, data);
+        check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "2 blocks away: draw the sidearm");
+        check(helper, Sidearms.stowed(skeleton).is(Items.BOW), "the bow is stowed");
+
+        skeleton.setTarget(null);
+        Sidearms.tick(skeleton, data);
+        check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "a switch has a cooldown");
+        data.sidearmReadyAt = 0;
+        Combat.requestAttack(skeleton, AttackType.SLASH);
+        check(helper, data.machine.isBusy(), "the skeleton swings its sidearm");
+        Sidearms.tick(skeleton, data);
+        check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "no switching mid-swing");
+        data.machine.feint();
+        skeleton.setTarget(far);
+        Sidearms.tick(skeleton, data);
+        check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "6 blocks: close enough to keep the sidearm out");
+        skeleton.setTarget(null);
+        Sidearms.tick(skeleton, data);
+        check(helper, skeleton.getMainHandItem().is(Items.BOW), "target gone: back to the bow");
+        check(helper, Sidearms.stowed(skeleton).is(Items.IRON_SWORD), "the sidearm is stowed again");
+        helper.succeed();
+    }
+
+    /** The switch happens on its own as the mob ticks. */
+    @GameTest(template = ARENA, timeoutTicks = 60)
+    public static void skeletonSwitchesOnItsOwn(GameTestHelper helper) {
+        Skeleton skeleton = helper.spawn(EntityType.SKELETON, 1, 2, 4);
+        skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+        skeleton.setData(ModAttachments.SIDEARM, new ItemStack(Items.IRON_SWORD));
+        skeleton.setTarget(dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X));
+        helper.succeedWhen(() -> check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "should draw the sidearm"));
     }
 
     @GameTest(template = ARENA)

@@ -43,7 +43,7 @@ MC runs at 20 TPS (50 ms per tick). Chivalry 2 timings of roughly 300–700 ms m
 | Disarm | The weapon drops as an `ItemEntity` in front of you, tagged so mobs can't pick it up. You fight with fists until you pick it up again or switch hotbar slots. **Mobs can be disarmed too**, and their weapon then drops for you to take. Config: `disarm_mode = drop / holster`. | M2 |
 | Feint | During windup, the feint key cancels the attack back to idle for a stamina cost. Pressing block during windup cancels straight into a parry. | M3 |
 | Morph | During windup, pressing a different attack type switches to it for a stamina cost. | M3 |
-| Combo | Attacking during recovery after a hit skips the rest of the recovery. | M3 |
+| Combo | Attacking during recovery after an unblocked attack (a whiff included, as in Chivalry 2) skips the rest of the recovery; the combo has its own windup (`combo_ms`). | M3 |
 | Flinch | Getting hit during windup interrupts the attack. Heavy two-handers get "hyper armor" on heavies (per-profile flag). | M3 |
 | Kick / Shield bash | Breaks guard, drains stamina and causes a short stagger. Low damage. | M3 |
 | Duck | Mostly free: sneaking lowers the player hitbox (1.8 → 1.5), so high horizontal arcs pass over it. | M1 |
@@ -278,7 +278,7 @@ Fights currently look repetitive: every slash of an archetype is the same motion
 ### 7.6 Timing HUD (requested 2026-10-06)
 Players need to see how long their own actions last. Add a small timing indicator near the crosshair (next to the stamina bar, same style; scalable or hideable in the client config):
 - **Heavy charge:** while holding an attack, a bar fills toward the point where it becomes a heavy (`HEAVY_HOLD_TICKS`), then shows the heavy's windup filling until release.
-- **Windup → release → recovery:** a segmented bar for the current attack, so you can see when the blade goes live and when you can act again. The combo window lights up during recovery once a hit has landed.
+- **Windup → release → recovery:** a segmented bar for the current attack, so you can see when the blade goes live and when you can act again. The combo window lights up during recovery after an attack that wasn't blocked.
 - **Parry:** a draining bar for how long the raised parry lasts (`parry_ticks`), then the guard-recovery cooldown. The riposte window flashes after a successful parry (the stamina bar already flashes white; this makes its length visible).
 - **Other timed states:** feint and morph availability (windup only), stagger and flinch duration, kick recovery, and the shield cooldown after a guard break.
 - All of these are client-side reads of the predicted state machine (`phaseTick` / `phaseDuration` / `riposteTicks`), so the HUD costs no new networking.
@@ -297,7 +297,7 @@ Each milestone has a hard exit test.
 | **M4** Feel and first person *(built 2026-10-06 with a changed approach, see docs/spikes.md "M4"; in-game look check pending)* | Blockbench animations (first and third person) with the arc-extraction script, retargeted to humanoid mobs, plus sounds, particles, hit-stop and camera sway. | Side-by-side comparison against Chiv 2 reference clips for each archetype. A playtester can predict which attack is coming from the windup alone. |
 | **M5** Bot brain *(built 2026-10-06; automated tests pass, in-game feel check pending)* | `ClashBrain`: spacing, parry reaction by difficulty, feints and morphs, ripostes, kicking turtles, adapting to the player, attack tokens for groups. | 1v1 a Hard vindicator with a SW halberd and it feels like a Chiv 2 bot. A 1v4 zombie fight stays readable. |
 | **M6** PvE content *(split: **M6a** built 2026-10-06 = timing HUD §7.6, armed mobs §7.4, mob movement §7.5; **M6b** built 2026-10-06 = attack variants, mirrored/alternating/turn-directed swings, heavy windup clips, two-handed swords; **M6c-1** built 2026-10-06 = specials (lunge/slam/sweep), throwing any weapon, damage types vs armour, mounted lance, tooltips; **M6c-2** built 2026-10-06 = brigand footman/knight/archer, patrols, night spawns, brigand camp structure; **M6c** the rest)* | **Timing HUD for heavies, parries and other timed actions** (see §7.6), **mobs spawn with gear far more often** (see §7.4), **more varied mob movement and attack variants** (see §7.5), soldier mobs (footman, knight, archer), patrols and outpost spawns, specials for each archetype (hammer slam, spear lunge…), throwing any weapon, mounted lance, cut/blunt/chop vs armor. | Per feature. |
-| **Footwork and sustain** *(built 2026-10-06)* | Movement slowdown by phase (transient `MOVEMENT_SPEED` modifier, server and locally predicted; backpedal on the client), ducking (`duckHeight` 1.0: a crouching target's blade hitbox is capped, level slashes pass over), player health regeneration (5 s delay, 1 HP/s). Still open from the 2026-10-06 gap review: alternate weapon modes, projectile headshots, filling in timings from footage, and rules to check in Chiv 2 (holding a weapon parry, shield ripostes, feinting ripostes, special cooldowns). | `FootworkGameTests` (mutation-checked). |
+| **Footwork and sustain** *(built 2026-10-06)* | Movement slowdown by phase (transient `MOVEMENT_SPEED` modifier, server and locally predicted; backpedal on the client), ducking (`duckHeight` 1.0: a crouching target's blade hitbox is capped, level slashes pass over), player health regeneration (5 s delay, 1 HP/s). Still open from the 2026-10-06 gap review: alternate weapon modes, projectile headshots *(built 2026-10-07)*, filling in timings from footage *(done from game data 2026-10-07)*, and rules to check in Chiv 2 (holding a weapon parry, shield ripostes, feinting ripostes, special cooldowns). | `FootworkGameTests` (mutation-checked). |
 | **Turning in swings** *(built 2026-10-06)* | Accels and drags emerge from view-relative tracing; turn cap (common `turnCapDegreesPerSecond`, 360) enforced on the server's traced view and the client camera; bots accel/drag on purpose (`BotSkill.swingTrickChance`: Easy 0, Normal 0.15, Hard 0.35); attack side from strafing (client `sideFromMovement`). | `TurnGameTests` (mutation-checked). |
 | **M7** Multiplayer *(built 2026-10-06: target rewind for lagged attackers, parry grace for lagged defenders, client catch-up on corrections, `[network]` config; automated tests pass, clumsy check pending)* | Client prediction and reconciliation, lag compensation, latency tolerance config. Lower priority because PvE singleplayer runs at ~0 latency. | Co-op PvE at 150 ms simulated latency (clumsy) still allows reliable parries. |
 | **M8** Release *(built 2026-10-06: MIT, 0.1.0-beta, config screen with every option named and commented, tutorial (`/steelclash_help`, first-join hint, craftable dummy), no-Spartan GameTest run, compat matrix, player guide, store page draft, CI artifacts and tag release workflow; publishing is manual)* | Config polish, compat matrix, wiki and in-game tutorial (the dummy), Modrinth/CurseForge pages, CI artifacts. | Public beta. |
@@ -359,15 +359,22 @@ dependencies {
 
 All decisions are recorded under "Decisions locked in" at the top. Before M4, record Chiv 2 reference footage at 60 fps for each archetype and fill in this table from frame-stepping. Then tune the profiles until the in-game timings match within ±1 tick:
 
-| Archetype | Slash W/R/R (ms) | Overhead W/R/R | Stab W/R/R | Parry window | Riposte windup | Stamina dmg | Notes |
+Filled in on 2026-10-07 from Chivalry 2's own data (the `chivalry2-weapons` package behind polehammer.net) instead of footage; see docs/spikes.md "Chivalry 2 timings". Windup includes the 350 ms chamber. Light attacks, in ms.
+
+| Archetype (reference) | Slash W/R/R | Overhead W/R/R | Stab W/R/R | Combo windup (S/O/St) | Riposte windup (S/O/St) | Heavy | Notes |
 |---|---|---|---|---|---|---|---|
-| dagger | | | | | | | |
-| sword (1h) | | | | | | | |
-| two_handed | | | | | | | |
-| axe | | | | | | | |
-| blunt | | | | | | | |
-| polearm / polearm_thrust | | | | | | | |
-| shield guard | — | — | — | | | | |
+| dagger (Dagger) | 450/400/750 | 450/400/750 | 515/300/750 | 700/700/765 | 450/450/515 | +250 / +100 | |
+| sword (Sword) | 500/425/750 | 500/400/750 | 575/300/750 | 725/725/800 | 500/500/575 | +250 / +100 | |
+| two_handed (Greatsword) | 675/550/1100 | 675/525/1100 | 700/425/1000 | 850/850/900 | 600/600/600 | +250 / +100 | |
+| axe (Axe) | 525/450/850 | 525/450/850 | 550/350/900 | 775/775/800 | 525/525/550 | +250 / +150 | |
+| blunt (Mace) | 500/475/750 | 500/450/800 | 525/300/800 | 750/750/775 | 500/500/525 | +250 / +150 | thwack 1050 |
+| polearm (Halberd) | 700/600/1050 | 700/500/1050 | 750/370/1000 | 850/850/950 | 600/600/600 | +250 / +150 | |
+| spear (Spear) | 700/350/900 | 600/450/850 | 700/350/900 | 1025/925/1025 | 600/600/600 | +250 / +150 | |
+| rapier (Rapier) | 470/425/750 | 470/400/750 | 550/300/750 | 670/670/750 | 470/470/550 | +220 / +100 | |
+| staff (Quarterstaff) | 475/400/700 | 550/500/800 | 700/350/900 | 700/700/1025 | 600/600/600 | +235 / +150 | thwack 800/900/900 |
+| shield guard | — | — | — | — | — | — | not in the data; unchanged |
+
+Heavy = windup / recovery added. Parry windows and stamina damage aren't in this data the same way and are unchanged.
 
 Mechanics to double-check against the game rather than from memory: whether ripostes can be feinted, the exact counter window, how long a weapon parry can be held before it drops, and whether shield blocks allow a riposte.
 

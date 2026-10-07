@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
@@ -70,6 +71,7 @@ public final class CombatEvents {
             }
             if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy)) {
                 MobCombat.keepAggressive(mob, mob.getData(ModAttachments.COMBAT));
+                Sidearms.tick(mob, mob.getData(ModAttachments.COMBAT));
             }
         } finally {
             CombatProfiler.end(CombatProfiler.Section.AI);
@@ -112,6 +114,21 @@ public final class CombatEvents {
             event.setCanceled(true);
             return;
         }
+        if (event.getSource().getDirectEntity() instanceof Projectile projectile) {
+            switch (RangedDefense.defend(event.getEntity(), projectile)) {
+                case DEFLECTED -> {
+                    event.setCanceled(true); // the projectile bounces off
+                    return;
+                }
+                case WEAPON_BLOCKED -> event.setAmount(RangedDefense.blockedDamage(event.getAmount()));
+                case NONE -> {
+                }
+            }
+            if (RangedDefense.isHeadshot(event.getEntity(), projectile)) {
+                event.setAmount(event.getAmount() * Config.HEADSHOT_MULTIPLIER.get().floatValue());
+                RangedDefense.headshotFeedback(projectile.getOwner());
+            }
+        }
         if (Defense.tryParry(event.getEntity(), event.getSource(), swing)) {
             event.setCanceled(true);
             return;
@@ -127,6 +144,7 @@ public final class CombatEvents {
         LivingEntity entity = event.getEntity();
         if (event.getNewDamage() > 0) {
             entity.getData(ModAttachments.COMBAT).lastHurtAt = entity.level().getGameTime();
+            RangedDefense.interruptDraw(entity);
         }
         if (event.getNewDamage() <= 0 || !entity.hasData(ModAttachments.COMBAT) || Config.FLINCH_TICKS.get() <= 0) {
             return;
@@ -150,6 +168,7 @@ public final class CombatEvents {
     @SubscribeEvent
     static void onFinalizeSpawn(FinalizeSpawnEvent event) {
         MobGear.markForArming(event.getEntity());
+        Sidearms.markForArming(event.getEntity());
     }
 
     /** Fighter mobs get the spacing goal the bot brain uses to hold back and circle; freshly spawned ones get gear. */
@@ -161,6 +180,7 @@ public final class CombatEvents {
         }
         if (!event.loadedFromDisk()) {
             MobGear.armIfPending(mob);
+            Sidearms.armIfPending(mob);
         }
         boolean installed = mob.goalSelector.getAvailableGoals().stream().anyMatch(g -> g.getGoal() instanceof ClashSpacingGoal);
         if (!installed) {

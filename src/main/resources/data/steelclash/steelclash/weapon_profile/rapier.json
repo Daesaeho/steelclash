@@ -4,9 +4,11 @@
   "speed_scaling": 0.5,
   "attacks": {
     "slash": {
-      "windup": 9,
-      "release": 5,
-      "recovery": 8,
+      "windup_ms": 470,
+      "release_ms": 425,
+      "recovery_ms": 750,
+      "combo_ms": 670,
+      "riposte_ms": 470,
       "damage": 0.8,
       "arc": {
         "shape": "horizontal",
@@ -63,15 +65,17 @@
       ]
     },
     "overhead": {
-      "windup": 10,
-      "release": 5,
-      "recovery": 8,
-      "damage": 0.9,
+      "windup_ms": 470,
+      "release_ms": 400,
+      "recovery_ms": 750,
+      "combo_ms": 670,
+      "riposte_ms": 470,
+      "damage": 0.93,
       "arc": {
         "shape": "vertical"
       },
       "max_targets": 1,
-      "stamina_damage": 16,
+      "stamina_damage": 16.3,
       "stamina_cost": 4.8,
       "variants": [
         {
@@ -99,16 +103,18 @@
       ]
     },
     "stab": {
-      "windup": 8,
-      "release": 3,
-      "recovery": 7,
-      "damage": 1.1,
+      "windup_ms": 550,
+      "release_ms": 300,
+      "recovery_ms": 750,
+      "combo_ms": 750,
+      "riposte_ms": 550,
+      "damage": 1.33,
       "arc": {
         "shape": "thrust"
       },
       "max_targets": 1,
       "reach_bonus": 0.5,
-      "stamina_damage": 12,
+      "stamina_damage": 23.3,
       "stamina_cost": 3.6,
       "variants": [
         {
@@ -165,6 +171,12 @@
     "stamina_mult": 1.1
   },
   "riposte_windup_mult": 0.6,
+  "heavy": {
+    "windup_extra_ms": 220,
+    "recovery_extra_ms": 100,
+    "damage_mult": 1.55,
+    "stamina_damage_mult": 1.55
+  },
   "damage_type": "pierce",
   "special": {
     "kind": "lunge",

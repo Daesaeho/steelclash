@@ -4,10 +4,12 @@
   "speed_scaling": 0.5,
   "attacks": {
     "slash": {
-      "windup": 12,
-      "release": 5,
-      "recovery": 9,
-      "damage": 1.0,
+      "windup_ms": 525,
+      "release_ms": 450,
+      "recovery_ms": 850,
+      "combo_ms": 775,
+      "riposte_ms": 525,
+      "damage": 1,
       "arc": {
         "shape": "horizontal",
         "width": 130
@@ -63,15 +65,17 @@
       ]
     },
     "overhead": {
-      "windup": 13,
-      "release": 5,
-      "recovery": 10,
-      "damage": 1.2,
+      "windup_ms": 525,
+      "release_ms": 450,
+      "recovery_ms": 850,
+      "combo_ms": 775,
+      "riposte_ms": 525,
+      "damage": 1.1,
       "arc": {
         "shape": "vertical"
       },
       "max_targets": 1,
-      "stamina_damage": 33,
+      "stamina_damage": 30.8,
       "stamina_cost": 9.9,
       "variants": [
         {
@@ -99,16 +103,18 @@
       ]
     },
     "stab": {
-      "windup": 11,
-      "release": 4,
-      "recovery": 9,
-      "damage": 0.8,
+      "windup_ms": 550,
+      "release_ms": 350,
+      "recovery_ms": 900,
+      "combo_ms": 800,
+      "riposte_ms": 550,
+      "damage": 0.7,
       "arc": {
         "shape": "thrust"
       },
       "max_targets": 1,
       "reach_bonus": 0.1,
-      "stamina_damage": 18,
+      "stamina_damage": 19.6,
       "stamina_cost": 5.4,
       "variants": [
         {
@@ -166,6 +172,12 @@
     "stamina_mult": 1.0
   },
   "riposte_windup_mult": 0.6,
+  "heavy": {
+    "windup_extra_ms": 250,
+    "recovery_extra_ms": 150,
+    "damage_mult": 1.3,
+    "stamina_damage_mult": 1.3
+  },
   "damage_type": "chop",
   "special": {
     "kind": "slam",

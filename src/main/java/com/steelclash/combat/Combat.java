@@ -87,8 +87,12 @@ public final class Combat {
             WeaponProfile profile = resolved.get().profile();
             timings = CombatMath.timings(entity, profile, spec.get());
             variant = Math.floorMod(variant, spec.get().variantCount());
+            int windupUs = timings.windupUs();
             if (data.machine.isRiposteReady()) {
-                timings = timings.withWindupUs(Math.round(timings.windupUs() * (double) profile.riposteWindupMult()));
+                timings = timings.withWindupUs(spec.get().riposteUs(windupUs)
+                        .orElse((int) Math.round(windupUs * (double) profile.riposteWindupMult())));
+            } else if (data.machine.phase() == Phase.RECOVERY && data.machine.isComboAllowed()) {
+                timings = timings.withWindupUs(spec.get().comboUs(windupUs)); // Chivalry 2 combo timing
             }
         }
         if (type == AttackType.KICK || type == AttackType.THROW || type == AttackType.JAB) {
@@ -129,8 +133,13 @@ public final class Combat {
         if (profile.isEmpty()) {
             return false;
         }
-        long heavyWindupUs = Math.round(data.machine.timings().windupUs() * (double) profile.get().heavy().windupMult());
-        return data.machine.makeHeavy((int) Math.min(AttackTimings.MAX_US, heavyWindupUs));
+        // The release is never replaced (riposte and combo timings replace the windup), so it gives the speed scale.
+        AttackTimings now = data.machine.timings();
+        double speedScale = profile.get().spec(current)
+                .map(spec -> now.releaseUs() / (double) spec.timings().releaseUs())
+                .orElse(1.0);
+        WeaponProfile.HeavySpec heavy = profile.get().heavy();
+        return data.machine.makeHeavy(heavy.windupUs(now.windupUs(), speedScale), heavy.recoveryUs(now.recoveryUs(), speedScale));
     }
 
     /**
@@ -476,7 +485,7 @@ public final class Combat {
 
     /** Slash, overhead or stab (the attacks that can be morphed between). */
     public static boolean isWeaponAttack(AttackType type) {
-        return type == AttackType.SLASH || type == AttackType.OVERHEAD || type == AttackType.STAB;
+        return type.isWeaponAttack();
     }
 
     public static WeaponProfile.SpecialSpec.Kind specialKind(LivingEntity entity, CombatData data) {

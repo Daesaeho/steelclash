@@ -1,0 +1,16 @@
+{
+  "values": [
+    {
+      "id": "spartan_weaponry_unofficial:dagger_wooden",
+      "required": false
+    },
+    {
+      "id": "spartan_weaponry_unofficial:stone_dagger",
+      "required": false
+    },
+    {
+      "id": "spartan_weaponry_unofficial:copper_dagger",
+      "required": false
+    }
+  ]
+}

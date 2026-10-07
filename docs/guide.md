@@ -26,10 +26,10 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 
 **Attack side from movement** (client config `sideFromMovement`, off by default): while strafing, swings whose side isn't fixed by their key take it from your movement. `FROM_STRAFE_SIDE`: strafing left swings from the left. `TOWARD_STRAFE`: strafing left swings toward the left.
 
-- **Heavy:** hold the attack key. It winds up longer and hits harder, drains more of a blocker's stamina, and some weapons get hyper armour (they don't flinch).
+- **Heavy:** hold the attack key. It winds up about a quarter of a second longer, recovers a little slower, hits harder and drains more of a blocker's stamina. Some weapons get hyper armour (they don't flinch).
 - **Feint** (X during a windup): cancels the attack. It costs stamina, and it baits parries.
 - **Morph:** press a *different* attack key during a windup to switch to that attack.
-- **Combo:** land a hit and your next attack can start during recovery, alternating sides.
+- **Combo:** attack again during your recovery and the next attack replaces it, alternating sides. As in Chivalry 2 this works after a miss too, but not after a blocked or parried attack. A combo winds up a little longer than a fresh attack, but it's much sooner than waiting out the recovery.
 - **Flinch:** taking damage during your windup interrupts it (except a heavy with hyper armour).
 - **Lunge:** attack while sprinting for extra reach and damage.
 - **Jump attack:** an overhead started in mid-air hits harder.
@@ -43,7 +43,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 ## Defending
 
 - **Block** (right mouse; middle mouse in `TWO_SLASH_KEYS`): hold it and your weapon guard stays up, as in Chivalry 2. Holding it drains about 4 stamina a second, and stamina doesn't regenerate meanwhile, so don't turtle. Each weapon has its own parry cone, so attacks from behind get through. One guard can catch several hits. After lowering it there's a short delay before you can raise it again. If you prefer timing-based parries, set `blockMode = "TIMED"` in the common config: the guard then drops on its own after a moment. Mobs always parry that way.
-- **Riposte:** attack after blocking a hit and your attack winds up much faster. While it winds up and swings, it also parries anyone else hitting your front (**active parry**). That's how you fight two at once.
+- **Riposte:** attack after blocking a hit. Two-handed weapons riposte faster than they normally attack; one-handers riposte at their normal speed. While it winds up and swings, it also parries anyone else hitting your front (**active parry**). That's how you fight two at once.
 - **Counter:** answer an attack with the **same** attack type, started just after theirs (from your guard or not). Their attack is parried, yours lands first, and it carries an active parry too.
 - **Parry forgiveness:** attack out of your guard with the wrong type, or too late, in the last tenth of a second before a hit lands, and you still block it instead of getting hit.
 - **Dodge** (Left Alt): a quick dash in the direction you're moving, or backwards when standing still. It costs 12 stamina, has a one-second cooldown, and drops a windup or a raised guard. You can't dodge out of a swing that's already coming down, or while staggered. Dodging a swing makes it whiff, leaving the attacker in recovery. You can't raise your guard until the dash is half done, and a jab straight after a dodge comes out a little slower.
@@ -54,6 +54,12 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Kick / shield bash** (Z): can't be parried. It breaks a raised parry or shield and staggers an idle target. Use it on turtles. It does **not** interrupt someone who is already attacking (they swing straight through it), and two kicks meeting cancel out.
 - **Counter-feint:** if the attacker feints into a different attack while you're countering, switch your counter to match it. You get this switch even if you already changed attack once. Your windup starts over, so time it to their new attack. With the two-slash-key scheme you can also switch your counter slash to the other side, which gives you a second try at the timing. It only works against an attack actually coming at you. Bots counter-feint too, once they've seen your new windup.
 - **Counter windows depend on the attacker's weapon:** against fast weapons (daggers) you have slightly less time to counter, against slow ones (greatswords, heavies) slightly more.
+- **Arrows and thrown weapons** (Chivalry 2):
+  - *Counter:* start a slash, overhead or stab just as a projectile reaches you from the front (within a quarter of a second) and it bounces off your blade. Your attack carries on.
+  - *Weapon block:* a held weapon guard facing it takes 30% off the damage. It costs a little stamina but never breaks your guard or disarms you.
+  - *Shield:* a raised shield stops it outright.
+  - *Headshots:* arrows, bolts and thrown weapons that hit the head deal 25% more, and you hear a ding when yours do.
+  - *Drawing a bow:* getting hurt while drawing a bow or loading a crossbow loses the draw, for you and for skeletons. Rush archers.
 
 ## Footwork
 
@@ -93,7 +99,7 @@ There are 12 archetypes, each with its own timings, arcs, reach, parry cone and 
 
 Damage types (**cut**, **blunt**, **chop**) do more or less damage depending on the target's armour: cuts glance off plate, and blunt weapons don't care. Hover a weapon to see its profile in the tooltip.
 
-**Cleave and thwack.** Cutting and chopping swings carry on through a crowd, up to the weapon's target limit. A light swing with a blunt weapon stops in the first body it meets (a *thwack*) and you recover straight from the impact, so you can follow up sooner; if that hit kills, the swing carries on. Heavy swings always cleave, so a heavy mace reaches the second enemy at the cost of its slower windup. In a crowd, pick which body your blunt light meets first.
+**Cleave and thwack.** Cutting and chopping swings carry on through a crowd, up to the weapon's target limit. A light swing with a blunt weapon stops in the first body it meets (a *thwack*) and you recover from the impact, and a combo can follow straight away; if that hit kills, the swing carries on. Heavy swings always cleave, so a heavy mace reaches the second enemy at the cost of its slower windup. In a crowd, pick which body your blunt light meets first.
 
 - **Special** (R): an archetype move with a cooldown, such as the sword lunge, the hammer slam or the polearm sweep.
 - **Throw** (G): throws your weapon. It does real damage and drops where it lands.
@@ -111,6 +117,8 @@ Zombies, skeletons, piglins, vindicators, endermen, spiders, ravagers, golems an
 - take turns in groups (1/2/3 attackers at once on Easy/Normal/Hard) so big fights stay readable.
 
 Mobs spawn armed far more often than in vanilla, and Spartan weapons join the pools if installed.
+
+**Archers carry a sidearm.** Like Chivalry 2 archers, skeletons, strays and bogged carry a dagger next to their bow. Get within 4 blocks and they put the bow away and fight you with it (parrying, feinting and comboing like any other fighter). Back off past 9 blocks and they go back to shooting. The daggers come from Spartan Weaponry, since vanilla has none; without it, skeletons keep only their bow. `sidearmChance` in the mobs config.
 
 **Brigands** are human soldiers:
 

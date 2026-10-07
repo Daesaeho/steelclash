@@ -46,6 +46,8 @@ public class CombatData {
     public boolean jumpAttack;
     /** Game time when the weapon special is off cooldown. */
     public long specialReadyAt;
+    /** Game time before which an archer mob won't switch between bow and sidearm again ({@link Sidearms}). */
+    public long sidearmReadyAt;
     /** {@link MobCombat#keepAggressive} turned this mob's aggressive flag on (and so should turn it off). */
     public boolean forcedAggressive;
     /** Game time the next dodge is allowed. */

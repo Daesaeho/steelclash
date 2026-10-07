@@ -19,10 +19,12 @@ import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
+import com.steelclash.profile.WeaponProfiles;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
@@ -178,6 +180,82 @@ public final class MechanicsGameTests {
         boolean rejected = WeaponProfile.AttackSpec.CODEC.parse(JsonOps.INSTANCE,
                 JsonParser.parseString("{" + timed + ", \"contact\": \"bounce\"}")).error().isPresent();
         check(helper, rejected, "an unknown contact is rejected");
+        helper.succeed();
+    }
+
+    /** Combo and riposte timings replace the windup, scaled with attack speed; heavies add fixed times. */
+    @GameTest(template = ARENA)
+    public static void profilesTakeComboRiposteAndHeavyTimings(GameTestHelper helper) {
+        String timed = "\"windup_ms\": 500, \"release_ms\": 400, \"recovery_ms\": 750, \"arc\": {\"shape\": \"horizontal\"}";
+        WeaponProfile.AttackSpec spec = decode("{" + timed + ", \"combo_ms\": 725, \"riposte_ms\": 400}");
+        check(helper, spec.comboUs(500_000) == 725_000, "combo at reference speed: " + spec.comboUs(500_000));
+        check(helper, spec.comboUs(250_000) == 362_500, "twice as fast, half the combo: " + spec.comboUs(250_000));
+        check(helper, spec.riposteUs(1_000_000).equals(java.util.Optional.of(800_000)), "riposte " + spec.riposteUs(1_000_000));
+        WeaponProfile.AttackSpec plain = decode("{" + timed + "}");
+        check(helper, plain.comboUs(480_000) == 480_000 && plain.riposteUs(480_000).isEmpty(), "unset: the normal windup");
+
+        WeaponProfile.HeavySpec heavy = WeaponProfile.HeavySpec.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(
+                "{\"windup_extra_ms\": 250, \"recovery_extra_ms\": 100}")).getOrThrow();
+        check(helper, heavy.windupUs(500_000, 1) == 750_000, "heavy windup " + heavy.windupUs(500_000, 1));
+        check(helper, heavy.windupUs(500_000, 0.5) == 625_000, "the extra scales too: " + heavy.windupUs(500_000, 0.5));
+        check(helper, heavy.recoveryUs(750_000, 1) == 850_000, "heavy recovery " + heavy.recoveryUs(750_000, 1));
+        WeaponProfile.HeavySpec scaled = WeaponProfile.HeavySpec.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(
+                "{\"windup_mult\": 1.5}")).getOrThrow();
+        check(helper, scaled.windupUs(500_000, 0.5) == 750_000 && scaled.recoveryUs(750_000, 1) == 750_000,
+                "no extras: the multiplier, recovery unchanged");
+        helper.succeed();
+    }
+
+    /** Chivalry 2: a whiff can be comboed, and the combo uses the attack's combo timing as its windup. */
+    @GameTest(template = ARENA)
+    public static void whiffComboUsesComboTiming(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(player);
+        WeaponProfile profile = WeaponProfiles.resolveFor(player).orElseThrow().profile();
+        WeaponProfile.AttackSpec stab = profile.spec(AttackType.STAB).orElseThrow();
+        check(helper, stab.comboMs().isPresent(), "the sword profile should set combo_ms");
+        int windupUs = com.steelclash.combat.CombatMath.timings(player, profile, stab).windupUs();
+
+        Combat.requestAttack(player, AttackType.SLASH);
+        for (int tick = 0; tick < 100 && d.machine.phase() != Phase.RECOVERY; tick++) {
+            Combat.tickServer(player, d);
+        }
+        check(helper, d.machine.phase() == Phase.RECOVERY && d.machine.isComboAllowed(), "a whiff should allow a combo");
+        Combat.requestAttack(player, AttackType.STAB);
+        check(helper, d.machine.phase() == Phase.WINDUP, "comboed out of the recovery");
+        check(helper, d.machine.timings().windupUs() == stab.comboUs(windupUs),
+                "combo windup " + d.machine.timings().windupUs() + ", expected " + stab.comboUs(windupUs));
+        helper.succeed();
+    }
+
+    /** A riposte uses the attack's riposte timing; a heavy riposte adds the heavy's fixed extra to it. */
+    @GameTest(template = ARENA)
+    public static void riposteAndHeavyUseChivalryTimings(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        // A faster wielder than the profile's reference speed, so every replaced and added time must scale.
+        player.getAttribute(Attributes.ATTACK_SPEED).setBaseValue(5.6);
+        CombatData d = data(player);
+        WeaponProfile profile = WeaponProfiles.resolveFor(player).orElseThrow().profile();
+        WeaponProfile.AttackSpec slash = profile.spec(AttackType.SLASH).orElseThrow();
+        AttackTimings base = com.steelclash.combat.CombatMath.timings(player, profile, slash);
+        double speedScale = base.releaseUs() / (double) slash.timings().releaseUs();
+        check(helper, speedScale < 0.9, "the wielder should be faster than the reference: " + speedScale);
+        int riposteUs = slash.riposteUs(base.windupUs()).orElseThrow();
+
+        check(helper, d.machine.startParry(20, 5), "parry");
+        d.machine.parrySucceeded(10);
+        check(helper, d.machine.isRiposteReady(), "riposte ready");
+        Combat.requestAttack(player, AttackType.SLASH);
+        check(helper, d.machine.timings().windupUs() == riposteUs,
+                "riposte windup " + d.machine.timings().windupUs() + ", expected " + riposteUs);
+        check(helper, Combat.makeHeavy(player, d), "heavy riposte");
+        WeaponProfile.HeavySpec heavy = profile.heavy();
+        check(helper, heavy.windupExtraMs().isPresent(), "the sword profile should set windup_extra_ms");
+        check(helper, d.machine.timings().windupUs() == heavy.windupUs(riposteUs, speedScale),
+                "heavy riposte windup " + d.machine.timings().windupUs());
+        check(helper, d.machine.timings().recoveryUs() == heavy.recoveryUs(base.recoveryUs(), speedScale)
+                        && d.machine.timings().recoveryUs() > base.recoveryUs(),
+                "heavy recovery " + d.machine.timings().recoveryUs() + " vs light " + base.recoveryUs());
         helper.succeed();
     }
 

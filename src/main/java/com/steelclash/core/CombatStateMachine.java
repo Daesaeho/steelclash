@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
  * attack:  IDLE → WINDUP → RELEASE → RECOVERY → IDLE
  *            WINDUP: feint → IDLE, morph → WINDUP (other type), heavy → longer WINDUP, counter → shorter WINDUP,
  *                    counter-feint → WINDUP (re-matching an incoming attack, once, even after a morph)
- *            RECOVERY after a landed hit: attack again immediately (combo)
+ *            RECOVERY after an unblocked slash, overhead or stab (hit or whiff): attack again immediately (combo)
  * parry:   IDLE/RECOVERY → PARRY (catches any number of hits while up; each opens the riposte window)
  *                            → attack = riposte straight out of the guard (or, before a catch, a counter attempt)
  *                            → (release/timeout) IDLE if it caught something, else GUARD_RECOVERY → IDLE
@@ -101,11 +101,16 @@ public final class CombatStateMachine {
 
     /** Turns the current windup into a heavy attack with the given total windup length, microseconds. */
     public boolean makeHeavy(int heavyWindupUs) {
+        return makeHeavy(heavyWindupUs, timings.recoveryUs());
+    }
+
+    /** As above, with the heavy's own recovery length (Chivalry 2 heavies recover a little slower). */
+    public boolean makeHeavy(int heavyWindupUs, int heavyRecoveryUs) {
         if (phase != Phase.WINDUP || heavy) {
             return false;
         }
         heavy = true;
-        timings = timings.withWindupUs(heavyWindupUs);
+        timings = timings.withWindupUs(heavyWindupUs).withRecoveryUs(heavyRecoveryUs);
         phaseDurationUs = Math.max(phaseElapsedUs + 1, timings.windupUs());
         return true;
     }
@@ -247,7 +252,7 @@ public final class CombatStateMachine {
         return true;
     }
 
-    /** The current swing landed a clean hit: attacking during recovery may skip it. */
+    /** The current swing landed a clean hit (a thwack ends the release early): attacking during recovery may skip it. */
     public void allowCombo() {
         if (phase == Phase.RELEASE || phase == Phase.RECOVERY) {
             comboAllowed = true;
@@ -356,7 +361,14 @@ public final class CombatStateMachine {
     private void endPhase() {
         switch (phase) {
             case WINDUP -> enterUs(Phase.RELEASE, timings.releaseUs());
-            case RELEASE -> enterUs(Phase.RECOVERY, timings.recoveryUs());
+            case RELEASE -> {
+                enterUs(Phase.RECOVERY, timings.recoveryUs());
+                // Chivalry 2: any attack that ends unblocked can be comboed, a whiff included (a blocked one is
+                // staggered instead and never gets here).
+                if (type.isWeaponAttack()) {
+                    comboAllowed = true;
+                }
+            }
             case PARRY -> endParry();
             default -> enter(Phase.IDLE, 0);
         }

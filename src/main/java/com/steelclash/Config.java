@@ -157,6 +157,20 @@ public class Config {
     public static final ModConfigSpec.IntValue FLINCH_TICKS = BUILDER
             .comment("Stagger when hit during your own windup (heavy attacks with hyper armor ignore this)")
             .defineInRange("flinchTicks", 8, 0, 100);
+    public static final ModConfigSpec.IntValue PROJECTILE_COUNTER_MILLIS = BUILDER
+            .comment("An arrow, bolt or thrown weapon arriving from the front within this many milliseconds of starting a",
+                    "slash, overhead or stab is deflected (Chivalry 2's projectile counter, 0.25 s). 0 = off")
+            .defineInRange("projectileCounterMillis", 250, 0, 2000);
+    public static final ModConfigSpec.DoubleValue PROJECTILE_WEAPON_BLOCK_REDUCTION = BUILDER
+            .comment("A projectile caught on a held weapon guard (not a shield) deals this much less damage (Chivalry 2: 30%).",
+                    "It costs projectileStaminaDamage stamina but never breaks the guard")
+            .defineInRange("projectileWeaponBlockReduction", 0.3, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue HEADSHOT_MULTIPLIER = BUILDER
+            .comment("Damage multiplier for arrows, bolts and thrown weapons that hit the head (Chivalry 2: +25%). 1 = off")
+            .defineInRange("headshotMultiplier", 1.25, 1.0, 10.0);
+    public static final ModConfigSpec.BooleanValue INTERRUPT_DRAW_ON_HIT = BUILDER
+            .comment("Taking damage while drawing a bow or loading a crossbow interrupts it (Chivalry 2)")
+            .define("interruptDrawOnHit", true);
     public static final ModConfigSpec.IntValue COUNTER_WINDOW_TICKS = BUILDER
             .comment("Starting the same attack type within this many ticks before an incoming attack lands counters it")
             .defineInRange("counterWindowTicks", 7, 0, 40);
@@ -221,6 +235,11 @@ public class Config {
     public static final ModConfigSpec.DoubleValue ARMED_HELMET_CHANCE = BUILDER
             .comment("Chance an armed mob also gets a helmet (scaled up with difficulty; also stops daylight burning)")
             .defineInRange("armedHelmetChance", 0.30, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue SIDEARM_CHANCE = BUILDER
+            .comment("Chance a #steelclash:sidearm_users mob (skeletons, strays, bogged) spawns with a melee sidearm from",
+                    "#steelclash:mob_sidearms/tier_1..3 (Spartan Weaponry daggers: vanilla has none) and draws it when",
+                    "its target comes close, like a Chivalry 2 archer")
+            .defineInRange("sidearmChance", 1.0, 0.0, 1.0);
     public static final ModConfigSpec.BooleanValue SOLDIER_PATROLS = BUILDER
             .comment("Brigand patrols (a knight leading footmen and archers) roam toward players, like pillager patrols")
             .define("soldierPatrols", true);

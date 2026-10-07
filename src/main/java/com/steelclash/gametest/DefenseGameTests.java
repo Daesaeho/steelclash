@@ -93,6 +93,9 @@ public final class DefenseGameTests {
     public static void riposteHasAShorterWindup(GameTestHelper helper) {
         Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        // Chivalry 2 ripostes are faster with two-handed weapons (spear: 600 vs 700 ms); one-handers riposte at their
+        // normal speed.
+        defender.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.TRIDENT));
         Combat.requestParry(defender);
         swing(attacker, AttackType.SLASH);
         CombatData d = data(defender);
@@ -100,6 +103,7 @@ public final class DefenseGameTests {
         int riposteWindup = d.machine.timings().windup();
 
         TrainingDummy fresh = dummy(helper, 6, 2, FACING_NEGATIVE_X);
+        fresh.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.TRIDENT));
         CombatData f = data(fresh);
         Combat.start(fresh, f, AttackType.SLASH);
         check(helper, riposteWindup < f.machine.timings().windup(),

@@ -1,3 +1,16 @@
+# Unreleased
+
+**Combat**
+- Chivalry 2 timings: every built-in weapon is retimed from the game's own data (as published by polehammer.net), in milliseconds. Windups include the 350 ms chamber, releases are about twice as long as before, recoveries are longer, and combos and ripostes have their own timings. Heavies add a fixed ~250 ms windup and a slightly longer recovery, ripostes and combos included. Overhead and stab damage follow the game's ratios to the slash.
+- Combos after a miss (Chivalry 2): any attack that isn't blocked can be comboed, whiffs included. Blocked and parried attacks still can't.
+- Weapon profiles take `combo_ms`, `riposte_ms` and `heavy.windup_extra_ms` / `heavy.recovery_extra_ms`.
+- Projectile defence (Chivalry 2): starting an attack just as an arrow or thrown weapon arrives (0.25 s) deflects it; a held weapon guard takes 30% off and never breaks to arrows; shields still stop them.
+- Projectile headshots deal 25% more, with a ding for the shooter.
+- Getting hurt while drawing a bow or loading a crossbow loses the draw.
+
+**Mobs**
+- Archer sidearms (Chivalry 2): skeletons, strays and bogged carry a dagger next to their bow. They draw it when you close within 4 blocks and go back to the bow once you're 9 blocks away. The daggers are Spartan Weaponry's; set with `#steelclash:sidearm_users`, `#steelclash:mob_sidearms/tier_1..3` and `sidearmChance`.
+
 # 0.2.0-beta
 
 **Combat**
