@@ -62,6 +62,9 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
             offsets = heavy.isEmpty()
                     ? PoseClip.scale(animation.clip(key).sample(progress), animation.heavyWindupScale())
                     : heavy.sample(progress);
+        } else if (data.machine.isThwacked() && pose.phase() == Phase.RECOVERY) {
+            // The blade stopped in a body: hold the body where the release was at contact while the pose eases out.
+            offsets = animation.clip(AnimationSet.clipKey(Phase.RELEASE, pose.type())).sample(data.machine.recoverFrom());
         } else {
             offsets = animation.clip(key).sample(progress);
         }
@@ -85,8 +88,7 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
         }
         double t = switch (pose.phase()) {
             case WINDUP -> 0;
-            case RELEASE -> pose.releaseProgress();
-            default -> 1;
+            default -> pose.releaseProgress(); // release, or recovery from where the release ended
         };
         return Combat.currentPath(data, pose.spec()).edgeAngle(t);
     }

@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.ContactPolicy;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.DamageType;
 import com.steelclash.core.Phase;
@@ -332,23 +333,29 @@ public final class Combat {
             }
             SwingTracer.Result result = SwingTracer.trace(entity, data, spec.get(), sweep);
             CombatProfiler.count(CombatProfiler.Counter.RELEASES, 1);
-            CombatProfiler.count(CombatProfiler.Counter.CONTACTS, result.hits().size());
+            CombatProfiler.count(CombatProfiler.Counter.CONTACTS, result.contacts().size());
             CombatProfiler.begin(CombatProfiler.Section.RESOLVE);
             boolean landed = false;
             try {
-                for (LivingEntity target : result.hits()) {
+                for (SwingTracer.Contact contact : result.contacts()) {
+                    LivingEntity target = contact.target();
                     Hit hit = prepareHit(entity, data, target, spec.get());
-                    if (LagCompensation.hold(entity, target, hit)) {
-                        continue; // a lagged defender gets time for their parry to arrive; see deliverHeld
+                    // A lagged defender gets time for their parry to arrive (see deliverHeld); the blade still met them.
+                    boolean held = LagCompensation.hold(entity, target, hit);
+                    if (!held) {
+                        float healthBefore = target.getHealth();
+                        deliver(entity, target, hit);
+                        if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
+                            break; // parried, countered or blocked: the swing stops here
+                        }
+                        landed = true;
+                        if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
+                            Feedback.hit(entity, target, machine.isHeavy());
+                        }
                     }
-                    float healthBefore = target.getHealth();
-                    deliver(entity, target, hit);
-                    if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
-                        break; // parried, countered or blocked: the swing stops here
-                    }
-                    landed = true;
-                    if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
-                        Feedback.hit(entity, target, machine.isHeavy());
+                    if (stopsAt(entity, data, spec.get(), !held && target.isDeadOrDying())) {
+                        thwack(entity, data, spec.get(), contact.progress());
+                        break; // hitstop: the blade stays in this body, bodies behind it are spared
                     }
                 }
             } finally {
@@ -358,7 +365,7 @@ public final class Combat {
                 machine.allowCombo();
                 sync(entity, data, false);
             }
-            if (result.clank() != null && machine.isAttacking() && Config.ENVIRONMENT_CLANK.get()) {
+            if (result.clank() != null && machine.isAttacking() && !machine.isThwacked() && Config.ENVIRONMENT_CLANK.get()) {
                 clank(entity, data, result.clank());
             }
             if (before == Phase.RELEASE && machine.phase() == Phase.RECOVERY && data.hitThisSwing.isEmpty()) {
@@ -621,6 +628,23 @@ public final class Combat {
     }
 
     /** The blade hit a wall: the swing stops and the attacker reels. */
+    /** Whether a weapon swing stops in the body it just met (thwack) rather than cleaving on: see {@link ContactPolicy}. */
+    private static boolean stopsAt(LivingEntity entity, CombatData data, WeaponProfile.AttackSpec spec, boolean killed) {
+        if (!isWeaponAttack(data.machine.type())) {
+            return false;
+        }
+        return currentProfile(entity, data).map(profile -> profile.contactOf(spec))
+                .orElse(ContactPolicy.CLEAVE)
+                .stops(data.machine.isHeavy(), killed);
+    }
+
+    /** Ends the release at the contact and starts the thwack recovery; the attacker's own client is corrected too. */
+    private static void thwack(LivingEntity entity, CombatData data, WeaponProfile.AttackSpec spec, double at) {
+        if (data.machine.thwack(spec.thwackUs(data.machine.timings().recoveryUs()), at)) {
+            sync(entity, data, true);
+        }
+    }
+
     private static void clank(LivingEntity entity, CombatData data, Vec3 where) {
         stagger(entity, data, Config.CLANK_STAGGER_TICKS.get(), true);
         Feedback.clank(entity, where);

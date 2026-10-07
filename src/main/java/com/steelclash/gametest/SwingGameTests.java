@@ -143,4 +143,81 @@ public final class SwingGameTests {
         TestSupport.check(helper, TestSupport.isHurt(zombie), "a Spartan longsword slash should hurt the zombie");
         helper.succeed();
     }
+
+    // ---- cleave and thwack (architecture plan section 18)
+
+    @GameTest(template = ARENA)
+    public static void bluntLightStopsInTheFirstBody(GameTestHelper helper) {
+        Player player = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X);
+        Zombie left = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 3);
+        Zombie right = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 5);
+        TestSupport.swing(player, AttackType.SLASH);
+        TestSupport.check(helper, TestSupport.isHurt(left) != TestSupport.isHurt(right),
+                "a mace light slash (blunt) stops in the first zombie, left hurt " + TestSupport.isHurt(left) + ", right " + TestSupport.isHurt(right));
+        TestSupport.check(helper, TestSupport.data(player).machine.isThwacked(), "the swing thwacked");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void bluntLightSparesABodyMetInTheSameInstant(GameTestHelper helper) {
+        Player player = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X);
+        // Two zombies on the same spot: the blade reaches both in the same tick.
+        Zombie first = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        Zombie second = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        TestSupport.swing(player, AttackType.SLASH);
+        TestSupport.check(helper, TestSupport.isHurt(first) != TestSupport.isHurt(second),
+                "the thwack stops in one of them, first hurt " + TestSupport.isHurt(first) + ", second " + TestSupport.isHurt(second));
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void bluntLightCleavesOnAKill(GameTestHelper helper) {
+        Player player = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X);
+        Zombie left = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 3);
+        Zombie right = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 5);
+        left.setHealth(1);
+        right.setHealth(1);
+        TestSupport.swing(player, AttackType.SLASH);
+        TestSupport.check(helper, left.isDeadOrDying() && right.isDeadOrDying(),
+                "killing the first zombie lets the blunt slash carry on into the second");
+        TestSupport.check(helper, !TestSupport.data(player).machine.isThwacked(), "no thwack after a kill");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void bluntHeavyCleaves(GameTestHelper helper) {
+        Player player = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X);
+        Zombie left = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 3);
+        Zombie right = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 5);
+        CombatData d = TestSupport.data(player);
+        Combat.requestAttack(player, AttackType.SLASH);
+        TestSupport.check(helper, Combat.makeHeavy(player, d), "made heavy");
+        TestSupport.finish(player);
+        TestSupport.check(helper, TestSupport.isHurt(left) && TestSupport.isHurt(right), "a heavy mace slash cleaves both zombies");
+        TestSupport.check(helper, !d.machine.isThwacked(), "heavies don't thwack");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void thwackSkipsTheRestOfTheRelease(GameTestHelper helper) {
+        Player whiffer = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X, 1);
+        int whiff = ticksToFinish(whiffer, AttackType.SLASH);
+        Player hitter = TestSupport.swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X);
+        helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        int hit = ticksToFinish(hitter, AttackType.SLASH);
+        TestSupport.check(helper, TestSupport.data(hitter).machine.isThwacked(), "the hit thwacked");
+        TestSupport.check(helper, hit < whiff, "thwacking ends the attack sooner: " + hit + " ticks vs " + whiff + " for a whiff");
+        helper.succeed();
+    }
+
+    private static int ticksToFinish(Player player, AttackType type) {
+        CombatData data = TestSupport.data(player);
+        Combat.requestAttack(player, type);
+        int ticks = 0;
+        while (ticks < 200 && data.machine.isAttacking()) {
+            Combat.tickServer(player, data);
+            ticks++;
+        }
+        return ticks;
+    }
 }

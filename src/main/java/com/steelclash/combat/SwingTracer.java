@@ -43,10 +43,14 @@ public final class SwingTracer {
     }
 
     /**
-     * @param hits  newly hit targets in the order the blade reached them (respects the attack's max target count)
-     * @param clank where the blade struck a wall or obstacle this tick, if it did; the swing should stop there
+     * @param contacts newly hit targets in the order the blade reached them (respects the attack's max target count)
+     * @param clank    where the blade struck a wall or obstacle this tick, if it did; the swing should stop there
      */
-    public record Result(List<LivingEntity> hits, @Nullable Vec3 clank) {
+    public record Result(List<Contact> contacts, @Nullable Vec3 clank) {
+    }
+
+    /** A body the blade reached, and the release progress (0 to 1) where it did. */
+    public record Contact(LivingEntity target, double progress) {
     }
 
     /** A possible target and where the attacker saw it, as an offset from where it is now. */
@@ -75,7 +79,7 @@ public final class SwingTracer {
     private static Result traceSwept(LivingEntity attacker, CombatData data, WeaponProfile.AttackSpec spec,
                                      CombatStateMachine.Sweep sweep) {
         int remaining = spec.maxTargets() - data.hitThisSwing.size();
-        List<LivingEntity> hits = new ArrayList<>();
+        List<Contact> hits = new ArrayList<>();
 
         ArcPath path = Combat.currentPath(data, spec);
         double length = CombatMath.bladeLength(attacker, spec) + (data.lunge ? Config.LUNGE_REACH_BONUS.get() : 0);
@@ -130,7 +134,7 @@ public final class SwingTracer {
                         break;
                     }
                     data.hitThisSwing.add(candidate.target().getId());
-                    hits.add(candidate.target());
+                    hits.add(new Contact(candidate.target(), t));
                     hitThisStep = true;
                 }
             }

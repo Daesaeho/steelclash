@@ -6,6 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.steelclash.core.ArcPath;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.ContactPolicy;
 import com.steelclash.core.DamageType;
 import java.util.Arrays;
 import java.util.List;
@@ -68,6 +69,11 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
     /** Damage type of an attack: its own override, else the weapon's. */
     public DamageType damageTypeOf(AttackSpec spec) {
         return spec.damageType().orElse(damageType);
+    }
+
+    /** Cleave or thwack: the attack's own {@code contact}, else what its damage type does (blunt stops in the first body). */
+    public ContactPolicy contactOf(AttackSpec spec) {
+        return spec.contact().orElseGet(() -> ContactPolicy.defaultFor(damageTypeOf(spec)));
     }
 
     /**
@@ -135,15 +141,19 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
      *
      * @param staminaDamage stamina the defender loses when this attack is parried or shield-blocked
      * @param staminaCost   stamina the attacker loses when the attack hits nothing (whiff)
+     * @param contact       {@code cleave}, {@code thwack} or {@code cleave_on_kill}; unset follows the damage type
+     *                      ({@link ContactPolicy#defaultFor})
+     * @param thwackMs      recovery after a thwack, from the moment of contact, in milliseconds; unset uses the
+     *                      attack's normal recovery (so a thwack saves the rest of the release)
      */
     public record AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
                              float reachBonus, float staminaDamage, float staminaCost, List<ArcSpec> variants,
                              Optional<DamageType> damageType, Optional<Integer> windupMs, Optional<Integer> releaseMs,
-                             Optional<Integer> recoveryMs) {
+                             Optional<Integer> recoveryMs, Optional<ContactPolicy> contact, Optional<Integer> thwackMs) {
         public AttackSpec(int windup, int release, int recovery, float damage, ArcSpec arc, int maxTargets,
                           float reachBonus, float staminaDamage, float staminaCost) {
             this(windup, release, recovery, damage, arc, maxTargets, reachBonus, staminaDamage, staminaCost, List.of(),
-                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
         }
 
         /** How many different arcs this attack can be swung along (the main arc plus its variants). */
@@ -158,6 +168,13 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
 
         /** A phase length in milliseconds (1 ms to 10 s). Declared before the codec that uses it. */
         private static final Codec<Integer> MS_CODEC = Codec.intRange(1, AttackTimings.MAX_US / 1000);
+        private static final Codec<ContactPolicy> CONTACT_CODEC = Codec.STRING.comapFlatMap(
+                name -> Arrays.stream(ContactPolicy.values())
+                        .filter(c -> c.serializedName().equals(name))
+                        .findFirst()
+                        .map(DataResult::success)
+                        .orElseGet(() -> DataResult.error(() -> "Unknown contact: " + name + " (cleave, thwack, cleave_on_kill)")),
+                ContactPolicy::serializedName);
 
         private static final Codec<AttackSpec> FIELDS = RecordCodecBuilder.create(i -> i.group(
                 Codec.intRange(0, AttackTimings.MAX_TICKS).optionalFieldOf("windup", 0).forGetter(AttackSpec::windup),
@@ -173,7 +190,9 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                 DAMAGE_TYPE_CODEC.optionalFieldOf("damage_type").forGetter(AttackSpec::damageType),
                 MS_CODEC.optionalFieldOf("windup_ms").forGetter(AttackSpec::windupMs),
                 MS_CODEC.optionalFieldOf("release_ms").forGetter(AttackSpec::releaseMs),
-                MS_CODEC.optionalFieldOf("recovery_ms").forGetter(AttackSpec::recoveryMs)
+                MS_CODEC.optionalFieldOf("recovery_ms").forGetter(AttackSpec::recoveryMs),
+                CONTACT_CODEC.optionalFieldOf("contact").forGetter(AttackSpec::contact),
+                MS_CODEC.optionalFieldOf("thwack_ms").forGetter(AttackSpec::thwackMs)
         ).apply(i, AttackSpec::new));
         public static final Codec<AttackSpec> CODEC = FIELDS.validate(AttackSpec::checkTimed);
 
@@ -183,6 +202,18 @@ public record WeaponProfile(String archetype, float referenceAttackSpeed, float 
                 return DataResult.error(() -> "attack needs windup, release and recovery (ticks, or *_ms in milliseconds)");
             }
             return DataResult.success(spec);
+        }
+
+        /**
+         * Thwack recovery in microseconds for an attack whose normal recovery lasts {@code recoveryUs} (already scaled
+         * for attack speed): {@code thwack_ms} scaled the same way, else that recovery.
+         */
+        public int thwackUs(int recoveryUs) {
+            if (thwackMs.isEmpty()) {
+                return recoveryUs;
+            }
+            double speedScale = recoveryUs / (double) timings().recoveryUs();
+            return (int) Math.max(AttackTimings.MIN_US, Math.min(AttackTimings.MAX_US, Math.round(thwackMs.get() * 1000 * speedScale)));
         }
 
         /** Phase lengths in microseconds: milliseconds where given, otherwise ticks. */

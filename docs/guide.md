@@ -92,6 +92,8 @@ There are 12 archetypes, each with its own timings, arcs, reach, parry cone and 
 
 Damage types (**cut**, **blunt**, **chop**) do more or less damage depending on the target's armour: cuts glance off plate, and blunt weapons don't care. Hover a weapon to see its profile in the tooltip.
 
+**Cleave and thwack.** Cutting and chopping swings carry on through a crowd, up to the weapon's target limit. A light swing with a blunt weapon stops in the first body it meets (a *thwack*) and you recover straight from the impact, so you can follow up sooner; if that hit kills, the swing carries on. Heavy swings always cleave, so a heavy mace reaches the second enemy at the cost of its slower windup. In a crowd, pick which body your blunt light meets first.
+
 - **Special** (R): an archetype move with a cooldown, such as the sword lunge, the hammer slam or the polearm sweep.
 - **Throw** (G): throws your weapon. It does real damage and drops where it lands.
 - **Mounted:** stabs from a moving mount hit harder the faster you ride (couched lance).

@@ -51,8 +51,10 @@ public record SwingPose(Phase phase, AttackType type, double yaw, double pitch, 
                 case GUARD_RECOVERY -> new SwingPose(phase, type, GUARD_YAW, GUARD_PITCH, 0.8, 1 - smooth(progress), 0, spec);
                 case STAGGER -> new SwingPose(phase, type, 50, -60, 0.8, 1 - smooth(progress), 0, spec);
                 default -> {
-                    ArcPath.Keyframe end = path.sample(1);
-                    yield new SwingPose(phase, type, end.yaw(), end.pitch(), end.extension(), 1 - smooth(progress), 1, spec);
+                    // Recovery returns from the end of the arc, or from where a thwack stopped the blade.
+                    double from = data.machine.recoverFrom();
+                    ArcPath.Keyframe end = path.sample(from);
+                    yield new SwingPose(phase, type, end.yaw(), end.pitch(), end.extension(), 1 - smooth(progress), from, spec);
                 }
             };
         });

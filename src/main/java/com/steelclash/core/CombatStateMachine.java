@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
  *                            → attack = riposte straight out of the guard (or, before a catch, a counter attempt)
  *                            → (release/timeout) IDLE if it caught something, else GUARD_RECOVERY → IDLE
  * stagger: any → STAGGER → IDLE   (parried, shield-blocked, flinched, kicked, clanked, guard broken)
+ * thwack:  RELEASE → RECOVERY early, at the contact, with the thwack recovery (hitstop: the blade stopped in a body)
  * </pre>
  * Ripostes and counters carry an <em>active parry</em> for a few ticks: hits from the front are parried while the
  * return attack winds up and swings. An attack started from the guard that is hit within the forgiveness window falls
@@ -56,6 +57,10 @@ public final class CombatStateMachine {
     private int activeParryTicks;
     /** The current attack was started out of a raised guard (a riposte or a counter attempt). */
     private boolean fromGuard;
+    /** The current attack stopped in a body ({@link #thwack}). */
+    private boolean thwacked;
+    /** Release progress the recovery starts from: 1 normally, the contact point after a thwack. */
+    private double recoverFrom = 1;
 
     public boolean canStartAttack() {
         // From a raised guard: a riposte after catching a hit, otherwise a counter attempt that drops the guard.
@@ -84,6 +89,8 @@ public final class CombatStateMachine {
         this.heavy = false;
         this.morphed = false;
         this.comboAllowed = false;
+        this.thwacked = false;
+        this.recoverFrom = 1;
         enterUs(Phase.WINDUP, attackTimings.windupUs());
         return true;
     }
@@ -181,6 +188,37 @@ public final class CombatStateMachine {
         guardRecovery = Math.max(1, recoveryTicks);
         parriedHits = 0;
         enter(Phase.PARRY, PARRY_HOLD_AFTER_HIT);
+        return true;
+    }
+
+    /**
+     * Thwack (Chivalry 2 hitstop): the blade stopped in a body at release progress {@code at}. The rest of the release
+     * is skipped and the thwack recovery, {@code thwackUs} long from the moment of contact, replaces the normal one.
+     * Called in the tick the contact was traced, after {@link #tick} has advanced, so the release may already have run
+     * out this tick; the time since the contact is counted into the thwack recovery.
+     *
+     * @return whether the swing thwacked (once per attack, only from the release or the recovery that just followed it)
+     */
+    public boolean thwack(int thwackUs, double at) {
+        if (thwacked) {
+            return false;
+        }
+        double contact = Math.max(0, Math.min(1, at));
+        long sinceContact;
+        if (phase == Phase.RELEASE) {
+            sinceContact = phaseElapsedUs - Math.round(contact * phaseDurationUs);
+        } else if (phase == Phase.RECOVERY) {
+            sinceContact = Math.round((1 - contact) * timings.releaseUs()) + phaseElapsedUs;
+        } else {
+            return false;
+        }
+        thwacked = true;
+        recoverFrom = contact;
+        enterUs(Phase.RECOVERY, Math.max(1, thwackUs));
+        phaseElapsedUs = Math.max(0, Math.min(sinceContact, phaseDurationUs));
+        if (phaseElapsedUs >= phaseDurationUs) {
+            endPhase();
+        }
         return true;
     }
 
@@ -303,6 +341,17 @@ public final class CombatStateMachine {
     public void apply(Phase newPhase, AttackType newType, long newElapsedUs, long newDurationUs,
                       AttackTimings newTimings, int newRiposteTicks, boolean newHeavy, boolean newMorphed,
                       boolean newComboAllowed, int newVariant, boolean newMirrored) {
+        apply(newPhase, newType, newElapsedUs, newDurationUs, newTimings, newRiposteTicks, newHeavy, newMorphed,
+                newComboAllowed, newVariant, newMirrored, false, 1);
+    }
+
+    /** As above, with the thwack state. */
+    public void apply(Phase newPhase, AttackType newType, long newElapsedUs, long newDurationUs,
+                      AttackTimings newTimings, int newRiposteTicks, boolean newHeavy, boolean newMorphed,
+                      boolean newComboAllowed, int newVariant, boolean newMirrored, boolean newThwacked,
+                      double newRecoverFrom) {
+        this.thwacked = newThwacked;
+        this.recoverFrom = newThwacked ? Math.max(0, Math.min(1, newRecoverFrom)) : 1;
         this.variant = newVariant;
         this.mirrored = newMirrored;
         this.phase = newPhase;
@@ -418,6 +467,16 @@ public final class CombatStateMachine {
 
     public boolean isComboAllowed() {
         return comboAllowed;
+    }
+
+    /** The current attack stopped in a body and is in (or past) its thwack recovery. */
+    public boolean isThwacked() {
+        return thwacked;
+    }
+
+    /** Release progress the recovery returns from: the end of the arc, or where a thwack stopped the blade. */
+    public double recoverFrom() {
+        return recoverFrom;
     }
 
     public int variant() {

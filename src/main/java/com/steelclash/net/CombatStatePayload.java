@@ -15,8 +15,8 @@ import net.minecraft.world.entity.LivingEntity;
 /** Server → clients: snapshot of an entity's attack state, sent on every phase change. */
 public record CombatStatePayload(int entityId, Phase phase, AttackType attackType, long phaseElapsedUs, long phaseDurationUs,
                                  AttackTimings timings, int riposteTicks, boolean heavy, boolean morphed,
-                                 boolean comboAllowed, int variant, boolean mirrored, Optional<ResourceLocation> profile,
-                                 boolean authoritative) implements CustomPacketPayload {
+                                 boolean comboAllowed, int variant, boolean mirrored, boolean thwacked, float recoverFrom,
+                                 Optional<ResourceLocation> profile, boolean authoritative) implements CustomPacketPayload {
     public static final Type<CombatStatePayload> TYPE = new Type<>(SteelClash.id("combat_state"));
 
     public static final StreamCodec<FriendlyByteBuf, CombatStatePayload> STREAM_CODEC =
@@ -26,7 +26,7 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         return new CombatStatePayload(entity.getId(), data.machine.phase(), data.machine.type(),
                 data.machine.phaseElapsedUs(), data.machine.phaseDurationUs(), data.machine.timings(), data.machine.riposteTicks(),
                 data.machine.isHeavy(), data.machine.isMorphed(), data.machine.isComboAllowed(),
-                data.machine.variant(), data.machine.isMirrored(),
+                data.machine.variant(), data.machine.isMirrored(), data.machine.isThwacked(), (float) data.machine.recoverFrom(),
                 Optional.ofNullable(data.profileKey).map(key -> key.location()), authoritative);
     }
 
@@ -40,8 +40,11 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         buf.writeVarInt(timings.releaseUs());
         buf.writeVarInt(timings.recoveryUs());
         buf.writeVarInt(riposteTicks);
-        buf.writeByte((heavy ? 1 : 0) | (morphed ? 2 : 0) | (comboAllowed ? 4 : 0) | (mirrored ? 8 : 0));
+        buf.writeByte((heavy ? 1 : 0) | (morphed ? 2 : 0) | (comboAllowed ? 4 : 0) | (mirrored ? 8 : 0) | (thwacked ? 16 : 0));
         buf.writeVarInt(variant);
+        if (thwacked) {
+            buf.writeFloat(recoverFrom);
+        }
         buf.writeOptional(profile, FriendlyByteBuf::writeResourceLocation);
         buf.writeBoolean(authoritative);
     }
@@ -56,8 +59,10 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         int riposteTicks = buf.readVarInt();
         int flags = buf.readByte();
         int variant = buf.readVarInt();
+        boolean thwacked = (flags & 16) != 0;
+        float recoverFrom = thwacked ? buf.readFloat() : 1f;
         return new CombatStatePayload(entityId, phase, type, phaseElapsedUs, phaseDurationUs, timings, riposteTicks,
-                (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, variant, (flags & 8) != 0,
+                (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, variant, (flags & 8) != 0, thwacked, recoverFrom,
                 buf.readOptional(FriendlyByteBuf::readResourceLocation), buf.readBoolean());
     }
 

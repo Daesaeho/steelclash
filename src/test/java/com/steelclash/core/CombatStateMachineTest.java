@@ -503,4 +503,83 @@ class CombatStateMachineTest {
         assertEquals(0.375, m.phaseProgress(0.5f), 1e-9);
         assertEquals(3, m.ticksLeftInPhase(), "150 ms left: 3 ticks");
     }
+
+    // ---- thwack (architecture plan section 18)
+
+    /** 100 ms windup (exactly two ticks), then the given release and recovery; ticked into the release's first tick. */
+    private static CombatStateMachine inFirstReleaseTick(int releaseMs, int recoveryMs) {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, AttackTimings.ofMillis(100, releaseMs, recoveryMs));
+        m.tick();
+        m.tick();
+        m.tick();
+        return m;
+    }
+
+    @Test
+    void thwackSkipsTheRestOfTheReleaseAndTimesTheRecoveryFromContact() {
+        CombatStateMachine m = inFirstReleaseTick(200, 300);
+        assertEquals(Phase.RELEASE, m.phase());
+        assertEquals(50_000, m.phaseElapsedUs());
+        assertTrue(m.thwack(250_000, 0.1), "contact 20 ms into the release");
+        assertEquals(Phase.RECOVERY, m.phase());
+        assertTrue(m.isThwacked());
+        assertEquals(0.1, m.recoverFrom(), 1e-9);
+        assertEquals(250_000, m.phaseDurationUs());
+        assertEquals(30_000, m.phaseElapsedUs(), "the 30 ms since the contact count toward the thwack recovery");
+    }
+
+    @Test
+    void thwackWorksAfterTheReleaseRanOutInTheSameTick() {
+        // 30 ms release: by the end of the tick the release is over and recovery is 20 ms in.
+        CombatStateMachine m = inFirstReleaseTick(30, 300);
+        assertEquals(Phase.RECOVERY, m.phase());
+        assertEquals(20_000, m.phaseElapsedUs());
+        assertTrue(m.thwack(100_000, 0.5));
+        assertEquals(100_000, m.phaseDurationUs());
+        assertEquals(35_000, m.phaseElapsedUs(), "15 ms of release after the contact + 20 ms of recovery");
+    }
+
+    @Test
+    void aThwackShorterThanTheTimeSinceContactIsAlreadyOver() {
+        CombatStateMachine m = inFirstReleaseTick(200, 300);
+        assertTrue(m.thwack(10_000, 0.1));
+        assertEquals(Phase.IDLE, m.phase());
+    }
+
+    @Test
+    void thwackOnlyOncePerAttackAndOnlyFromTheSwing() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertFalse(m.thwack(100_000, 0.5), "idle");
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        assertFalse(m.thwack(100_000, 0.5), "windup: nothing to stop yet");
+        m.tick();
+        m.tick();
+        m.tick();
+        m.tick();
+        assertEquals(Phase.RELEASE, m.phase());
+        assertTrue(m.thwack(200_000, 0.4));
+        assertFalse(m.thwack(200_000, 0.6), "once per attack");
+    }
+
+    @Test
+    void aNewAttackClearsTheThwack() {
+        CombatStateMachine m = inFirstReleaseTick(200, 300);
+        m.thwack(250_000, 0.1);
+        m.allowCombo();
+        assertTrue(m.startAttack(AttackType.OVERHEAD, TIMINGS), "combo out of the thwack");
+        assertFalse(m.isThwacked());
+        assertEquals(1, m.recoverFrom(), 1e-9);
+    }
+
+    @Test
+    void thwackStateTravelsWithTheSnapshot() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.apply(Phase.RECOVERY, AttackType.SLASH, 0, 200_000, TIMINGS, 0, false, false, false, 0, false, true, 0.4);
+        assertTrue(m.isThwacked());
+        assertEquals(0.4, m.recoverFrom(), 1e-9);
+        m.apply(Phase.RECOVERY, AttackType.SLASH, 0, 200_000, TIMINGS, 0, false, false, false, 0, false);
+        assertFalse(m.isThwacked());
+        assertEquals(1, m.recoverFrom(), 1e-9);
+    }
 }

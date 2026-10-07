@@ -12,6 +12,7 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
+import com.steelclash.core.ContactPolicy;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.core.AttackTimings;
@@ -161,6 +162,22 @@ public final class MechanicsGameTests {
         }
         check(helper, d.machine.phase() == Phase.RELEASE && d.machine.phaseElapsedUs() == 30_000,
                 "30 ms into the release after 8 ticks, phase " + d.machine.phase() + " at " + d.machine.phaseElapsedUs() + " us");
+        helper.succeed();
+    }
+
+    /** Attacks can choose cleave or thwack, and a thwack recovery that scales with attack speed like the rest. */
+    @GameTest(template = ARENA)
+    public static void profilesTakeContactAndThwackTimings(GameTestHelper helper) {
+        String timed = "\"windup_ms\": 300, \"release_ms\": 200, \"recovery_ms\": 300, \"arc\": {\"shape\": \"horizontal\"}";
+        WeaponProfile.AttackSpec thwack = decode("{" + timed + ", \"contact\": \"thwack\", \"thwack_ms\": 450}");
+        check(helper, thwack.contact().equals(java.util.Optional.of(ContactPolicy.THWACK)), "contact " + thwack.contact());
+        check(helper, thwack.thwackUs(300_000) == 450_000, "thwack at reference speed: " + thwack.thwackUs(300_000));
+        check(helper, thwack.thwackUs(150_000) == 225_000, "twice as fast, half the thwack: " + thwack.thwackUs(150_000));
+        WeaponProfile.AttackSpec plain = decode("{" + timed + "}");
+        check(helper, plain.contact().isEmpty() && plain.thwackUs(280_000) == 280_000, "unset: the normal recovery");
+        boolean rejected = WeaponProfile.AttackSpec.CODEC.parse(JsonOps.INSTANCE,
+                JsonParser.parseString("{" + timed + ", \"contact\": \"bounce\"}")).error().isPresent();
+        check(helper, rejected, "an unknown contact is rejected");
         helper.succeed();
     }
 
