@@ -8,6 +8,9 @@
 - Projectile headshots deal 25% more, with a ding for the shooter.
 - Getting hurt while drawing a bow or loading a crossbow loses the draw.
 
+**Co-op**
+- Team rules (Chivalry 2): all players are allies by default (`playersAreAllies`), or scoreboard teams decide. Allies' bodies are in the way of your swings: slashes carry on through them, stabs stop in them. Allies take 25% damage (`friendlyDamageScale`, 0 = off), their guards never parry you, and kicks, jabs and slams pass them by. **To duel another player, set `playersAreAllies = false`.**
+
 **Mobs**
 - Archer sidearms (Chivalry 2): skeletons, strays and bogged carry a dagger next to their bow. They draw it when you close within 4 blocks and go back to the bow once you're 9 blocks away. The daggers are Spartan Weaponry's; set with `#steelclash:sidearm_users`, `#steelclash:mob_sidearms/tier_1..3` and `sidearmChance`.
 

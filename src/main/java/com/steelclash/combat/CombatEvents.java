@@ -129,6 +129,14 @@ public final class CombatEvents {
                 RangedDefense.headshotFeedback(projectile.getOwner());
             }
         }
+        if (swing != null && swing.attacker() instanceof LivingEntity attacker && Allies.areAllies(attacker, event.getEntity())) {
+            // Friendly fire: never parried, blocked or countered, and scaled down (0 = none).
+            event.setAmount(event.getAmount() * swing.damageMult() * Allies.damageScale());
+            if (event.getAmount() <= 0) {
+                event.setCanceled(true);
+            }
+            return;
+        }
         if (Defense.tryParry(event.getEntity(), event.getSource(), swing)) {
             event.setCanceled(true);
             return;

@@ -148,6 +148,13 @@ Craft it with a carved pumpkin on top, a hay bale in the middle with a stick on 
 
 ## Multiplayer
 
+**Fighting side by side (Chivalry 2 team rules).** By default all players are on one side (`playersAreAllies`); with it off, only players on the same scoreboard team are.
+- Your swings don't ignore allies: their bodies are in the way. Slashes and overheads carry on through them; **stabs stop in the first ally they meet**, so don't stab past a friend's back.
+- An ally you hit takes a quarter of the damage (`friendlyDamageScale`, 0 = no friendly fire). Their guard never parries you, and blocking you costs them nothing.
+- Kicks, jabs and weapon slams pass allies by, and pets of you and your allies are never hit.
+- **Want to duel a friend?** Set `playersAreAllies = false` in the common config (or put yourselves on different teams), otherwise you fight as allies: a quarter damage and no parries.
+
+
 Co-op works, with lag compensation. When you have a high ping, your swings hit what your screen showed. Hits on you wait (up to a round trip, 250 ms at most) so your parry can still arrive. Server owners can tune or disable this in the `network` section of the common config.
 
 ## Settings worth knowing

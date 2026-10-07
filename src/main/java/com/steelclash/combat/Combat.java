@@ -375,6 +375,12 @@ public final class Combat {
             try {
                 for (SwingTracer.Contact contact : result.contacts()) {
                     LivingEntity target = contact.target();
+                    if (Allies.areAllies(entity, target)) {
+                        if (meetAlly(entity, data, target, spec.get(), contact.progress())) {
+                            break;
+                        }
+                        continue;
+                    }
                     Hit hit = prepareHit(entity, data, target, spec.get());
                     // A lagged defender gets time for their parry to arrive (see deliverHeld); the blade still met them.
                     boolean held = LagCompensation.hold(entity, target, hit);
@@ -672,6 +678,32 @@ public final class Combat {
         return currentProfile(entity, data).map(profile -> profile.contactOf(spec))
                 .orElse(ContactPolicy.CLEAVE)
                 .stops(data.machine.isHeavy(), killed);
+    }
+
+    /**
+     * The blade meets an ally (Chivalry 2 team rules): kicks, jabs and throws pass by; weapon attacks hurt them by
+     * {@code friendlyDamageScale} (never parried), and stabs, or attacks that stop in a body anyway, stop here.
+     *
+     * @return whether the swing stops in the ally
+     */
+    private static boolean meetAlly(LivingEntity entity, CombatData data, LivingEntity ally, WeaponProfile.AttackSpec spec,
+                                    double progress) {
+        AttackType type = data.machine.type();
+        if (!isWeaponAttack(type) && type != AttackType.SPECIAL) {
+            return false;
+        }
+        if (Allies.damageScale() > 0) {
+            float healthBefore = ally.getHealth();
+            deliver(entity, ally, prepareHit(entity, data, ally, spec));
+            if (ally.getHealth() < healthBefore) {
+                Feedback.hit(entity, ally, data.machine.isHeavy());
+            }
+        }
+        if (type == AttackType.STAB || stopsAt(entity, data, spec, ally.isDeadOrDying())) {
+            thwack(entity, data, spec, progress);
+            return true;
+        }
+        return false;
     }
 
     /** Ends the release at the contact and starts the thwack recovery; the attacker's own client is corrected too. */

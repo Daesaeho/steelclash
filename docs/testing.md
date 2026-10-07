@@ -349,3 +349,13 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | 5 | Draw a bow and let a zombie hit you | The draw drops; keep holding to start again. |
 | 6 | Hit a skeleton that's drawing | Its shot is lost. |
 
+## Team rules (added 2026-10-07, LAN with two players)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Stand behind your friend and stab at a zombie in front of them | The stab stops in your friend (light damage to them); the zombie is untouched. |
+| 2 | Slash across your friend and a zombie | Both are hit; your friend takes about a quarter. |
+| 3 | Friend holds block; you slash them | No parry: you're not staggered, they lose no stamina. |
+| 4 | Kick your friend | Nothing happens. |
+| 5 | `playersAreAllies = false`, duel | Full damage, parries and ripostes work as against bots. |
+

@@ -15,7 +15,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -173,7 +172,7 @@ public final class SwingTracer {
         if (target == attacker || !target.isAlive() || !target.isPickable() || target.isSpectator()) {
             return false;
         }
-        if (attacker.isPassengerOfSameVehicle(target) || attacker.isAlliedTo(target)) {
+        if (attacker.isPassengerOfSameVehicle(target)) {
             return false;
         }
         // Monsters don't cut each other down (vanilla mobs never melee each other either): a hostile mob's arc only
@@ -181,9 +180,11 @@ public final class SwingTracer {
         if (attacker instanceof Enemy && target instanceof Enemy && attacker instanceof Mob mob && mob.getTarget() != target) {
             return false;
         }
-        // Don't cut down your own pets.
-        return !(target instanceof OwnableEntity ownable && ownable.getOwnerUUID() != null
-                && ownable.getOwnerUUID().equals(attacker.getUUID()));
+        // Allies' bodies are in the way (Chivalry 2) unless friendly collision is off; pets are never cut down.
+        if (Allies.areAllies(attacker, target)) {
+            return Config.FRIENDLY_COLLISION.get();
+        }
+        return !Allies.isFriendlyPet(attacker, target);
     }
 
     /** No hitting through walls: the target's center or eyes must be visible from the blade pivot. */

@@ -157,6 +157,16 @@ public class Config {
     public static final ModConfigSpec.IntValue FLINCH_TICKS = BUILDER
             .comment("Stagger when hit during your own windup (heavy attacks with hyper armor ignore this)")
             .defineInRange("flinchTicks", 8, 0, 100);
+    public static final ModConfigSpec.BooleanValue PLAYERS_ARE_ALLIES = BUILDER
+            .comment("All players fight on one side (co-op). Off: only players on the same scoreboard team are allies")
+            .define("playersAreAllies", true);
+    public static final ModConfigSpec.BooleanValue FRIENDLY_COLLISION = BUILDER
+            .comment("Allies' bodies are in the way of your swings (Chivalry 2): slashes and overheads carry on through them,",
+                    "stabs stop in them. Off: swings pass through allies untouched")
+            .define("friendlyCollision", true);
+    public static final ModConfigSpec.DoubleValue FRIENDLY_DAMAGE_SCALE = BUILDER
+            .comment("Share of a swing's damage an ally takes (0 = no friendly fire). Allies' guards never parry you")
+            .defineInRange("friendlyDamageScale", 0.25, 0.0, 1.0);
     public static final ModConfigSpec.IntValue PROJECTILE_COUNTER_MILLIS = BUILDER
             .comment("An arrow, bolt or thrown weapon arriving from the front within this many milliseconds of starting a",
                     "slash, overhead or stab is deflected (Chivalry 2's projectile counter, 0.25 s). 0 = off")

@@ -28,7 +28,7 @@ public final class Specials {
         Vec3 impact = attacker.position().add(horizontal.scale(SLAM_DISTANCE));
         List<LivingEntity> caught = attacker.level().getEntitiesOfClass(LivingEntity.class,
                 new AABB(impact, impact).inflate(SLAM_RADIUS, 1.5, SLAM_RADIUS),
-                e -> e != attacker && e.isAlive() && !e.isSpectator() && !attacker.isAlliedTo(e)
+                e -> e != attacker && e.isAlive() && !e.isSpectator() && !Allies.areAllies(attacker, e)
                         && e.position().distanceTo(impact) <= SLAM_RADIUS);
         for (LivingEntity target : caught) {
             CombatData data = target.getData(ModAttachments.COMBAT);
