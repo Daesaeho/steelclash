@@ -39,7 +39,7 @@ public final class DownedGameTests {
 
     /** A survival mock player in the level at (x, 2, z) of the test structure, holding a sword. */
     @SuppressWarnings("removal")
-    private static ServerPlayer player(GameTestHelper helper, double x, double z) {
+    static ServerPlayer player(GameTestHelper helper, double x, double z) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         Vec3 pos = helper.absoluteVec(new Vec3(x, 2, z));
         player.moveTo(pos.x, pos.y, pos.z, 0, 0);

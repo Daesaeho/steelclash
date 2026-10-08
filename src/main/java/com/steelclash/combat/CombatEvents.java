@@ -170,7 +170,10 @@ public final class CombatEvents {
         }
     }
 
-    /** Flinch: taking real damage during your own windup interrupts it, unless the heavy has hyper armor or it's a kick. */
+    /**
+     * Flinch: taking real damage during your own windup interrupts it, unless the heavy has hyper armor or it's a kick. A
+     * blow during your release interrupts it too, at the end of the tick ({@link Interrupts}).
+     */
     @SubscribeEvent
     static void onDamageTaken(LivingDamageEvent.Post event) {
         LivingEntity entity = event.getEntity();
@@ -194,6 +197,9 @@ public final class CombatEvents {
         }
         if (data.machine.phase() == Phase.WINDUP && !Combat.hasHyperArmor(entity, data)) {
             Combat.stagger(entity, data, Config.FLINCH_TICKS.get(), true);
+        } else if (data.machine.phase() == Phase.RELEASE && event.getSource().getEntity() != null
+                && !Combat.hasHyperArmor(entity, data)) {
+            Interrupts.releaseHit(entity); // a blow, not fire or a fall: applied at the end of the tick
         }
     }
 
@@ -301,6 +307,7 @@ public final class CombatEvents {
     static void onServerStopped(ServerStoppedEvent event) {
         ClashBrain.TOKENS.clear();
         LagCompensation.clear();
+        Interrupts.clear();
     }
 
     @SubscribeEvent
@@ -314,6 +321,7 @@ public final class CombatEvents {
     @SubscribeEvent
     static void onServerTick(ServerTickEvent.Post event) {
         LagCompensation.tick();
+        Interrupts.apply(); // after held hits, which may interrupt too
         CombatProfiler.endTick();
     }
 

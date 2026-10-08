@@ -381,4 +381,75 @@ public final class OffenseGameTests {
         check(helper, !isHurt(far2), "a standing stab should fall short");
         helper.succeed();
     }
+
+    // ---- release interrupts (Chivalry 2, report section 2.8)
+
+    @GameTest(template = ARENA, timeoutTicks = 20)
+    public static void aBlowDuringTheReleaseInterruptsItAtTheEndOfTheTick(GameTestHelper helper) {
+        Player first = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 2);
+        Player second = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 6);
+        Player third = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 4);
+        TrainingDummy struck = dummy(helper, 3, 2, FACING_POSITIVE_X);
+        TrainingDummy finishing = dummy(helper, 3, 4, FACING_POSITIVE_X);
+        TrainingDummy armoured = dummy(helper, 3, 6, FACING_POSITIVE_X);
+        TrainingDummy burnt = dummy(helper, 6, 4, FACING_POSITIVE_X);
+        armoured.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.MACE));
+        intoRelease(struck, false);
+        intoRelease(armoured, true); // a mace heavy has hyper armor
+        intoRelease(burnt, false);
+        intoRelease(finishing, false);
+        swing(first, AttackType.SLASH);
+        swing(second, AttackType.SLASH);
+        swing(third, AttackType.SLASH);
+        while (data(finishing).machine.phase() == Phase.RELEASE) {
+            data(finishing).machine.tick(); // its release ends later in the same tick
+        }
+        burnt.hurt(burnt.damageSources().inFire(), 1);
+        check(helper, isHurt(struck) && isHurt(armoured) && isHurt(burnt) && isHurt(finishing), "all four are hurt");
+        check(helper, data(struck).machine.phase() == Phase.RELEASE, "the interrupt waits for the end of the tick");
+        helper.runAfterDelay(1, () -> {
+            check(helper, data(struck).machine.phase() == Phase.STAGGER, "a blow interrupts the release, phase " + data(struck).machine.phase());
+            check(helper, data(armoured).machine.phase() != Phase.STAGGER, "not a heavy with hyper armor");
+            check(helper, data(burnt).machine.phase() != Phase.STAGGER, "fire isn't a blow");
+            check(helper, data(finishing).machine.phase() != Phase.STAGGER, "and a release that finished in the tick isn't cut");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = ARENA, timeoutTicks = 20)
+    public static void bladesMeetingInTheSameTickTrade(GameTestHelper helper) {
+        // In the level, so the dummy's blade can find it (and in survival, so it can be hurt).
+        Player player = DownedGameTests.player(helper, 1.5, 4.5);
+        TestSupport.face(player, FACING_POSITIVE_X);
+        TestSupport.applyWeaponModifiers(player, player.getMainHandItem()); // the same speed as the dummy's sword
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        dummy.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        CombatData p = data(player);
+        CombatData d = data(dummy);
+        Combat.start(player, p, AttackType.SLASH);
+        Combat.start(dummy, d, AttackType.SLASH);
+        // One server tick: the player is always ticked first, yet its blow mustn't stop the dummy's blade this tick.
+        for (int tick = 0; tick < 40 && !(isHurt(player) && isHurt(dummy)); tick++) {
+            Combat.tickServer(player, p);
+            Combat.tickServer(dummy, d);
+        }
+        check(helper, isHurt(player) && isHurt(dummy), "both blades land: a trade");
+        helper.runAfterDelay(1, () -> {
+            check(helper, p.machine.phase() == Phase.STAGGER && d.machine.phase() == Phase.STAGGER,
+                    "and both flinch at the end of the tick: " + p.machine.phase() + ", " + d.machine.phase());
+            helper.succeed();
+        });
+    }
+
+    /** Starts a slash and runs its windup without a server tick, so it's releasing. */
+    private static void intoRelease(TrainingDummy fighter, boolean heavy) {
+        CombatData d = data(fighter);
+        Combat.start(fighter, d, AttackType.SLASH);
+        if (heavy) {
+            Combat.makeHeavy(fighter, d);
+        }
+        while (d.machine.phase() == Phase.WINDUP) {
+            d.machine.tick();
+        }
+    }
 }

@@ -44,14 +44,18 @@ final class TestSupport {
         player.moveTo(pos.x, pos.y, pos.z, yaw, 0);
         player.setYHeadRot(yaw);
         player.setItemInHand(InteractionHand.MAIN_HAND, weapon);
-        // Mock players never tick, so apply the weapon's attribute modifiers (damage, speed, reach) by hand.
+        applyWeaponModifiers(player, weapon);
+        return player;
+    }
+
+    /** Mock players never tick, so apply the weapon's attribute modifiers (damage, speed, reach) by hand. */
+    static void applyWeaponModifiers(Player player, ItemStack weapon) {
         weapon.forEachModifier(EquipmentSlot.MAINHAND, (attribute, modifier) -> {
             AttributeInstance instance = player.getAttribute(attribute);
             if (instance != null && !instance.hasModifier(modifier.id())) {
                 instance.addTransientModifier(modifier);
             }
         });
-        return player;
     }
 
     /** A passive training dummy (holding an iron sword) standing at block (x, 2, z), facing {@code yaw}. */

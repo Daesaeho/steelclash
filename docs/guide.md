@@ -30,7 +30,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Feint** (X during a windup): cancels the attack. It costs stamina, and it baits parries.
 - **Morph:** press a *different* attack key during a windup to switch to that attack.
 - **Combo:** attack again during your recovery and the next attack replaces it, alternating sides. As in Chivalry 2 this works after a miss too, but not after a blocked or parried attack. A combo winds up a little longer than a fresh attack, but it's much sooner than waiting out the recovery.
-- **Flinch:** taking damage during your windup interrupts it (except a heavy with hyper armour).
+- **Flinch:** taking damage during your windup interrupts it (except a heavy with hyper armour). So does a blow during your **release**, as in Chivalry 2: whoever lands first wins the exchange, which is what accels are for. Two blades landing at the same moment (within a twentieth of a second) both hit, a trade. Fire and falls don't cut your swing short. Turn this off with `releaseInterrupt` in the common config.
 - **Lunge:** attack while sprinting for extra reach and damage. Miss with it and you recover 0.3 s longer, so don't sprint-swing blindly.
 - **Jump attack:** an overhead started in mid-air hits harder.
 - **Gesture attacks (experimental, client config `gestureAttacks`):** hold left click and drag the mouse toward where the attack should come from. Drag left for a slash from the left, right for a slash from the right, up for an overhead, down for a stab. A plain click still slashes, and holding on after the gesture makes it a heavy. Everything is customizable:

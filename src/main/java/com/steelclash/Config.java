@@ -162,8 +162,12 @@ public class Config {
             .comment("Stagger for an unguarded target that was kicked")
             .defineInRange("kickStaggerTicks", 12, 1, 200);
     public static final ModConfigSpec.IntValue FLINCH_TICKS = BUILDER
-            .comment("Stagger when hit during your own windup (heavy attacks with hyper armor ignore this)")
+            .comment("Stagger when hit during your own windup or release (heavy attacks with hyper armor ignore this)")
             .defineInRange("flinchTicks", 8, 0, 100);
+    public static final ModConfigSpec.BooleanValue RELEASE_INTERRUPT = BUILDER
+            .comment("A hit during your release interrupts your attack, as in Chivalry 2: whoever lands first wins the",
+                    "exchange. Blades that meet within the same tick trade. Off: releases always carry on (pre-0.4 rule)")
+            .define("releaseInterrupt", true);
     public static final ModConfigSpec.BooleanValue DOWNED = BUILDER
             .comment("Chivalry 2 downed state: a lethal blow puts a player on the ground instead of killing them, if an ally",
                     "is nearby to revive them. Downed players crawl, can't fight, and bleed out unless revived; another",

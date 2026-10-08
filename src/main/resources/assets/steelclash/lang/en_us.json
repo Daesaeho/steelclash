@@ -88,6 +88,7 @@
   "steelclash.configuration.kickGuardBreakTicks": "Kick Guard Break (ticks)",
   "steelclash.configuration.kickStaggerTicks": "Kick Stagger (ticks)",
   "steelclash.configuration.flinchTicks": "Flinch (ticks)",
+  "steelclash.configuration.releaseInterrupt": "Hits Interrupt Releases",
   "steelclash.configuration.counterWindowTicks": "Counter Window (ticks)",
   "steelclash.configuration.counterReleaseTicks": "Counter Release (ticks)",
   "steelclash.configuration.environmentClank": "Environment Clank",

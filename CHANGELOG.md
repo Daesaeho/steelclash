@@ -6,6 +6,7 @@
 - Mounted: every melee attack hits harder the faster the mount goes, not just stabs; slashes and overheads get half the couched-lance bonus.
 - A counter that has already caught its attack can't be dodged out of.
 - Arrows and bolts no longer interrupt a weapon throw.
+- A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Network**
 - Protocol 11: server and clients must update together.

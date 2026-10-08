@@ -127,7 +127,9 @@ public final class GearGameTests {
         Skeleton skeleton = helper.spawn(EntityType.SKELETON, 1, 2, 4);
         skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
         skeleton.setData(ModAttachments.SIDEARM, new ItemStack(Items.IRON_SWORD));
-        skeleton.setTarget(dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X));
+        TrainingDummy target = dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X);
+        // The skeleton's own AI may pick another target, such as an in-level mock player from another test far away.
+        helper.onEachTick(() -> skeleton.setTarget(target));
         helper.succeedWhen(() -> check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "should draw the sidearm"));
     }
 

@@ -372,6 +372,15 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | 7 | Singleplayer, die | You die as before. |
 | 8 | Downed, disconnect | You're dead when you rejoin. |
 
+## Release interrupts (2026-10-08)
+
+| Check | Expected |
+|---|---|
+| Duel a Normal bot for a few minutes | Exchanges feel fair: an accel that lands first wins, simultaneous swings trade, and you're not cut off unexpectedly. |
+| Swing at a mace knight's heavy as it releases | The heavy carries on (hyper armour). |
+| Co-op with latency, both swinging at each other's allies | No one-sided trades that depend on who joined first. |
+| Fight while standing in fire | Burning doesn't cut your swings short. |
+
 ## Bug audit checks (2026-10-08)
 
 The server-side fixes have GameTests. These need real clients (protocol 10 on both sides):
