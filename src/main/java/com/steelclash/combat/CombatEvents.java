@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.ai.ClashBrain;
 import com.steelclash.ai.ClashSpacingGoal;
+import com.steelclash.ai.RetrieveWeaponGoal;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
@@ -299,6 +300,7 @@ public final class CombatEvents {
         }
         boolean installed = mob.goalSelector.getAvailableGoals().stream().anyMatch(g -> g.getGoal() instanceof ClashSpacingGoal);
         if (!installed) {
+            mob.goalSelector.addGoal(0, new RetrieveWeaponGoal(mob));
             mob.goalSelector.addGoal(1, new ClashSpacingGoal(mob));
         }
     }

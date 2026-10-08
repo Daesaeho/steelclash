@@ -32,6 +32,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.monster.Husk;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Arrow;
@@ -426,5 +427,21 @@ public final class DefenseGameTests {
         check(helper, data(attacker).machine.phase() != Phase.STAGGER, "the attacker isn't staggered: they keep the initiative");
         check(helper, data(attacker).machine.isThwacked(), "the blade stopped on the guard");
         helper.succeed();
+    }
+
+    @GameTest(template = ARENA, timeoutTicks = 200)
+    public static void aDisarmedMobGoesBackForItsOwnWeapon(GameTestHelper helper) {
+        Husk husk = helper.spawn(EntityType.HUSK, 3, 2, 4); // full AI: the retrieval is a goal
+        husk.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        Player player = swordsman(helper, new ItemStack(Items.GOLDEN_SWORD), FACING_POSITIVE_X);
+        Disarm.disarm(husk);
+        Disarm.disarm(player);
+        check(helper, husk.getMainHandItem().isEmpty(), "the husk drops its sword");
+        helper.succeedWhen(() -> {
+            check(helper, husk.getMainHandItem().is(Items.IRON_SWORD), "the husk goes back for its sword");
+            boolean playersSwordLeft = !helper.getLevel().getEntitiesOfClass(ItemEntity.class,
+                    husk.getBoundingBox().inflate(16), e -> e.getItem().is(Items.GOLDEN_SWORD)).isEmpty();
+            check(helper, playersSwordLeft, "and leaves the player's alone");
+        });
     }
 }

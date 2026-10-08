@@ -6,7 +6,13 @@
 - Mounted: every melee attack hits harder the faster the mount goes, not just stabs; slashes and overheads get half the couched-lance bonus.
 - A counter that has already caught its attack can't be dodged out of.
 - Arrows and bolts no longer interrupt a weapon throw.
+- Combos can be pressed during the release, a little earlier, as in Chivalry 2: the combo starts the moment the swing ends.
+- A disarmed mob runs back for its own dropped weapon and picks it up (gives up after 10 seconds; `mobsRetrieveWeapons`). Pick it up first and it's yours.
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
+
+**Animation**
+- First person: a ready stance while holding a weapon (off hand empty), so attacks start from it and return to it instead of cutting from vanilla's hand (`firstPersonReadyStance`).
+- Combos, ripostes, morphs, feints, staggers and guards blend from the arm's last pose over 0.2 s instead of snapping back to rest first; a combo goes straight from the end of one swing into the next windup.
 
 **Network**
 - Protocol 11: server and clients must update together.

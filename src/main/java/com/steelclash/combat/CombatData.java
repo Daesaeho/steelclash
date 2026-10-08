@@ -10,6 +10,7 @@ import com.steelclash.core.Stamina;
 import com.steelclash.profile.WeaponProfile;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import java.util.UUID;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -87,6 +88,10 @@ public class CombatData {
     public long specialReadyAt;
     /** Game time before which an archer mob won't switch between bow and sidearm again ({@link Sidearms}). */
     public long sidearmReadyAt;
+    /** The weapon this mob dropped when disarmed, and when: it goes back for it (RetrieveWeaponGoal). */
+    @Nullable
+    public UUID lostWeapon;
+    public long lostWeaponAt;
     /** {@link MobCombat#keepAggressive} turned this mob's aggressive flag on (and so should turn it off). */
     public boolean forcedAggressive;
     /** Game time the next dodge is allowed. */

@@ -2,6 +2,7 @@ package com.steelclash.client.anim;
 
 import com.steelclash.Config;
 import com.steelclash.client.SwingPose;
+import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
@@ -11,12 +12,15 @@ import com.steelclash.core.ArmAim;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.core.Mat3;
+import com.steelclash.core.PoseBlend;
 import com.steelclash.core.PoseClip;
 import com.steelclash.core.Vec;
 import com.steelclash.core.WeaponRig;
 import com.steelclash.profile.WeaponProfile;
+import com.steelclash.profile.WeaponProfiles;
 import java.util.Map;
 import java.util.Optional;
+import java.util.WeakHashMap;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -40,16 +44,116 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
     private static final double WRIST_RELAX = 0.45;
     private static final double[] NO_OFFSET = {0, 0, 0};
 
+    /** First-person ready stance: weapon held up at the right, blade rising, degrees from the view. */
+    private static final double READY_YAW = 65;
+    private static final double READY_PITCH = -45;
+
+    /** Per fighter: the pose last shown and any hand-over in progress ({@link PoseBlend}). Render thread only. */
+    private static final Map<LivingEntity, Transition> TRANSITIONS = new WeakHashMap<>();
+
+    private static final class Transition {
+        boolean seen;
+        int serial;
+        AttackType type;
+        boolean mirrored;
+        Phase phase;
+        CombatPose shown;
+        CombatPose from;
+        double startTicks;
+        /** This windup started while the arm was still posed (a combo, riposte, morph): it stays at full weight. */
+        boolean chained;
+    }
+
     /** The animation layer's activation check needs availability, not an interpolated pose and sampled clips. */
     public static boolean isAvailable(LivingEntity entity) {
         if (!entity.hasData(ModAttachments.COMBAT)) {
             return false;
         }
         CombatData data = entity.getData(ModAttachments.COMBAT);
-        return data.machine.phase() != Phase.IDLE && Combat.currentSpec(entity, data).isPresent();
+        if (data.machine.phase() == Phase.IDLE) {
+            Transition transition = TRANSITIONS.get(entity);
+            return transition != null && transition.from != null; // still fading out (a feint)
+        }
+        return Combat.currentSpec(entity, data).isPresent();
     }
 
+    /**
+     * This frame's combat pose, with discontinuous phase changes (combos, ripostes, morphs, staggers, feints) blended
+     * from the pose shown before over {@link PoseBlend#BLEND_TICKS}.
+     */
     public static Optional<CombatPose> of(LivingEntity entity, float partialTick) {
+        Optional<CombatPose> raw = raw(entity, partialTick);
+        if (PoseSheet.running() || !entity.hasData(ModAttachments.COMBAT)) {
+            return raw; // the pose sheet pins exact poses
+        }
+        CombatData data = entity.getData(ModAttachments.COMBAT);
+        Transition t = TRANSITIONS.computeIfAbsent(entity, e -> new Transition());
+        double now = entity.level().getGameTime() + partialTick;
+        Phase phase = data.machine.phase();
+        int serial = data.machine.attackSerial();
+        AttackType type = data.machine.type();
+        boolean mirrored = data.machine.isMirrored();
+        if (!t.seen || !PoseBlend.continuous(t.serial, t.type, t.mirrored, t.phase, serial, type, mirrored, phase)) {
+            boolean visible = t.seen && t.shown != null && t.shown.weight() > 0.02;
+            t.from = visible ? t.shown : null;
+            t.startTicks = now;
+            t.chained = visible && phase == Phase.WINDUP;
+        }
+        t.seen = true;
+        t.serial = serial;
+        t.type = type;
+        t.mirrored = mirrored;
+        t.phase = phase;
+        if (phase != Phase.WINDUP) {
+            t.chained = false;
+        }
+        CombatPose target = raw.orElse(null);
+        if (target != null && t.chained) {
+            target = target.withWeight(1); // straight from the last pose into the windup, not back down to rest first
+        }
+        if (t.from != null) {
+            double progress = (now - t.startTicks) / PoseBlend.BLEND_TICKS;
+            if (progress >= 1 || progress < 0) {
+                t.from = null;
+            } else {
+                double s = PoseBlend.ease(progress);
+                target = target == null ? t.from.withWeight(t.from.weight() * (1 - s)) : blend(t.from, target, s);
+            }
+        }
+        t.shown = target;
+        return Optional.ofNullable(target);
+    }
+
+    /**
+     * First-person ready stance: the held weapon up at the right, blade rising, following the view. Attacks blend out of
+     * it and back into it, so first person never cuts between vanilla's hand and the animated arms.
+     */
+    public static Optional<CombatPose> ready(LivingEntity entity, float partialTick) {
+        return WeaponProfiles.resolve(entity.getMainHandItem(), entity.level().registryAccess()).map(resolved -> {
+            String archetype = resolved.profile().archetype();
+            AnimationSet animation = AnimationLibrary.INSTANCE.get(archetype);
+            boolean twoHanded = animation.twoHanded()
+                    || (Config.Client.TWO_HANDED_SWORDS.get() && "sword".equals(archetype) && entity.getOffhandItem().isEmpty());
+            float headYaw = Mth.wrapDegrees(viewYaw(entity, partialTick) - Mth.rotLerp(partialTick, entity.yBodyRotO, entity.yBodyRot));
+            double[] tuning = PoseSheet.readyOverride();
+            double readyYaw = tuning != null ? tuning[0] : READY_YAW;
+            double readyPitch = tuning != null ? tuning[1] : READY_PITCH;
+            double aimPitch = Mth.clamp(entity.getViewXRot(partialTick) + readyPitch, -90, 90);
+            return new CombatPose(Phase.IDLE, 1, headYaw + readyYaw, aimPitch, Map.of(), twoHanded, false, 0, animation.gripGap());
+        });
+    }
+
+    private CombatPose withWeight(double newWeight) {
+        return new CombatPose(phase, newWeight, aimYaw, aimPitch, offsets, twoHanded, kick, bladeTwist, gripGap);
+    }
+
+    private static CombatPose blend(CombatPose from, CombatPose to, double s) {
+        return new CombatPose(to.phase, PoseBlend.lerp(s, from.weight, to.weight), PoseBlend.angle(s, from.aimYaw, to.aimYaw),
+                PoseBlend.lerp(s, from.aimPitch, to.aimPitch), PoseBlend.offsets(s, from.offsets, to.offsets), to.twoHanded,
+                to.kick, PoseBlend.lerp(s, from.bladeTwist, to.bladeTwist), PoseBlend.lerp(s, from.gripGap, to.gripGap));
+    }
+
+    private static Optional<CombatPose> raw(LivingEntity entity, float partialTick) {
         if (!entity.hasData(ModAttachments.COMBAT)) {
             return Optional.empty();
         }

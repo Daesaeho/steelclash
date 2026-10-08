@@ -380,6 +380,9 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | Swing at a mace knight's heavy as it releases | The heavy carries on (hyper armour). |
 | Co-op with latency, both swinging at each other's allies | No one-sided trades that depend on who joined first. |
 | Fight while standing in fire | Burning doesn't cut your swings short. |
+| First person with a sword: stand still, then slash | The weapon rests in a ready stance; the slash grows out of it and returns to it, no cut. |
+| Combo slash into slash, and a riposte after a parry | The arm moves straight from the end of one swing into the next windup, no drop to rest. |
+| Put a shield in the off hand | Vanilla's first-person hand and shield come back; attacks still work. |
 
 ## Bug audit checks (2026-10-08)
 

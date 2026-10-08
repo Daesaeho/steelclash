@@ -124,12 +124,12 @@ public final class GearGameTests {
     /** The switch happens on its own as the mob ticks. */
     @GameTest(template = ARENA, timeoutTicks = 60)
     public static void skeletonSwitchesOnItsOwn(GameTestHelper helper) {
-        Skeleton skeleton = helper.spawn(EntityType.SKELETON, 1, 2, 4);
+        // No free will: a skeleton with a bow backs off to shooting range, and could be out of drawing range before its
+        // switch is due. The switch runs in the entity tick either way.
+        Skeleton skeleton = helper.spawnWithNoFreeWill(EntityType.SKELETON, 1, 2, 4);
         skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
         skeleton.setData(ModAttachments.SIDEARM, new ItemStack(Items.IRON_SWORD));
-        TrainingDummy target = dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X);
-        // The skeleton's own AI may pick another target, such as an in-level mock player from another test far away.
-        helper.onEachTick(() -> skeleton.setTarget(target));
+        skeleton.setTarget(dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X));
         helper.succeedWhen(() -> check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "should draw the sidearm"));
     }
 

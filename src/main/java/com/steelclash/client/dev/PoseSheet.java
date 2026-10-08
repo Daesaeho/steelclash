@@ -37,7 +37,10 @@ import org.jetbrains.annotations.Nullable;
  * {@code ./gradlew runClient -PposeSheet=slash,overhead,stab -PquickPlay="New World"}):
  * <ul>
  *     <li>{@code steelclash.poseSheet}: attacks to photograph ({@code slash}, {@code slash_mirrored}, {@code overhead},
- *     {@code stab}, {@code parry}, any with {@code _heavy});</li>
+ *     {@code stab}, {@code parry}, any with {@code _heavy}), or {@code idle} (holding the weapon, no attack), or
+ *     {@code ready:<yaw>:<pitch>} (idle, with the first-person ready stance at that aim, for tuning it);</li>
+ *     <li>{@code steelclash.poseSheetPoints}: the points of each attack to photograph instead of the default ones, as
+ *     {@code phase:progress} pairs ({@code windup:0,windup:0.1,recovery:0.95});</li>
  *     <li>{@code steelclash.poseSheetItem}: item ids to hold, comma-separated (default iron sword); with several,
  *     every attack is shot with each and the file names start with the item's path ({@code pose_iron_axe_slash_...});</li>
  *     <li>{@code steelclash.poseSheetDebug}: draw the traced blade too ({@code /steelclash_debug}), to check that the
@@ -59,7 +62,7 @@ public final class PoseSheet {
     /** Ticks for the world to settle before the first shot, and per shot for the pose to be rendered. */
     private static final int SETTLE_TICKS = 80;
     private static final int SHOT_TICKS = 3;
-    private static final double[][] POINTS = {
+    private static final double[][] DEFAULT_POINTS = {
             // phase ordinal-ish: 0 windup, 1 release, 2 recovery; progress
             {0, 0.5}, {0, 0.95}, {1, 0.0}, {1, 0.35}, {1, 0.7}, {1, 0.99}, {2, 0.3}};
     private static final CameraType[] VIEWS = {CameraType.THIRD_PERSON_BACK, CameraType.THIRD_PERSON_FRONT, CameraType.FIRST_PERSON};
@@ -77,6 +80,15 @@ public final class PoseSheet {
     }
 
     /** While running, the local player's animation uses partial tick 0, so each frozen pose renders exactly. */
+    /** While a {@code ready:<yaw>:<pitch>} shot is up: the ready stance's aim to use instead of the built-in one. */
+    @Nullable
+    private static double[] readyOverride;
+
+    @Nullable
+    public static double[] readyOverride() {
+        return running() ? readyOverride : null;
+    }
+
     public static boolean running() {
         return shots != null && index >= 0 && index < shots.size();
     }
@@ -173,12 +185,21 @@ public final class PoseSheet {
                 CameraType view = MOB != null ? CameraType.FIRST_PERSON : VIEWS[v];
                 Float mobYaw = MOB != null ? MOB_YAWS[v] : null;
                 String viewName = MOB != null ? (v == 0 ? "mobfront" : "mobside") : viewName(view);
+                if (base.startsWith("ready:")) {
+                    out.add(new Shot(item, AttackType.SLASH, false, false, Phase.IDLE, 0, view,
+                            prefix + base.replace(':', '_') + "_" + viewName, mobYaw));
+                    continue;
+                }
+                if (base.equals("idle")) {
+                    out.add(new Shot(item, AttackType.SLASH, false, false, Phase.IDLE, 0, view, prefix + "idle_" + viewName, mobYaw));
+                    continue;
+                }
                 if (base.equals("parry")) {
                     out.add(new Shot(item, AttackType.SLASH, false, false, Phase.PARRY, 1.0, view, prefix + "parry_" + viewName, mobYaw));
                     continue;
                 }
                 AttackType type = AttackType.valueOf(base.toUpperCase(Locale.ROOT));
-                for (double[] point : POINTS) {
+                for (double[] point : points()) {
                     Phase phase = point[0] == 0 ? Phase.WINDUP : point[0] == 1 ? Phase.RELEASE : Phase.RECOVERY;
                     String name = prefix + String.format(Locale.ROOT, "%s_%s_%03d_%s", entry, phase.name().toLowerCase(Locale.ROOT),
                             Math.round(point[1] * 100), viewName);
@@ -186,6 +207,25 @@ public final class PoseSheet {
                 }
             }
         }
+    }
+
+    /** Phase (0 windup, 1 release, 2 recovery) and progress of each shot of an attack. */
+    private static double[][] points() {
+        String custom = System.getProperty("steelclash.poseSheetPoints");
+        if (custom == null || custom.isBlank()) {
+            return DEFAULT_POINTS;
+        }
+        List<double[]> out = new ArrayList<>();
+        for (String pair : custom.split(",")) {
+            String[] parts = pair.trim().split(":");
+            int phase = switch (parts[0].trim().toLowerCase(Locale.ROOT)) {
+                case "windup" -> 0;
+                case "release" -> 1;
+                default -> 2;
+            };
+            out.add(new double[]{phase, Double.parseDouble(parts[1].trim())});
+        }
+        return out.toArray(new double[0][]);
     }
 
     private static String viewName(CameraType view) {
@@ -205,8 +245,12 @@ public final class PoseSheet {
         if (!ItemStack.isSameItem(subject.getMainHandItem(), item)) {
             subject.setItemSlot(EquipmentSlot.MAINHAND, item); // client-side only: just for the picture
         }
-        mc.options.hideGui = true;
+        // Hiding the GUI (F1) also hides vanilla's first-person hand, which is what an idle shot is for.
+        mc.options.hideGui = shot.phase() != Phase.IDLE || shot.name().contains("ready_");
         mc.options.setCameraType(shot.view());
+        int at = shot.name().indexOf("ready_"); // after the item prefix, if several items are shot
+        String[] ready = at >= 0 ? shot.name().substring(at).split("_") : null;
+        readyOverride = ready != null ? new double[]{Double.parseDouble(ready[1]), Double.parseDouble(ready[2])} : null;
     }
 
     /** Pins the pose every tick so the client's own combat tick can't move it on. */

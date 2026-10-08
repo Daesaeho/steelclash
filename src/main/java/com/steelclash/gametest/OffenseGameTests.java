@@ -452,4 +452,24 @@ public final class OffenseGameTests {
             d.machine.tick();
         }
     }
+
+    @GameTest(template = ARENA)
+    public static void aComboPressedDuringTheReleaseStartsWhenItEnds(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(player);
+        Combat.requestAttack(player, AttackType.SLASH);
+        while (d.machine.phase() == Phase.WINDUP) {
+            Combat.tickServer(player, d);
+        }
+        boolean firstMirrored = d.machine.isMirrored();
+        check(helper, Combat.isComboInput(d.machine), "a press during the release counts as a combo (it picks the other side)");
+        Combat.requestAttack(player, AttackType.SLASH); // pressed while the blade is still swinging
+        check(helper, d.machine.phase() == Phase.RELEASE, "the release isn't cut short");
+        while (d.machine.phase() == Phase.RELEASE) {
+            Combat.tickServer(player, d);
+        }
+        check(helper, d.machine.phase() == Phase.WINDUP, "the combo starts as the release ends, phase " + d.machine.phase());
+        check(helper, d.machine.isMirrored() != firstMirrored, "from the other side");
+        helper.succeed();
+    }
 }

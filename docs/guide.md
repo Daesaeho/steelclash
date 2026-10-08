@@ -29,7 +29,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Heavy:** hold the attack key. It winds up about a quarter of a second longer, recovers a little slower, hits harder and drains more of a blocker's stamina. Some weapons get hyper armour (they don't flinch).
 - **Feint** (X during a windup): cancels the attack. It costs stamina, and it baits parries.
 - **Morph:** press a *different* attack key during a windup to switch to that attack.
-- **Combo:** attack again during your recovery and the next attack replaces it, alternating sides. As in Chivalry 2 this works after a miss too, but not after a blocked or parried attack. A combo winds up a little longer than a fresh attack, but it's much sooner than waiting out the recovery.
+- **Combo:** attack again while your blade is still swinging (the release) or during your recovery, and the next attack replaces the recovery, alternating sides. A press during the release waits for the swing to finish. As in Chivalry 2 this works after a miss too, but not after a blocked or parried attack. A combo winds up a little longer than a fresh attack, but it's much sooner than waiting out the recovery.
 - **Flinch:** taking damage during your windup interrupts it (except a heavy with hyper armour). So does a blow during your **release**, as in Chivalry 2: whoever lands first wins the exchange, which is what accels are for. Two blades landing at the same moment (within a twentieth of a second) both hit, a trade. Fire and falls don't cut your swing short. Turn this off with `releaseInterrupt` in the common config.
 - **Lunge:** attack while sprinting for extra reach and damage. Miss with it and you recover 0.3 s longer, so don't sprint-swing blindly.
 - **Jump attack:** an overhead started in mid-air hits harder.
@@ -39,6 +39,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
   - `gestureLockView` freezes your view while you gesture, so the drag only picks the attack and doesn't turn you.
   - `gestureThreshold` sets how far you must drag, and `gestureWindowTicks` how long a still hold waits before slashing.
 - **Clank:** a blade that hits a wall stops and you reel. Mind the corridors.
+- **First person:** holding a weapon with your off hand empty, you see your arms in a ready stance, and every attack flows out of it and back. Combos, ripostes and feints blend from wherever your arm was. Turn the stance off with `firstPersonReadyStance` in the client config to get vanilla's hand back between attacks.
 
 ## Defending
 
@@ -83,7 +84,7 @@ All of this is in the `movement` and `health` sections of the common config.
 
 As in Chivalry 2: **jumping costs 12 stamina while you're fighting** (within 5 seconds of attacking, guarding or being hit; jumping around outside a fight is free), and **crouching pauses stamina regeneration**. Chop weapons drain 10% more stamina from a guard, blunt ones 25% more.
 
-Attacking, whiffing, feinting, parrying and blocking all cost stamina (the bar above your hotbar). It regenerates after a short pause. **Parrying or blocking with no stamina left breaks your guard.** A parry knocks your weapon out of your hand (walk over it to pick it back up); a shield is lowered and goes on cooldown. Mobs follow the same rule, so drain a knight's stamina to disarm him.
+Attacking, whiffing, feinting, parrying and blocking all cost stamina (the bar above your hotbar). It regenerates after a short pause. **Parrying or blocking with no stamina left breaks your guard.** A parry knocks your weapon out of your hand (walk over it to pick it back up); a shield is lowered and goes on cooldown. Mobs follow the same rule, so drain a knight's stamina to disarm him. A disarmed mob runs back for its own weapon (it gives up after 10 seconds): punish it on the way, or walk over the weapon first and it's yours.
 
 ## Weapons
 

@@ -590,8 +590,8 @@ public final class ClientInput {
     // ------------------------------------------------------------------ attacks
 
     /**
-     * Predicts the attack locally and tells the server. A different attack during a windup is a morph; during recovery
-     * the input starts a combo after a landed hit, otherwise it's buffered (both here and on the server).
+     * Predicts the attack locally and tells the server. A different attack during a windup is a morph; during the release
+     * or recovery the input is a combo (buffered until it can start), likewise after a stagger (here and on the server).
      *
      * @param source         the held input that started it (for heavies), or {@code null} (scroll, kick, special, throw)
      * @param forcedMirrored the swing side the input dictates (the two slash keys), or {@code null} to choose one
@@ -625,8 +625,8 @@ public final class ClientInput {
                 return;
             }
             hold = source;
-        } else if (phase == Phase.RECOVERY || phase == Phase.GUARD_RECOVERY || phase == Phase.STAGGER) {
-            Combat.queue(data, type, variant, mirrored); // starts as soon as it can (also out of a stagger)
+        } else if (Combat.isBufferedPhase(phase)) {
+            Combat.queue(data, type, variant, mirrored); // starts as soon as it can (a combo pressed in the release, too)
         } else {
             return;
         }
@@ -651,7 +651,7 @@ public final class ClientInput {
         if (Math.abs(turn) >= TURN_THRESHOLD) {
             return turn > 0;
         }
-        if (data.machine.phase() == Phase.RECOVERY && data.machine.isComboAllowed()) {
+        if (Combat.isComboInput(data.machine)) {
             return !data.machine.isMirrored();
         }
         return !lastMirrored;

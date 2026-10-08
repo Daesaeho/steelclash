@@ -13,8 +13,9 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Chivalry 2 disarm: parrying with no stamina knocks the weapon out of your hands.
  * <p>
- * The dropped weapon can never be picked up by mobs (so a zombie can't steal your sword); players pick it up by
- * walking over it, handled in {@link #tryPickUp}.
+ * The dropped weapon can't be picked up the vanilla way (so a zombie can't steal your sword): players pick it up by
+ * walking over it ({@link #tryPickUp}), and a disarmed mob runs back for its own ({@code RetrieveWeaponGoal}).
+ * Whoever gets there first has it.
  */
 public final class Disarm {
     public static final String DISARMED_TAG = "steelclash_disarmed";
@@ -52,6 +53,10 @@ public final class Disarm {
         drop.setThrower(victim);
         drop.getPersistentData().putBoolean(DISARMED_TAG, true);
         victim.level().addFreshEntity(drop);
+        if (!(victim instanceof Player)) {
+            data.lostWeapon = drop.getUUID();
+            data.lostWeaponAt = now;
+        }
         Feedback.disarm(victim);
     }
 

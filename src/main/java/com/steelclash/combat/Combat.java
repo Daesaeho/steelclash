@@ -265,7 +265,7 @@ public final class Combat {
         CombatData data = entity.getData(ModAttachments.COMBAT);
         // Mobs (and callers without their own choice): random arc variant; combos alternate sides like Chivalry 2.
         int variant = entity.getRandom().nextInt(8);
-        boolean mirrored = data.machine.phase() == Phase.RECOVERY && data.machine.isComboAllowed()
+        boolean mirrored = isComboInput(data.machine)
                 ? !data.machine.isMirrored()
                 : entity.getRandom().nextBoolean();
         requestAttack(entity, type, variant, mirrored);
@@ -284,8 +284,7 @@ public final class Combat {
             }
             return;
         }
-        if (!machine.canStartAttack() && (machine.phase() == Phase.RECOVERY || machine.phase() == Phase.GUARD_RECOVERY
-                || machine.phase() == Phase.STAGGER)) {
+        if (!machine.canStartAttack() && isBufferedPhase(machine.phase())) {
             // Also buffered while staggered: it starts the moment the stagger ends (Chivalry 2 queued ripostes/counters).
             queue(data, type, variant, mirrored);
             return;
@@ -520,6 +519,19 @@ public final class Combat {
     }
 
     /** Buffers an attack input to start the moment the fighter is free. */
+    /**
+     * Phases an attack input waits out instead of being refused. The release too: as in Chivalry 2, a combo pressed while
+     * the blade is still swinging starts the moment the release ends (a blocked or interrupted swing clears it).
+     */
+    public static boolean isBufferedPhase(Phase phase) {
+        return phase == Phase.RELEASE || phase == Phase.RECOVERY || phase == Phase.GUARD_RECOVERY || phase == Phase.STAGGER;
+    }
+
+    /** An attack input now would be a combo, so it swings from the other side (Chivalry 2). */
+    public static boolean isComboInput(CombatStateMachine machine) {
+        return machine.phase() == Phase.RELEASE || (machine.phase() == Phase.RECOVERY && machine.isComboAllowed());
+    }
+
     public static void queue(CombatData data, AttackType type, int variant, boolean mirrored) {
         data.queuedAttack = type;
         data.queuedVariant = variant;

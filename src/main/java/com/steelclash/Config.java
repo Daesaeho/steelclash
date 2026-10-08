@@ -291,6 +291,9 @@ public class Config {
                     "#steelclash:mob_sidearms/tier_1..3 (Spartan Weaponry daggers: vanilla has none) and draws it when",
                     "its target comes close, like a Chivalry 2 archer")
             .defineInRange("sidearmChance", 1.0, 0.0, 1.0);
+    public static final ModConfigSpec.BooleanValue MOBS_RETRIEVE_WEAPONS = BUILDER
+            .comment("A disarmed mob runs back to its dropped weapon and picks it up (only its own; gives up after 10 s)")
+            .define("mobsRetrieveWeapons", true);
     public static final ModConfigSpec.BooleanValue SOLDIER_PATROLS = BUILDER
             .comment("Brigand patrols (a knight leading footmen and archers) roam toward players, like pillager patrols")
             .define("soldierPatrols", true);
@@ -470,6 +473,10 @@ public class Config {
                 .comment("Hold swords (sword archetype: vanilla swords, longswords, katanas, sabers) with both hands",
                         "when the offhand is empty. Visual only.")
                 .define("twoHandedSwords", true);
+        public static final ModConfigSpec.BooleanValue FIRST_PERSON_READY_STANCE = BUILDER
+                .comment("First person: hold your weapon in a ready stance instead of vanilla's hand, so attacks flow out of",
+                        "it and back without a cut (not while something is in your offhand). Visual only.")
+                .define("firstPersonReadyStance", true);
 
         public static final ModConfigSpec.DoubleValue CAMERA_MOTION = BUILDER
                 .comment("Scale of camera sway during swings and shake on hits/parries. 0 turns it off (motion sensitivity).")

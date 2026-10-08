@@ -11,6 +11,7 @@ import com.zigythebird.playeranimcore.animation.layered.IAnimation;
 import com.zigythebird.playeranimcore.api.firstPerson.FirstPersonConfiguration;
 import com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode;
 import com.zigythebird.playeranimcore.bones.PlayerAnimBone;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
@@ -50,6 +51,10 @@ public class ProceduralSwingAnimation implements IAnimation {
     private static final float FIRST_PERSON_DOWN = 1.5f;
 
     private WeaponRig rig = WeaponRig.solve(0, 0, 0, 0, WeaponRig.TwistAxis.Z, new double[3], 0);
+    /** First person only: the ready stance attacks blend from and back to, instead of vanilla's arm pose. */
+    @Nullable
+    private CombatPose ready;
+    private WeaponRig readyRig = rig;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -63,27 +68,55 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public boolean isActive() {
-        return pose != null || CombatPose.isAvailable(player);
+        return pose != null || ready != null || CombatPose.isAvailable(player) || wantsReadyStance();
     }
 
     @Override
     public void setupAnim(AnimationData state) {
-        pose = CombatPose.of(player, ClientFeel.animationPartialTick(player, state.getPartialTick())).orElse(null);
+        float partialTick = ClientFeel.animationPartialTick(player, state.getPartialTick());
+        pose = CombatPose.of(player, partialTick).orElse(null);
         if (pose != null) {
-            rig = pose.rig(Config.Client.WEAPON_GRIP_PITCH.get(), Config.Client.BLADE_TWIST.get(),
-                    WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()));
+            rig = rigFor(pose);
         }
+        ready = wantsReadyStance() ? CombatPose.ready(player, partialTick).orElse(null) : null;
+        if (ready != null) {
+            readyRig = rigFor(ready);
+        }
+    }
+
+    private static WeaponRig rigFor(CombatPose pose) {
+        return pose.rig(Config.Client.WEAPON_GRIP_PITCH.get(), Config.Client.BLADE_TWIST.get(),
+                WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()));
+    }
+
+    /**
+     * The local player in first person, holding a weapon, with nothing in the offhand (vanilla keeps drawing a shield or
+     * food) and no item in use: show the arms in a ready stance rather than vanilla's hand, so attacks don't cut.
+     */
+    private boolean wantsReadyStance() {
+        Minecraft mc = Minecraft.getInstance();
+        return Config.Client.FIRST_PERSON_READY_STANCE.get() && player == mc.player && mc.options.getCameraType().isFirstPerson()
+                && player.getOffhandItem().isEmpty() && !player.isUsingItem() && !player.isSpectator()
+                && ClientInput.holdsWeapon(mc.player);
     }
 
     @Override
     public PlayerAnimBone get3DTransform(@NotNull PlayerAnimBone bone) {
+        // In first person the ready stance stands in for vanilla's arm pose: attacks blend from it and back to it.
+        boolean readyBase = ready != null && FirstPersonMode.isFirstPersonPass();
+        if (pose == null && !readyBase) {
+            return bone;
+        }
+        if (readyBase) {
+            applyReady(bone);
+        }
         if (pose == null) {
             return bone;
         }
         float w = (float) pose.weight();
         switch (bone.getName()) {
             case "right_arm" -> {
-                firstPersonOffset(bone, w);
+                firstPersonOffset(bone, readyBase ? 0 : w); // the ready stance already moved it
                 bone.setBend(pose.offset("rightArmBend", 0)); // kept for later: PAL on 1.21.1 doesn't draw bends
                 if (pose.kick()) {
                     add(bone, "rightArm");
@@ -95,15 +128,15 @@ public class ProceduralSwingAnimation implements IAnimation {
                 }
             }
             case "left_arm" -> {
-                firstPersonOffset(bone, w);
+                firstPersonOffset(bone, readyBase ? 0 : w);
                 bone.setBend(pose.offset("leftArmBend", 0));
                 if (pose.twoHanded() && !pose.kick()) {
                     // Off hand on the grip: aim the arm at it, sliding the shoulder across if the arm is too short.
                     double[] grip = rig.offArm();
                     bone.updateRotation(Mth.lerp(w, bone.getRotX(), (float) grip[0]), Mth.lerp(w, bone.getRotY(), (float) grip[1]),
                             Mth.lerp(w, bone.getRotZ(), (float) grip[2]));
-                    // PAL bone positions: X and Z as the model part, Y flipped.
-                    Vec shoulder = rig.offShoulder();
+                    // PAL bone positions: X and Z as the model part, Y flipped. Over a ready stance's shoulder: blend.
+                    Vec shoulder = rig.offShoulder().subtract(readyBase && ready.twoHanded() ? readyRig.offShoulder() : Vec.ZERO);
                     bone.setPosX(bone.getPosX() + (float) shoulder.x() * w);
                     bone.setPosY(bone.getPosY() - (float) shoulder.y() * w);
                     bone.setPosZ(bone.getPosZ() + (float) shoulder.z() * w);
@@ -113,8 +146,11 @@ public class ProceduralSwingAnimation implements IAnimation {
             }
             // Turn the held weapon so its blade lies along the arm (along the arc), then roll it so the edge leads.
             case "right_item" -> {
+                if (readyBase) {
+                    itemRotation(bone, readyRig, -w); // take the ready stance's turn back out as the attack takes over
+                }
                 if (!pose.kick()) {
-                    itemRotation(bone, w);
+                    itemRotation(bone, rig, w);
                 }
             }
             case "body" -> wholeBody(bone);
@@ -167,20 +203,45 @@ public class ProceduralSwingAnimation implements IAnimation {
      * the hand frame playerAnimator used: Z, then Y, then X). PAL applies the item bone as Z(-rotY), Y(-rotZ), X(-rotX),
      * so each hand-frame angle goes into the matching PAL channel negated.
      */
-    private void itemRotation(PlayerAnimBone bone, float w) {
+    private static void itemRotation(PlayerAnimBone bone, WeaponRig rig, float w) {
         float x = (float) rig.item()[0] * w;
         float y = (float) rig.item()[1] * w;
         float z = (float) rig.item()[2] * w;
         bone.addRot(-x, -z, -y);
     }
 
+    /** The first-person ready stance, in place of vanilla's arm pose: weapon arm, grip hand and the turned weapon. */
+    private void applyReady(PlayerAnimBone bone) {
+        switch (bone.getName()) {
+            case "right_arm" -> {
+                firstPersonOffset(bone, 1);
+                bone.updateRotation((float) readyRig.arm()[0], (float) readyRig.arm()[1], (float) readyRig.arm()[2]);
+            }
+            case "left_arm" -> {
+                firstPersonOffset(bone, 1);
+                if (ready.twoHanded()) {
+                    double[] grip = readyRig.offArm();
+                    bone.updateRotation((float) grip[0], (float) grip[1], (float) grip[2]);
+                    Vec shoulder = readyRig.offShoulder();
+                    bone.setPosX(bone.getPosX() + (float) shoulder.x());
+                    bone.setPosY(bone.getPosY() - (float) shoulder.y());
+                    bone.setPosZ(bone.getPosZ() + (float) shoulder.z());
+                }
+            }
+            case "right_item" -> itemRotation(bone, readyRig, 1);
+            default -> {
+            }
+        }
+    }
+
     @Override
     public @NotNull FirstPersonMode getFirstPersonMode() {
-        return pose != null ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
+        return pose != null || ready != null ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
     }
 
     @Override
     public @NotNull FirstPersonConfiguration getFirstPersonConfiguration() {
-        return pose != null && pose.twoHanded() ? FIRST_PERSON_TWO_HANDS : FIRST_PERSON_ONE_HAND;
+        boolean twoHanded = pose != null ? pose.twoHanded() : ready != null && ready.twoHanded();
+        return twoHanded ? FIRST_PERSON_TWO_HANDS : FIRST_PERSON_ONE_HAND;
     }
 }
