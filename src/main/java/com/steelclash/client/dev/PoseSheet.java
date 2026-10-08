@@ -10,6 +10,9 @@ import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
 import com.steelclash.profile.WeaponProfiles;
+import com.steelclash.profile.Kicks;
+import com.steelclash.profile.Jabs;
+import com.steelclash.profile.Throws;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -277,17 +280,24 @@ public final class PoseSheet {
         }
         CombatData data = subject.getData(ModAttachments.COMBAT);
         Optional<WeaponProfiles.Resolved> resolved = WeaponProfiles.resolve(subject.getMainHandItem(), player.level().registryAccess());
-        if (resolved.isEmpty()) {
-            return;
-        }
-        data.profileKey = resolved.get().key();
-        WeaponProfile profile = resolved.get().profile();
-        Optional<WeaponProfile.AttackSpec> spec = profile.attack(shot.type());
+        data.profileKey = resolved.map(WeaponProfiles.Resolved::key).orElse(null);
+        Optional<WeaponProfile.AttackSpec> spec = switch (shot.type()) {
+            case KICK -> Optional.of(Kicks.forEntity(subject));
+            case JAB -> Optional.of(Jabs.spec());
+            case THROW -> Optional.of(Throws.spec());
+            default -> resolved.flatMap(r -> r.profile().spec(shot.type()));
+        };
         if (spec.isEmpty()) {
-            return;
+            data.machine.cancel();
+            throw new IllegalStateException("Pose sheet: " + shot.item() + " has no " + shot.type() + " spec for " + shot.name());
         }
         AttackTimings timings = spec.get().timings();
         if (shot.heavy()) {
+            if (!shot.type().isWeaponAttack() || resolved.isEmpty()) {
+                data.machine.cancel();
+                throw new IllegalArgumentException("Pose sheet: heavy is unsupported for " + shot.name());
+            }
+            WeaponProfile profile = resolved.get().profile();
             timings = timings.withWindupUs(profile.heavy().windupUs(timings.windupUs(), 1))
                     .withRecoveryUs(profile.heavy().recoveryUs(timings.recoveryUs(), 1));
         }

@@ -35,6 +35,16 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
 
     public enum TwistAxis { X, Y, Z }
 
+    /** Reflect a canonical right-handed solve across the model's X plane. */
+    public WeaponRig mirrored() {
+        return new WeaponRig(mirrorAngles(arm), mirrorAngles(item), mirrorAngles(offArm),
+                new Vec(-offShoulder.x(), offShoulder.y(), offShoulder.z()));
+    }
+
+    public static double[] mirrorAngles(double[] angles) {
+        return new double[]{angles[0], -angles[1], -angles[2]};
+    }
+
     /**
      * @param bladeYaw   blade direction yaw relative to the body, degrees (positive = the body's right)
      * @param bladePitch blade direction pitch, degrees (positive = down)

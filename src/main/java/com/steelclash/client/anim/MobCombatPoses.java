@@ -5,7 +5,7 @@ import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.IllagerModel;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.util.Mth;
+import com.steelclash.core.RotationBlend;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
@@ -55,13 +55,17 @@ public final class MobCombatPoses {
             illager.leftArm.visible = true;
         }
         float w = (float) pose.weight();
-        double[] arm = pose.mobWeaponArm();
         if (!pose.kick()) {
-            set(parts.rightArm, w, arm, pose, "rightArm");
+            double[] arm = pose.mobWeaponArm();
+            ModelPart mainArm = pose.leftHanded() ? parts.leftArm : parts.rightArm;
+            ModelPart offArm = pose.leftHanded() ? parts.rightArm : parts.leftArm;
+            String mainName = pose.leftHanded() ? "leftArm" : "rightArm";
+            String offName = pose.leftHanded() ? "rightArm" : "leftArm";
+            set(mainArm, w, arm, pose, mainName);
             if (pose.twoHanded()) {
-                set(parts.leftArm, w, pose.gripArm(arm), pose, "leftArm");
+                set(offArm, w, pose.gripArm(arm), pose, ""); // authored free-arm offsets must not pull a solved grip away
             } else {
-                add(parts.leftArm, pose, "leftArm");
+                add(offArm, pose, offName);
             }
         } else {
             add(parts.rightArm, pose, "rightArm");
@@ -88,7 +92,7 @@ public final class MobCombatPoses {
         if (entity instanceof Player) {
             return;
         }
-        CombatPose pose = CombatPose.of(entity, partialTick).orElse(null);
+        CombatPose pose = CombatPresentation.get(entity, partialTick).orElse(null);
         posedEntity = entity;
         posedPartialTick = partialTick;
         posed = pose;
@@ -109,7 +113,7 @@ public final class MobCombatPoses {
     @Nullable
     private static CombatPose takePose(LivingEntity entity, float partialTick) {
         boolean handedOn = posedEntity == entity && posedPartialTick == partialTick;
-        CombatPose pose = handedOn ? posed : CombatPose.of(entity, partialTick).orElse(null);
+        CombatPose pose = handedOn ? posed : CombatPresentation.get(entity, partialTick).orElse(null);
         posedEntity = null;
         posed = null;
         return pose;
@@ -131,9 +135,10 @@ public final class MobCombatPoses {
     }
 
     private static void set(ModelPart part, float w, double[] target, CombatPose pose, String name) {
-        part.xRot = Mth.lerp(w, part.xRot, (float) target[0]) + pose.offset(name, 0);
-        part.yRot = Mth.lerp(w, part.yRot, (float) target[1]) + pose.offset(name, 1);
-        part.zRot = Mth.lerp(w, part.zRot, (float) target[2]) + pose.offset(name, 2);
+        double[] rotation = RotationBlend.blend(part.xRot, part.yRot, part.zRot, target, w);
+        part.xRot = (float) rotation[0] + pose.offset(name, 0);
+        part.yRot = (float) rotation[1] + pose.offset(name, 1);
+        part.zRot = (float) rotation[2] + pose.offset(name, 2);
     }
 
     private static void add(ModelPart part, CombatPose pose, String name) {

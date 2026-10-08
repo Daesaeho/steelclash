@@ -420,3 +420,22 @@ Reviewed `1cfe922` plus both local optimization passes. Ten distinct findings we
 10. Lag grace ended for any matching windup, even after the counter window or outside its guard cone. Share the actual counter eligibility check with Defense before resolving early.
 
 Validation (2026-10-08, Java 21, with both optimization follow-ups): build, JUnit and all 139 GameTests pass. Two of the audit's GameTests had never run and failed at first, both test mistakes, not code faults. `botCarriesItsLateParryPlanIntoRelease` attacked with a mock player, which isn't in the level, so the bot's threat query could never see it; it now uses a training dummy. `aTeammatesShieldNeverBlocksOrBouncesTheSwing` formed the team before an 8-tick wait for the shield, and every mock player shares one scoreboard name, so another test's cleanup took the player off the team; the team is now formed after the wait. Mutation check: 13 of 13 caught. Reverting each fix (threat narrowing both ways, cancel-into-parry cooldown, completed-release finalization, prediction state applied and serialized, ally shield, revive reset, precise interaction, counter grace, token cleanup on stop and on leave, clank switch) fails its test. Not covered by automation: the client guard-release bookkeeping (`ClientInput`) and the real LAN behaviour; see docs/testing.md.
+
+## Animation presentation findings (2026-10-08)
+
+- Holding a fractional tick does not hold a combat pose: the underlying phase elapsed time still advances.
+  Presentation now captures an owned sample and shares it with the camera/model consumers.
+- A 370 ms windup sampled at 390 ms needs to be in release at 20/180 progress, even while the current tick's
+  simulation snapshot is still in windup. The read-only visual sampler agrees with a full simulation tick at
+  partial tick 1 across 300 randomized attack timing sequences, without applying gameplay windows.
+- All 33 original heavy windup endings differed from their shared release beginnings. The patched endpoints
+  match across all channels; the heavy preparation peak is retained before the settle. New default bash and
+  special-kind clips also have matching phase endpoints.
+- A light-to-heavy upgrade changes normalized progress. Preserving the displayed pose at transition entry
+  avoids the immediate rewind; a 0.2 s presentation blend follows the new windup without changing its duration.
+- Euler branches can differ by almost a full turn for neighboring solves. Quaternion blending removes that
+  branch dependence during partial-weight arm/item posing; full-weight solved orientations are preserved.
+- The existing four-pixel shoulder-reach limit and rigid mob arm lengths still leave extreme grip endpoint
+  error. Removing free-arm clip offsets from a solved mob grip does not resolve those geometry limitations.
+
+Validation: build, JUnit and all 148 GameTests pass; mutation check 7 of 7; a before/after pose sheet changed only where expected. Details and manual checks: [animation.md](animation.md).

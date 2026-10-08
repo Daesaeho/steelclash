@@ -481,6 +481,12 @@ public class Config {
         public static final ModConfigSpec.DoubleValue CAMERA_MOTION = BUILDER
                 .comment("Scale of camera sway during swings and shake on hits/parries. 0 turns it off (motion sensitivity).")
                 .defineInRange("cameraMotion", 1.0, 0.0, 2.0);
+        public static final ModConfigSpec.DoubleValue CAMERA_SWAY = BUILDER
+                .comment("Swing camera roll, multiplied by cameraMotion. 0 disables sway while preserving impact shake.")
+                .defineInRange("cameraSway", 1.0, 0.0, 2.0);
+        public static final ModConfigSpec.DoubleValue IMPACT_SHAKE = BUILDER
+                .comment("Impact camera shake, multiplied by cameraMotion. 0 disables shake while preserving swing sway.")
+                .defineInRange("impactShake", 1.0, 0.0, 2.0);
         public static final ModConfigSpec.IntValue HIT_STOP_MILLIS = BUILDER
                 .comment("How long your swing animation freezes when it connects (impact feel). 0 = off.")
                 .defineInRange("hitStopMillis", 70, 0, 300);

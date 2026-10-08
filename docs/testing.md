@@ -393,3 +393,7 @@ The server-side fixes have GameTests. These need real clients (protocol 10 on bo
 | LAN with latency: catch a hit on a weapon guard, release it, then attack | No extra guard-recovery delay after the caught hit; cooldown and riposte behaviour agree with the server. |
 | Mouse-bound and keyboard-bound parry: press while client and server disagree about the guard (e.g. right after a riposte), then release | The server gets the release even if your client didn't raise the guard; stamina stops draining. |
 | While downed, right-click different parts of an equipped armor stand | No equipment can be taken or put on. |
+
+## Animation presentation patch (2026-10-08)
+
+See [animation.md](animation.md) for review coverage, resource-pack settings and the client acceptance matrix. Build, JUnit and GameTests pass; the client checks there are still to do.

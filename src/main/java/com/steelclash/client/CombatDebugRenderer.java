@@ -4,8 +4,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
-import com.steelclash.combat.Combat;
-import com.steelclash.combat.CombatData;
+import com.steelclash.client.anim.CombatPose;
+import com.steelclash.client.anim.CombatPresentation;
 import com.steelclash.combat.CombatMath;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.ArcPath;
@@ -89,15 +89,14 @@ public final class CombatDebugRenderer {
             if (!(e instanceof LivingEntity entity) || !entity.hasData(ModAttachments.COMBAT)) {
                 continue;
             }
-            CombatData data = entity.getData(ModAttachments.COMBAT);
             // Same clock as the model (hit-stop freezes it), so the line and the drawn weapon show the same moment.
-            SwingPose.of(entity, data, ClientFeel.animationPartialTick(entity, partialTick)).ifPresent(pose -> {
+            CombatPresentation.get(entity, partialTick).map(CombatPose::swing).ifPresent(pose -> {
                 Vec pivot = CombatMath.toVec(CombatMath.pivot(entity, partialTick));
                 double yaw = CombatMath.viewYaw(entity, partialTick);
                 double pitch = entity.getViewXRot(partialTick);
                 double length = CombatMath.bladeLength(entity, pose.spec());
-                ArcPath path = Combat.currentPath(data, pose.spec());
-                Phase phase = data.machine.phase();
+                ArcPath path = pose.path();
+                Phase phase = pose.phase();
                 switch (phase) {
                     case WINDUP -> {
                         for (int i = 0; i <= ARC_PREVIEW_SAMPLES; i++) {
@@ -110,7 +109,7 @@ public final class CombatDebugRenderer {
                     case PARRY -> guard(poseStack, lines, pivot, yaw, pitch, pose, 0.2f, 0.5f, 1f);
                     case GUARD_RECOVERY -> guard(poseStack, lines, pivot, yaw, pitch, pose, 0.3f, 0.3f, 0.6f);
                     case STAGGER -> guard(poseStack, lines, pivot, yaw, pitch, pose, 0.9f, 0.2f, 0.9f);
-                    default -> line(poseStack, lines, Blade.at(pivot, yaw, pitch, path, 1, length), 0.6f, 0.6f, 0.6f, 0.8f);
+                    default -> line(poseStack, lines, Blade.at(pivot, yaw, pitch, path, pose.releaseProgress(), length), 0.6f, 0.6f, 0.6f, 0.8f);
                 }
             });
         }

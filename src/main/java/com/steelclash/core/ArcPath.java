@@ -128,4 +128,14 @@ public record ArcPath(List<Keyframe> keyframes) {
         }
         return new Keyframe(t, prev.yaw(), prev.pitch(), prev.extension());
     }
+
+    /** Telegraph clearly, then meet the exact first live blade sample before the windup ends. */
+    public Keyframe windup(double progress, boolean heavy) {
+        double p = Math.max(0, Math.min(1, progress));
+        double settle = PoseClip.smooth(Math.max(0, Math.min(1, (p - 0.65) / 0.35)));
+        Keyframe start = sample(0);
+        double drawBack = heavy ? 1.6 : 1.25;
+        return new Keyframe(p, start.yaw() * (drawBack + (1 - drawBack) * settle),
+                start.pitch() - (heavy ? 25 : 10) * (1 - settle), start.extension() * (0.6 + 0.4 * settle));
+    }
 }

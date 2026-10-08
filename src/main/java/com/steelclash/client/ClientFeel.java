@@ -3,17 +3,17 @@ package com.steelclash.client;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.client.anim.CombatPose;
-import com.steelclash.client.dev.PoseSheet;
+import com.steelclash.client.anim.CombatPresentation;
 import com.steelclash.net.FeedbackPayload;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 /**
  * Local-only feel: hit-stop (your swing animation freezes for a few frames when it connects), camera shake on
@@ -21,11 +21,9 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
  */
 @EventBusSubscriber(modid = SteelClash.MOD_ID, value = Dist.CLIENT)
 public final class ClientFeel {
-    private static long freezeUntilNanos;
-    private static float frozenPartialTick;
-    private static boolean frozen;
     private static float shake;
     private static long lastFrameNanos = System.nanoTime();
+    private static LocalPlayer lastPlayer;
 
     private ClientFeel() {
     }
@@ -66,42 +64,35 @@ public final class ClientFeel {
     private static void hitStop() {
         int millis = Config.Client.HIT_STOP_MILLIS.get();
         if (millis > 0) {
-            freezeUntilNanos = System.nanoTime() + millis * 1_000_000L;
-            frozen = false;
+            CombatPresentation.hitStop(System.nanoTime(), millis);
         }
     }
 
     private static void addShake(float amount) {
-        shake = Math.min(1.5f, shake + amount * Config.Client.CAMERA_MOTION.get().floatValue());
+        shake = Math.min(1.5f, shake + amount * Config.Client.CAMERA_MOTION.get().floatValue()
+                * Config.Client.IMPACT_SHAKE.get().floatValue());
     }
 
-    /** Partial tick to animate {@code entity} with: frozen while the local player's hit-stop lasts. */
-    public static float animationPartialTick(LivingEntity entity, float partialTick) {
-        if (entity != Minecraft.getInstance().player) {
-            return partialTick;
+    @SubscribeEvent
+    static void onClientTick(ClientTickEvent.Pre event) {
+        LocalPlayer current = Minecraft.getInstance().player;
+        if (current != lastPlayer) {
+            CombatPresentation.reset();
+            shake = 0;
+            lastFrameNanos = System.nanoTime();
+            lastPlayer = current;
         }
-        if (PoseSheet.running()) {
-            return 0f; // the pose sheet pins exact poses
-        }
-        if (System.nanoTime() < freezeUntilNanos) {
-            if (!frozen) {
-                frozen = true;
-                frozenPartialTick = partialTick;
-            }
-            return frozenPartialTick;
-        }
-        frozen = false;
-        return partialTick;
     }
 
     @SubscribeEvent
     static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
         long now = System.nanoTime();
+        CombatPresentation.beginFrame(now);
         float dt = Math.min(0.1f, (now - lastFrameNanos) / 1e9f);
         lastFrameNanos = now;
         float motion = Config.Client.CAMERA_MOTION.get().floatValue();
         Minecraft mc = Minecraft.getInstance();
-        if (motion <= 0 || mc.player == null) {
+        if (motion <= 0 || mc.player == null || event.getCamera().getEntity() != mc.player) {
             shake = 0;
             return;
         }
@@ -115,11 +106,9 @@ public final class ClientFeel {
         }
         // Lean the view into your own swing (first person only; third person shows the body doing it).
         if (mc.options.getCameraType() == CameraType.FIRST_PERSON) {
-            CombatPose pose = CombatPose.of(mc.player, (float) event.getPartialTick()).orElse(null);
+            CombatPose pose = CombatPresentation.get(mc.player, (float) event.getPartialTick()).orElse(null);
             if (pose != null && !pose.kick()) {
-                double relativeYaw = pose.aimYaw() - (mc.player.getViewYRot((float) event.getPartialTick())
-                        - net.minecraft.util.Mth.rotLerp((float) event.getPartialTick(), mc.player.yBodyRotO, mc.player.yBodyRot));
-                roll += (float) (-relativeYaw * 0.05 * pose.weight() * motion);
+                roll += (float) (-pose.relativeYaw() * 0.05 * pose.weight() * motion * Config.Client.CAMERA_SWAY.get());
             }
         }
         event.setRoll(event.getRoll() + roll);

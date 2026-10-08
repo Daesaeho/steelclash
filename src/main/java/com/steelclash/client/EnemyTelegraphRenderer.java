@@ -55,11 +55,12 @@ public final class EnemyTelegraphRenderer {
                 e -> e != mc.player && e.hasData(ModAttachments.COMBAT)
                         && e.distanceToSqr(mc.player) <= MAX_DISTANCE * MAX_DISTANCE)) {
             CombatData data = entity.getData(ModAttachments.COMBAT);
-            if (data.machine.phase() != Phase.WINDUP) {
+            var frame = data.machine.visualFrame(partialTick);
+            if (frame.phase() != Phase.WINDUP) {
                 continue;
             }
             int filled = Math.max(0, Math.min(SEGMENTS,
-                    (int) Math.ceil((1 - data.machine.phaseProgress(partialTick)) * SEGMENTS)));
+                    (int) Math.ceil((1 - frame.progress()) * SEGMENTS)));
             Component label = LABELS[data.machine.type().ordinal()][data.machine.isHeavy() ? 1 : 0][filled];
             Vec3 pos = entity.getPosition(partialTick).add(0, entity.getBbHeight() + 0.6, 0);
             poseStack.pushPose();

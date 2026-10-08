@@ -11,6 +11,30 @@ class WeaponRigTest {
     private static final double[] NO_BODY = {0, 0, 0};
 
     @Test
+    void leftHandedRigReflectsArmItemGripAndShoulderWithoutChangingTheirLengths() {
+        Random random = new Random(43);
+        for (int i = 0; i < 300; i++) {
+            WeaponRig right = WeaponRig.solve(random.nextDouble() * 300 - 150, random.nextDouble() * 160 - 80,
+                    -80, 25, WeaponRig.TwistAxis.Z, new double[]{5, 20, 3}, 0.45, 7);
+            WeaponRig left = right.mirrored();
+            for (double[] angles : new double[][]{right.arm(), right.item(), right.offArm()}) {
+                Vec v = Mat3.zyx(angles[0], angles[1], angles[2]).apply(new Vec(0, 1, 0));
+                double[] reflected = WeaponRig.mirrorAngles(angles);
+                Vec mirrored = Mat3.zyx(reflected[0], reflected[1], reflected[2]).apply(new Vec(0, 1, 0));
+                assertEquals(-v.x(), mirrored.x(), 1e-9);
+                assertEquals(v.y(), mirrored.y(), 1e-9);
+                assertEquals(v.z(), mirrored.z(), 1e-9);
+            }
+            assertEquals(-right.offShoulder().x(), left.offShoulder().x(), 1e-9);
+            assertEquals(right.offShoulder().y(), left.offShoulder().y(), 1e-9);
+            assertEquals(right.offShoulder().z(), left.offShoulder().z(), 1e-9);
+            assertArrayEquals(right.arm(), left.mirrored().arm(), 1e-9);
+            assertArrayEquals(right.item(), left.mirrored().item(), 1e-9);
+            assertArrayEquals(right.offArm(), left.mirrored().offArm(), 1e-9);
+        }
+    }
+
+    @Test
     void zyxRoundTrips() {
         Random random = new Random(7);
         for (int i = 0; i < 500; i++) {

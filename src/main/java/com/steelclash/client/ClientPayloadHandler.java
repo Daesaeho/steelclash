@@ -8,6 +8,7 @@ import com.steelclash.net.DownedPayload;
 import com.steelclash.net.FeedbackPayload;
 import com.steelclash.net.StaminaPayload;
 import com.steelclash.profile.WeaponProfiles;
+import com.steelclash.client.anim.CombatPresentation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.resources.ResourceKey;
@@ -41,6 +42,7 @@ public final class ClientPayloadHandler {
                     .map(location -> ResourceKey.create(WeaponProfiles.REGISTRY_KEY, location))
                     .orElse(null);
             if (payload.authoritative()) {
+                CombatPresentation.corrected(entity);
                 data.queuedAttack = null;
                 if (entity == mc.player) {
                     // The correction is half a round trip old: catch up, so a stagger ends here when it ends on the

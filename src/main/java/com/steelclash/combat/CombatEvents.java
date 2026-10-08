@@ -8,6 +8,9 @@ import com.steelclash.ai.RetrieveWeaponGoal;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
+import com.steelclash.net.CombatStatePayload;
+import com.steelclash.net.DownedPayload;
+import com.steelclash.net.ModNetwork;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.Set;
 import net.minecraft.server.level.ServerPlayer;
@@ -48,6 +51,19 @@ public final class CombatEvents {
     private static final Set<String> TWO_HANDED = Set.of("two_handed", "polearm", "spear");
 
     private CombatEvents() {
+    }
+
+    /** A new observer needs the current pose even if no further phase change happens (e.g. a held guard). */
+    @SubscribeEvent
+    static void onStartTracking(PlayerEvent.StartTracking event) {
+        if (event.getEntity() instanceof ServerPlayer observer && event.getTarget() instanceof LivingEntity fighter
+                && fighter.hasData(ModAttachments.COMBAT)) {
+            CombatData data = fighter.getData(ModAttachments.COMBAT);
+            ModNetwork.sendTo(observer, CombatStatePayload.of(fighter, data, false));
+            if (fighter instanceof Player && data.isDowned()) {
+                ModNetwork.sendTo(observer, new DownedPayload(fighter.getId(), data.downedTicksLeft, data.reviveTicks, data.reviverId));
+            }
+        }
     }
 
     @SubscribeEvent

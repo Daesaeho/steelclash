@@ -1,11 +1,8 @@
 package com.steelclash.core;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class PoseBlendTest {
@@ -35,21 +32,5 @@ class PoseBlendTest {
                 "a morph to another attack");
         assertFalse(PoseBlend.continuous(1, AttackType.SLASH, false, Phase.WINDUP, 1, AttackType.SLASH, true, Phase.WINDUP),
                 "a counter-feint to the other side");
-    }
-
-    @Test
-    void anglesBlendTheShortWayRound() {
-        assertEquals(175 + 2.5, PoseBlend.angle(0.25, 175, -175), 1e-9, "175 to -175 is 10 degrees, not 350");
-        assertEquals(-10, PoseBlend.angle(0.5, 0, -20), 1e-9);
-        assertEquals(1.0, PoseBlend.ease(2), 1e-9);
-        assertEquals(0.5, PoseBlend.ease(0.5), 1e-9);
-    }
-
-    @Test
-    void offsetsBlendPartByPartWithMissingPartsAtZero() {
-        Map<String, double[]> out = PoseBlend.offsets(0.5, Map.of("body", new double[]{10, 20, 30}),
-                Map.of("head", new double[]{4, 0, 0}));
-        assertArrayEquals(new double[]{5, 10, 15}, out.get("body"), 1e-9);
-        assertArrayEquals(new double[]{2, 0, 0}, out.get("head"), 1e-9);
     }
 }

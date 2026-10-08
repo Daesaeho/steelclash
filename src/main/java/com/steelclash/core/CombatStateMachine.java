@@ -470,6 +470,37 @@ public final class CombatStateMachine {
         return Math.max(0, Math.min(1, (phaseElapsedUs + partialTick * (double) AttackTimings.TICK_US) / phaseDurationUs));
     }
 
+    /** Read-only presentation sample. Crossing a boundary here must never fire hits, inputs, or gameplay windows. */
+    public record VisualFrame(Phase phase, long elapsedUs, long durationUs) {
+        public double progress() {
+            return durationUs <= 0 ? 0 : Math.max(0, Math.min(1, elapsedUs / (double) durationUs));
+        }
+
+        public double elapsedTicks() {
+            return elapsedUs / (double) AttackTimings.TICK_US;
+        }
+    }
+
+    public VisualFrame visualFrame(float partialTick) {
+        Phase visualPhase = phase;
+        long elapsed = phaseElapsedUs + Math.round(Math.max(0, Math.min(1, partialTick)) * AttackTimings.TICK_US);
+        long duration = phaseDurationUs;
+        // An attack can cross windup, release and recovery within one render sample. Guards have one extra phase.
+        for (int boundary = 0; boundary < 4 && visualPhase != Phase.IDLE && elapsed >= duration; boundary++) {
+            elapsed -= Math.max(0, duration);
+            switch (visualPhase) {
+                case WINDUP -> { visualPhase = Phase.RELEASE; duration = timings.releaseUs(); }
+                case RELEASE -> { visualPhase = Phase.RECOVERY; duration = timings.recoveryUs(); }
+                case PARRY -> {
+                    visualPhase = parriedHits > 0 ? Phase.IDLE : Phase.GUARD_RECOVERY;
+                    duration = (long) guardRecovery * AttackTimings.TICK_US;
+                }
+                default -> { visualPhase = Phase.IDLE; duration = 0; }
+            }
+        }
+        return new VisualFrame(visualPhase, visualPhase == Phase.IDLE ? 0 : elapsed, visualPhase == Phase.IDLE ? 0 : duration);
+    }
+
     /** Enters a phase lasting {@code ticks} game ticks. */
     private void enter(Phase next, long ticks) {
         enterUs(next, ticks * AttackTimings.TICK_US);

@@ -3,6 +3,9 @@ package com.steelclash.client;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.client.anim.CombatPose;
+import com.steelclash.client.anim.CombatPresentation;
+import com.steelclash.core.RotationBlend;
+import com.steelclash.core.AttackType;
 import com.steelclash.core.Vec;
 import com.steelclash.core.WeaponRig;
 import com.zigythebird.playeranim.neoforge.event.PlayerAnimationRegisterEvent;
@@ -13,7 +16,6 @@ import com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode;
 import com.zigythebird.playeranimcore.bones.PlayerAnimBone;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -36,20 +38,12 @@ public class ProceduralSwingAnimation implements IAnimation {
     public static final int PRIORITY = 1000;
     /** Share of the whole-body turn the legs take back (see {@link #hipsLag}). */
     private static final float HIP_LAG = 0.5f;
-    private static final FirstPersonConfiguration FIRST_PERSON_ONE_HAND = new FirstPersonConfiguration(true, false, true, false);
-    private static final FirstPersonConfiguration FIRST_PERSON_TWO_HANDS = new FirstPersonConfiguration(true, true, true, false);
+    private static final FirstPersonConfiguration[] FIRST_PERSON = firstPersonConfigurations();
+    private static final double[] NO_TURN = {0, 0, 0};
 
     private final AbstractClientPlayer player;
     @Nullable
     private CombatPose pose;
-    /**
-     * First person only: both arms (and so the weapon) sit this far forward and down (pixels), away from the camera,
-     * which is otherwise between the shoulders and gets a raised arm or a backhand windup right in the eye. The blade's
-     * direction doesn't change.
-     */
-    private static final float FIRST_PERSON_FORWARD = 4;
-    private static final float FIRST_PERSON_DOWN = 1.5f;
-
     private WeaponRig rig = WeaponRig.solve(0, 0, 0, 0, WeaponRig.TwistAxis.Z, new double[3], 0);
     /** First person only: the ready stance attacks blend from and back to, instead of vanilla's arm pose. */
     @Nullable
@@ -68,17 +62,17 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public boolean isActive() {
-        return pose != null || ready != null || CombatPose.isAvailable(player) || wantsReadyStance();
+        return pose != null || ready != null || CombatPresentation.hasTail(player) || CombatPose.isAvailable(player)
+                || wantsReadyStance();
     }
 
     @Override
     public void setupAnim(AnimationData state) {
-        float partialTick = ClientFeel.animationPartialTick(player, state.getPartialTick());
-        pose = CombatPose.of(player, partialTick).orElse(null);
-        if (pose != null) {
+        pose = CombatPresentation.get(player, state.getPartialTick()).orElse(null);
+        if (pose != null && !pose.kick()) {
             rig = rigFor(pose);
         }
-        ready = wantsReadyStance() ? CombatPose.ready(player, partialTick).orElse(null) : null;
+        ready = wantsReadyStance() ? CombatPose.ready(player, state.getPartialTick()).orElse(null) : null;
         if (ready != null) {
             readyRig = rigFor(ready);
         }
@@ -104,9 +98,6 @@ public class ProceduralSwingAnimation implements IAnimation {
     public PlayerAnimBone get3DTransform(@NotNull PlayerAnimBone bone) {
         // In first person the ready stance stands in for vanilla's arm pose: attacks blend from it and back to it.
         boolean readyBase = ready != null && FirstPersonMode.isFirstPersonPass();
-        if (pose == null && !readyBase) {
-            return bone;
-        }
         if (readyBase) {
             applyReady(bone);
         }
@@ -115,42 +106,35 @@ public class ProceduralSwingAnimation implements IAnimation {
         }
         float w = (float) pose.weight();
         switch (bone.getName()) {
-            case "right_arm" -> {
-                firstPersonOffset(bone, readyBase ? 0 : w); // the ready stance already moved it
-                bone.setBend(pose.offset("rightArmBend", 0)); // kept for later: PAL on 1.21.1 doesn't draw bends
-                if (pose.kick()) {
-                    add(bone, "rightArm");
-                } else {
-                    bone.updateRotation(
-                            Mth.lerp(w, bone.getRotX(), (float) rig.arm()[0]) + pose.offset("rightArm", 0),
-                            Mth.lerp(w, bone.getRotY(), (float) rig.arm()[1]) + pose.offset("rightArm", 1),
-                            Mth.lerp(w, bone.getRotZ(), (float) rig.arm()[2]) + pose.offset("rightArm", 2));
-                }
-            }
-            case "left_arm" -> {
-                firstPersonOffset(bone, readyBase ? 0 : w);
-                bone.setBend(pose.offset("leftArmBend", 0));
-                if (pose.twoHanded() && !pose.kick()) {
+            case "right_arm", "left_arm" -> {
+                boolean left = bone.getName().equals("left_arm");
+                boolean main = left == pose.leftHanded();
+                String channel = left ? "leftArm" : "rightArm";
+                firstPersonOffset(bone, pose, readyBase ? 0 : w, w); // over the ready stance, it already moved them
+                bone.setBend(pose.offset(channel + "Bend", 0)); // PAL 1.21.1 has no bend drawing backend
+                if (main && !pose.kick()) {
+                    blendRotation(bone, rig.arm(), w);
+                    add(bone, channel);
+                } else if (!main && pose.twoHanded() && !pose.kick()) {
                     // Off hand on the grip: aim the arm at it, sliding the shoulder across if the arm is too short.
                     double[] grip = rig.offArm();
-                    bone.updateRotation(Mth.lerp(w, bone.getRotX(), (float) grip[0]), Mth.lerp(w, bone.getRotY(), (float) grip[1]),
-                            Mth.lerp(w, bone.getRotZ(), (float) grip[2]));
+                    blendRotation(bone, grip, w);
                     // PAL bone positions: X and Z as the model part, Y flipped. Over a ready stance's shoulder: blend.
                     Vec shoulder = rig.offShoulder().subtract(readyBase && ready.twoHanded() ? readyRig.offShoulder() : Vec.ZERO);
                     bone.setPosX(bone.getPosX() + (float) shoulder.x() * w);
                     bone.setPosY(bone.getPosY() - (float) shoulder.y() * w);
                     bone.setPosZ(bone.getPosZ() + (float) shoulder.z() * w);
                 } else {
-                    add(bone, "leftArm");
+                    add(bone, channel);
                 }
             }
             // Turn the held weapon so its blade lies along the arm (along the arc), then roll it so the edge leads.
-            case "right_item" -> {
-                if (readyBase) {
-                    itemRotation(bone, readyRig, -w); // take the ready stance's turn back out as the attack takes over
-                }
-                if (!pose.kick()) {
-                    itemRotation(bone, rig, w);
+            case "right_item", "left_item" -> {
+                boolean left = bone.getName().equals("left_item");
+                if (left == pose.leftHanded() && !pose.kick()) {
+                    itemRotation(bone, readyBase ? readyRig.item() : NO_TURN, rig.item(), w);
+                } else if (readyBase && left == ready.leftHanded()) {
+                    itemRotation(bone, NO_TURN, readyRig.item(), 1);
                 }
             }
             case "body" -> wholeBody(bone);
@@ -170,11 +154,41 @@ public class ProceduralSwingAnimation implements IAnimation {
         return bone;
     }
 
-    private static void firstPersonOffset(PlayerAnimBone bone, float w) {
+    /** First person: the arms forward and down, away from the camera, by {@code base}; a thrust's retraction by {@code w}. */
+    private static void firstPersonOffset(PlayerAnimBone bone, CombatPose pose, float base, float w) {
         if (FirstPersonMode.isFirstPersonPass()) {
-            bone.setPosZ(bone.getPosZ() - FIRST_PERSON_FORWARD * w); // model forward is -Z
-            bone.setPosY(bone.getPosY() - FIRST_PERSON_DOWN * w); // PAL's Y is up
+            double retraction = pose.type() == AttackType.STAB || pose.type() == AttackType.JAB || pose.type() == AttackType.SPECIAL
+                    ? pose.firstPerson().retraction() * (1 - Math.max(0, Math.min(1, pose.extension()))) : 0;
+            bone.setPosZ(bone.getPosZ() - (float) (pose.firstPerson().forward() * base - retraction * w));
+            bone.setPosY(bone.getPosY() - (float) pose.firstPerson().down() * base); // PAL's Y is up
         }
+    }
+
+    /** The first-person ready stance, in place of vanilla's arm pose: weapon arm, grip hand, and the weapon when idle. */
+    private void applyReady(PlayerAnimBone bone) {
+        String name = bone.getName();
+        if (!name.equals("right_arm") && !name.equals("left_arm")) {
+            if (pose == null && name.equals(ready.leftHanded() ? "left_item" : "right_item")) {
+                itemRotation(bone, NO_TURN, readyRig.item(), 1);
+            }
+            return;
+        }
+        firstPersonOffset(bone, ready, 1, 1);
+        if (name.equals("left_arm") == ready.leftHanded()) {
+            bone.updateRotation((float) readyRig.arm()[0], (float) readyRig.arm()[1], (float) readyRig.arm()[2]);
+        } else if (ready.twoHanded()) {
+            double[] grip = readyRig.offArm();
+            bone.updateRotation((float) grip[0], (float) grip[1], (float) grip[2]);
+            Vec shoulder = readyRig.offShoulder();
+            bone.setPosX(bone.getPosX() + (float) shoulder.x());
+            bone.setPosY(bone.getPosY() - (float) shoulder.y());
+            bone.setPosZ(bone.getPosZ() + (float) shoulder.z());
+        }
+    }
+
+    private static void blendRotation(PlayerAnimBone bone, double[] target, float weight) {
+        double[] rotation = RotationBlend.blend(bone.getRotX(), bone.getRotY(), bone.getRotZ(), target, weight);
+        bone.updateRotation((float) rotation[0], (float) rotation[1], (float) rotation[2]);
     }
 
     /** Additive clip offset for a model part (the clips keep their playerAnimator-era camelCase names). */
@@ -203,35 +217,12 @@ public class ProceduralSwingAnimation implements IAnimation {
      * the hand frame playerAnimator used: Z, then Y, then X). PAL applies the item bone as Z(-rotY), Y(-rotZ), X(-rotX),
      * so each hand-frame angle goes into the matching PAL channel negated.
      */
-    private static void itemRotation(PlayerAnimBone bone, WeaponRig rig, float w) {
-        float x = (float) rig.item()[0] * w;
-        float y = (float) rig.item()[1] * w;
-        float z = (float) rig.item()[2] * w;
+    private static void itemRotation(PlayerAnimBone bone, double[] from, double[] to, float w) {
+        double[] rotation = RotationBlend.blend(from[0], from[1], from[2], to, w);
+        float x = (float) rotation[0];
+        float y = (float) rotation[1];
+        float z = (float) rotation[2];
         bone.addRot(-x, -z, -y);
-    }
-
-    /** The first-person ready stance, in place of vanilla's arm pose: weapon arm, grip hand and the turned weapon. */
-    private void applyReady(PlayerAnimBone bone) {
-        switch (bone.getName()) {
-            case "right_arm" -> {
-                firstPersonOffset(bone, 1);
-                bone.updateRotation((float) readyRig.arm()[0], (float) readyRig.arm()[1], (float) readyRig.arm()[2]);
-            }
-            case "left_arm" -> {
-                firstPersonOffset(bone, 1);
-                if (ready.twoHanded()) {
-                    double[] grip = readyRig.offArm();
-                    bone.updateRotation((float) grip[0], (float) grip[1], (float) grip[2]);
-                    Vec shoulder = readyRig.offShoulder();
-                    bone.setPosX(bone.getPosX() + (float) shoulder.x());
-                    bone.setPosY(bone.getPosY() - (float) shoulder.y());
-                    bone.setPosZ(bone.getPosZ() + (float) shoulder.z());
-                }
-            }
-            case "right_item" -> itemRotation(bone, readyRig, 1);
-            default -> {
-            }
-        }
     }
 
     @Override
@@ -241,7 +232,19 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public @NotNull FirstPersonConfiguration getFirstPersonConfiguration() {
-        boolean twoHanded = pose != null ? pose.twoHanded() : ready != null && ready.twoHanded();
-        return twoHanded ? FIRST_PERSON_TWO_HANDS : FIRST_PERSON_ONE_HAND;
+        boolean left = player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT;
+        boolean occupied = !player.getOffhandItem().isEmpty();
+        boolean both = occupied || (pose != null ? pose.twoHanded() : ready != null && ready.twoHanded());
+        int mask = (!left || both ? 1 : 0) | (left || both ? 2 : 0)
+                | (!left || occupied ? 4 : 0) | (left || occupied ? 8 : 0);
+        return FIRST_PERSON[mask];
+    }
+
+    private static FirstPersonConfiguration[] firstPersonConfigurations() {
+        FirstPersonConfiguration[] configurations = new FirstPersonConfiguration[16];
+        for (int mask = 0; mask < configurations.length; mask++) {
+            configurations[mask] = new FirstPersonConfiguration((mask & 1) != 0, (mask & 2) != 0, (mask & 4) != 0, (mask & 8) != 0);
+        }
+        return configurations;
     }
 }

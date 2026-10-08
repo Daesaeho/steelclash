@@ -12,7 +12,17 @@
 
 **Animation**
 - First person: a ready stance while holding a weapon (off hand empty), so attacks start from it and return to it instead of cutting from vanilla's hand (`firstPersonReadyStance`).
-- Combos, ripostes, morphs, feints, staggers and guards blend from the arm's last pose over 0.2 s instead of snapping back to rest first; a combo goes straight from the end of one swing into the next windup.
+- Combos, ripostes, morphs, feints, staggers and guards blend from the arm's last pose over 0.2 s instead of snapping back to rest first; a combo goes straight from the end of one swing into the next windup. Heavy upgrades and weapon morphs blend too.
+- Windups ease in, telegraph, then settle exactly onto the start of the swing: no jump at the release, including all 33 heavy windup clips.
+- Hit-stop freezes the whole pose (model and camera together) and lets go cleanly on a new attack, a disarm or a server correction.
+- Left-handed fighters (main arm set to left) swing with their left arm; an occupied off hand stays visible.
+- Shield bash, the three special kinds (lunge, slam, sweep) and throws have their own motion; a throw finishes its forward gesture as the weapon leaves.
+- First person: thrusts pull the arms back slightly before extending.
+- Players who come into view show their current guard, attack or downed state straight away.
+- Animation packs: missing clips inherit the default set, `"clip": []` turns a clip off, files are validated with clear errors, a bad edit keeps the last good set, and IDs can be namespaced (`othermod:sword`). See docs/animation.md.
+
+**Settings**
+- `cameraSway` and `impactShake` (0–2) scale the swing lean and the hit shake separately.
 
 **Network**
 - Protocol 11: server and clients must update together.
