@@ -14,7 +14,7 @@ Drafts to paste when creating the projects. Nothing here is published automatica
 | Loader / versions | NeoForge, 1.21.1 |
 | License | Custom: "Steel Clash License" (Modrinth: choose *Custom* and link the LICENSE file on GitHub; CurseForge: *All Rights Reserved* or *Custom*). Source available; no re-uploads; forks and modpacks allowed with credit. |
 | Dependencies | Player Animation Library (required); Spartan Weaponry Unofficial, Spartan Shields Unofficial (optional); Better Combat, Epic Fight (incompatible) |
-| Release channel | Beta (0.3.0-beta) |
+| Release channel | Beta (0.3.2-beta) |
 | Source / issues | Link the GitHub repo once it's public. |
 
 ## Gallery (to capture)
