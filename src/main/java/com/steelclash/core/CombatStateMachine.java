@@ -282,6 +282,15 @@ public final class CombatStateMachine {
         return true;
     }
 
+    /** Cancels a windup into a parry only if the parry can actually start. A rejected input leaves the attack intact. */
+    public boolean cancelIntoParry(int maxTicks, int recoveryTicks, int cooldownTicks) {
+        if (phase != Phase.WINDUP || parryCooldownLeft > 0) {
+            return false;
+        }
+        feint();
+        return startParry(maxTicks, recoveryTicks, cooldownTicks);
+    }
+
     /** The player let go of block before anything was parried. */
     public void releaseParry() {
         if (phase == Phase.PARRY) {
@@ -400,6 +409,30 @@ public final class CombatStateMachine {
         this.heavy = newHeavy;
         this.morphed = newMorphed;
         this.comboAllowed = newComboAllowed;
+    }
+
+    /** State needed to continue an authoritative snapshot with the same parry and attack rules as the server. */
+    public record PredictionState(int guardRecovery, int parryCooldown, int parryCooldownLeft, int parriedHits,
+                                  boolean staggerAllowsParry, int activeParryTicks, boolean fromGuard,
+                                  boolean counterFeinted, int attackSerial) {
+    }
+
+    public PredictionState predictionState() {
+        return new PredictionState(guardRecovery, parryCooldown, parryCooldownLeft, parriedHits, staggerAllowsParry,
+                activeParryTicks, fromGuard, counterFeinted, attackSerial);
+    }
+
+    /** Restores the lifecycle rules omitted by a phase/animation-only snapshot. */
+    public void applyPredictionState(PredictionState state) {
+        guardRecovery = state.guardRecovery();
+        parryCooldown = state.parryCooldown();
+        parryCooldownLeft = state.parryCooldownLeft();
+        parriedHits = state.parriedHits();
+        staggerAllowsParry = state.staggerAllowsParry();
+        activeParryTicks = state.activeParryTicks();
+        fromGuard = state.fromGuard();
+        counterFeinted = state.counterFeinted();
+        attackSerial = state.attackSerial();
     }
 
     /** Merges server-decided windows (combo, riposte) without disturbing the locally predicted phase. */

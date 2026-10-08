@@ -31,21 +31,48 @@ public final class Blade {
      * Slab test: does the segment a→b pass through the axis-aligned box [min, max]?
      */
     public static boolean intersectsBox(Vec a, Vec b, Vec min, Vec max) {
+        return intersectsBox(a, b, min.x(), min.y(), min.z(), max.x(), max.y(), max.z());
+    }
+
+    /** Scalar bounds let callers use an existing hitbox without allocating two temporary vectors. */
+    public static boolean intersectsBox(Vec a, Vec b, double minX, double minY, double minZ,
+                                        double maxX, double maxY, double maxZ) {
         double tMin = 0;
         double tMax = 1;
-        double[] start = {a.x(), a.y(), a.z()};
-        double[] delta = {b.x() - a.x(), b.y() - a.y(), b.z() - a.z()};
-        double[] lo = {min.x(), min.y(), min.z()};
-        double[] hi = {max.x(), max.y(), max.z()};
+        // This runs for every candidate at every blade sub-step; keep the slab data in scalars.
         for (int axis = 0; axis < 3; axis++) {
-            if (Math.abs(delta[axis]) < 1e-9) {
-                if (start[axis] < lo[axis] || start[axis] > hi[axis]) {
+            double start;
+            double delta;
+            double lo;
+            double hi;
+            switch (axis) {
+                case 0 -> {
+                    start = a.x();
+                    delta = b.x() - start;
+                    lo = minX;
+                    hi = maxX;
+                }
+                case 1 -> {
+                    start = a.y();
+                    delta = b.y() - start;
+                    lo = minY;
+                    hi = maxY;
+                }
+                default -> {
+                    start = a.z();
+                    delta = b.z() - start;
+                    lo = minZ;
+                    hi = maxZ;
+                }
+            }
+            if (Math.abs(delta) < 1e-9) {
+                if (start < lo || start > hi) {
                     return false;
                 }
             } else {
-                double inv = 1.0 / delta[axis];
-                double t1 = (lo[axis] - start[axis]) * inv;
-                double t2 = (hi[axis] - start[axis]) * inv;
+                double inv = 1.0 / delta;
+                double t1 = (lo - start) * inv;
+                double t2 = (hi - start) * inv;
                 if (t1 > t2) {
                     double tmp = t1;
                     t1 = t2;

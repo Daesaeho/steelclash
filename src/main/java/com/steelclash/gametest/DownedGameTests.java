@@ -77,6 +77,11 @@ public final class DownedGameTests {
         PlayerInteractEvent.RightClickItem use = new PlayerInteractEvent.RightClickItem(downed, InteractionHand.MAIN_HAND);
         NeoForge.EVENT_BUS.post(use);
         check(helper, use.isCanceled(), "can't use items");
+        var stand = helper.spawn(EntityType.ARMOR_STAND, 3, 2, 2);
+        var interactAt = new PlayerInteractEvent.EntityInteractSpecific(downed, InteractionHand.MAIN_HAND, stand,
+                new Vec3(0, 1, 0));
+        NeoForge.EVENT_BUS.post(interactAt);
+        check(helper, interactAt.isCanceled(), "can't take equipment through an armor stand's precise interaction");
         float health = downed.getHealth();
         downed.heal(5);
         check(helper, downed.getHealth() == health, "no healing while down");
@@ -166,6 +171,24 @@ public final class DownedGameTests {
         zombie.setTarget(null);
         zombie.setTarget(downed);
         check(helper, zombie.getTarget() == null, "a downed one isn't");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void reviverDamageAfterThePatientsTickStillResetsProgress(GameTestHelper helper) {
+        ServerPlayer downed = player(helper, 2.5, 2.5);
+        ServerPlayer ally = player(helper, 3.5, 2.5);
+        lethal(helper, downed);
+        ally.setShiftKeyDown(true);
+        CombatData d = data(downed);
+        for (int tick = 0; tick < 10; tick++) {
+            Downed.tick(downed, d);
+        }
+        check(helper, d.reviveTicks == 10, "the revive is in progress");
+        // This hit is later than the patient's tick, as entity ordering or lag-compensated delivery can make it.
+        ally.invulnerableTime = 0;
+        ally.hurt(helper.getLevel().damageSources().generic(), 0.5f);
+        check(helper, d.reviveTicks == 0 && d.reviverId == -1, "damage resets the revive immediately, independent of tick order");
         helper.succeed();
     }
 }

@@ -128,6 +128,21 @@ public final class Downed {
         return Math.max(1, (int) Math.round(Config.REVIVE_SECONDS.get() * 20));
     }
 
+    /** Reset at damage time, even if the patient has already ticked (including hits delivered at ServerTick.Post). */
+    public static void onReviverHurt(Player reviver) {
+        for (Player player : reviver.level().players()) {
+            if (!player.hasData(ModAttachments.COMBAT)) {
+                continue;
+            }
+            CombatData data = player.getData(ModAttachments.COMBAT);
+            if (data.isDowned() && data.reviverId == reviver.getId()) {
+                data.reviverId = -1;
+                data.reviveTicks = 0;
+                sync(player, data);
+            }
+        }
+    }
+
     /** An ally crouching close by who isn't fighting, down themselves, or hurt this very tick. */
     @Nullable
     private static Player reviver(Player downed) {

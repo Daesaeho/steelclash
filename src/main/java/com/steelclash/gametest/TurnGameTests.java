@@ -19,6 +19,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -70,6 +71,29 @@ public final class TurnGameTests {
         }
         check(helper, firstStep <= 18.01f, "the traced view may turn at most 18° per tick, turned " + firstStep);
         check(helper, !isHurt(behind), "a 180° flick mid-release must not cut someone behind you");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void attackAfterIdleMovementUsesFreshSnapshots(GameTestHelper helper) {
+        TrainingDummy target = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_NEGATIVE_X);
+        Vec3 idlePosition = helper.absoluteVec(new Vec3(6.5, 2, 4.5));
+        attacker.moveTo(idlePosition.x, idlePosition.y, idlePosition.z, FACING_NEGATIVE_X, 0);
+        CombatData d = data(attacker);
+        d.prevPivot = new Vec3(1000, 1000, 1000);
+        d.prevYaw = 45;
+        d.prevPitch = 70;
+        Combat.tickServer(attacker, d); // idle snapshots are irrelevant to the next swing
+        Vec3 position = helper.absoluteVec(new Vec3(1.5, 2, 4.5));
+        attacker.moveTo(position.x, position.y, position.z, FACING_POSITIVE_X, 0);
+        Combat.requestAttack(attacker, AttackType.SLASH, 0, false);
+        check(helper, d.prevPivot.distanceToSqr(com.steelclash.combat.CombatMath.pivot(attacker, 1f)) < 1e-9,
+                "attack startup must replace any stale idle position");
+        check(helper, d.prevYaw == FACING_POSITIVE_X && d.prevPitch == 0,
+                "attack startup must use the current view, not an idle snapshot");
+        TestSupport.finish(attacker);
+        check(helper, isHurt(target), "the slash still hits after moving and turning while idle");
         helper.succeed();
     }
 

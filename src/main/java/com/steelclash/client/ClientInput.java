@@ -136,6 +136,8 @@ public final class ClientInput {
     private static boolean parryKeyWasDown;
     /** The parry key raised the offhand shield (so releasing it lowers the shield again). */
     private static boolean shieldRaisedByParry;
+    /** A weapon-guard press was sent to the server; its release must be sent even if local prediction rejected it. */
+    private static boolean weaponParryRequested;
 
     /** Turning faster than this (degrees over the last few ticks) when attacking picks the swing side. */
     private static final float TURN_THRESHOLD = 4f;
@@ -289,13 +291,17 @@ public final class ClientInput {
             player.stopUsingItem();
         }
         Combat.startParry(player, data); // prediction; the server decides
+        weaponParryRequested = true;
         PacketDistributor.sendToServer(new BlockInputPayload(true));
         return true;
     }
 
     private static void releaseGuardInput(Minecraft mc) {
+        boolean releaseWeapon = weaponParryRequested;
+        weaponParryRequested = false;
         LocalPlayer player = mc.player;
         if (player == null) {
+            shieldRaisedByParry = false;
             return;
         }
         if (shieldRaisedByParry) {
@@ -305,8 +311,10 @@ public final class ClientInput {
             }
             return;
         }
-        if (player.hasData(ModAttachments.COMBAT) && player.getData(ModAttachments.COMBAT).machine.phase() == Phase.PARRY) {
-            player.getData(ModAttachments.COMBAT).machine.releaseParry();
+        if (releaseWeapon) {
+            if (player.hasData(ModAttachments.COMBAT)) {
+                player.getData(ModAttachments.COMBAT).machine.releaseParry();
+            }
             PacketDistributor.sendToServer(new BlockInputPayload(false));
         }
     }
@@ -327,6 +335,10 @@ public final class ClientInput {
     static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
+        if (player == null) {
+            weaponParryRequested = false;
+            shieldRaisedByParry = false;
+        }
         // Keyboard-bound attack keys (mouse-bound ones were handled as clicks).
         for (AttackKey attack : ATTACK_KEYS) {
             while (attack.key().consumeClick()) {

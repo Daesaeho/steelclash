@@ -86,7 +86,7 @@ public final class LagCompensation {
      * @return true if the hit was held and will be delivered later by {@link #tick()}
      */
     public static boolean hold(LivingEntity attacker, LivingEntity target, Combat.Hit hit) {
-        if (!enabled() || hit.type() == AttackType.KICK || readyToDefend(target, hit.type())) {
+        if (!enabled() || hit.type() == AttackType.KICK || readyToDefend(attacker, target, hit.type())) {
             return false;
         }
         int grace = LagMath.graceTicks(latencyOf(target), Config.MAX_PARRY_GRACE_MS.get());
@@ -98,15 +98,16 @@ public final class LagCompensation {
     }
 
     /** The defender has a parry or shield up, or is winding up a matching counter: resolve the hit now. */
-    private static boolean readyToDefend(LivingEntity target, AttackType type) {
+    private static boolean readyToDefend(LivingEntity attacker, LivingEntity target, AttackType type) {
         if (target.isBlocking()) {
             return true;
         }
         if (!target.hasData(ModAttachments.COMBAT)) {
             return false;
         }
-        CombatStateMachine machine = target.getData(ModAttachments.COMBAT).machine;
-        return machine.phase() == Phase.PARRY || machine.phase() == Phase.WINDUP && machine.type() == type;
+        CombatData data = target.getData(ModAttachments.COMBAT);
+        CombatStateMachine machine = data.machine;
+        return machine.phase() == Phase.PARRY || Defense.counterGuard(target, data, attacker, type).isPresent();
     }
 
     /** End of server tick: deliver held hits whose grace ran out or whose defender is now defending. */
@@ -119,7 +120,8 @@ public final class LagCompensation {
             if (held.attacker().isRemoved() || held.target().isRemoved() || !held.target().isAlive()) {
                 return true;
             }
-            if (held.target().level().getGameTime() >= held.dueAt() || readyToDefend(held.target(), held.hit().type())) {
+            if (held.target().level().getGameTime() >= held.dueAt()
+                    || readyToDefend(held.attacker(), held.target(), held.hit().type())) {
                 ready.add(held);
                 return true;
             }

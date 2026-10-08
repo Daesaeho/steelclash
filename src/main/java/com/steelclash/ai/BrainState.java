@@ -19,6 +19,8 @@ public class BrainState {
 
     /** True while the bot should hold back (no attack token, or catching its breath after attacking). */
     public boolean wantsSpace;
+    /** Last live target driven by the brain, so changing opponents immediately releases old attack tokens. */
+    public int targetId = -1;
     /** Ticks to wait (idle) before attacking again. */
     public int cooldown;
     /** Circle clockwise (+1) or counter-clockwise (-1). */

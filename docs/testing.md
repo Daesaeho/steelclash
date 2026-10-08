@@ -372,3 +372,12 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 | 7 | Singleplayer, die | You die as before. |
 | 8 | Downed, disconnect | You're dead when you rejoin. |
 
+## Bug audit checks (2026-10-08)
+
+The server-side fixes have GameTests. These need real clients (protocol 10 on both sides):
+
+| Check | Expected |
+|---|---|
+| LAN with latency: catch a hit on a weapon guard, release it, then attack | No extra guard-recovery delay after the caught hit; cooldown and riposte behaviour agree with the server. |
+| Mouse-bound and keyboard-bound parry: press while client and server disagree about the guard (e.g. right after a riposte), then release | The server gets the release even if your client didn't raise the guard; stamina stops draining. |
+| While downed, right-click different parts of an equipped armor stand | No equipment can be taken or put on. |

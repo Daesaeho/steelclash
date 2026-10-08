@@ -78,6 +78,10 @@ public final class SwingTracer {
     private static Result traceSwept(LivingEntity attacker, CombatData data, WeaponProfile.AttackSpec spec,
                                      CombatStateMachine.Sweep sweep) {
         int remaining = spec.maxTargets() - data.hitThisSwing.size();
+        boolean checkClanks = Config.ENVIRONMENT_CLANK.get();
+        if (remaining <= 0 && !checkClanks) {
+            return new Result(List.of(), null);
+        }
         List<Contact> hits = new ArrayList<>();
 
         ArcPath path = Combat.currentPath(data, spec);
@@ -107,6 +111,9 @@ public final class SwingTracer {
             CombatProfiler.end(CombatProfiler.Section.BROAD);
         }
         CombatProfiler.count(CombatProfiler.Counter.CANDIDATES, candidates.size());
+        if (candidates.isEmpty() && !checkClanks) {
+            return new Result(hits, null);
+        }
 
         List<Candidate> stepHits = new ArrayList<>();
         // Include the very first blade position on the first release tick, otherwise only the swept positions.
@@ -129,7 +136,7 @@ public final class SwingTracer {
                     }
                     AABB box = candidate.hitBox();
                     if (Blade.intersectsBox(blade.hilt(), blade.tip(),
-                            new Vec(box.minX, box.minY, box.minZ), new Vec(box.maxX, box.maxY, box.maxZ))
+                            box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ)
                             && canReach(attacker, pivot3, candidate)) {
                         stepHits.add(candidate);
                     }
@@ -146,7 +153,7 @@ public final class SwingTracer {
             }
 
             // A blade that stopped in a body this step doesn't also clank on the wall behind it.
-            if (t >= CLANK_FROM && t <= CLANK_UNTIL && !hitThisStep) {
+            if (checkClanks && t >= CLANK_FROM && t <= CLANK_UNTIL && !hitThisStep) {
                 Vec dir = blade.tip().subtract(blade.hilt());
                 double len = dir.length();
                 Vec tip = len > CLANK_LENGTH ? blade.hilt().add(dir.scale(CLANK_LENGTH / len)) : blade.tip();

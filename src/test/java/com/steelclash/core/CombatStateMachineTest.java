@@ -600,6 +600,78 @@ class CombatStateMachineTest {
         assertEquals(1, m.recoverFrom(), 1e-9);
     }
 
+    @Test
+    void rejectedParryCancelPreservesTheAttack() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertTrue(m.startParry(20, 8, 5));
+        assertTrue(m.startAttack(AttackType.SLASH, TIMINGS)); // leaving the guard starts its cooldown
+        m.tick();
+        long elapsed = m.phaseElapsedUs();
+        assertFalse(m.cancelIntoParry(20, 8, 5));
+        assertEquals(Phase.WINDUP, m.phase());
+        assertEquals(elapsed, m.phaseElapsedUs());
+        assertEquals(4, m.parryCooldownLeft());
+    }
+
+    @Test
+    void parryCancelStartsAfterTheCooldown() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startParry(20, 8, 2);
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(10, 5, 5));
+        m.tick();
+        m.tick();
+        assertTrue(m.cancelIntoParry(20, 8, 2));
+        assertEquals(Phase.PARRY, m.phase());
+    }
+
+    private static CombatStateMachine copySnapshot(CombatStateMachine source) {
+        CombatStateMachine copy = new CombatStateMachine();
+        copy.apply(source.phase(), source.type(), source.phaseElapsedUs(), source.phaseDurationUs(), source.timings(),
+                source.riposteTicks(), source.isHeavy(), source.isMorphed(), source.isComboAllowed(), source.variant(),
+                source.isMirrored(), source.isThwacked(), source.recoverFrom());
+        copy.applyPredictionState(source.predictionState());
+        return copy;
+    }
+
+    @Test
+    void caughtParrySnapshotReleasesToIdleWithTheServerCooldown() {
+        CombatStateMachine server = new CombatStateMachine();
+        server.startParry(20, 8, 5);
+        server.parrySucceeded(10);
+        CombatStateMachine client = copySnapshot(server);
+        server.releaseParry();
+        client.releaseParry();
+        assertEquals(Phase.IDLE, client.phase());
+        assertEquals(server.parryCooldownLeft(), client.parryCooldownLeft());
+        assertEquals(server.isRiposteReady(), client.isRiposteReady());
+    }
+
+    @Test
+    void snapshotPreservesGuardBreakAndForgivenessRules() {
+        CombatStateMachine server = new CombatStateMachine();
+        server.stagger(8, false);
+        assertFalse(copySnapshot(server).canParry(), "a guard-break correction cannot be parried out of");
+        server.cancel();
+        server.startParry(20, 8, 5);
+        server.startAttack(AttackType.SLASH, TIMINGS);
+        CombatStateMachine client = copySnapshot(server);
+        assertTrue(client.forgiveIntoParry(2, 8));
+        assertTrue(server.forgiveIntoParry(2, 8));
+        assertEquals(server.predictionState(), client.predictionState());
+    }
+
+    @Test
+    void snapshotPreservesActiveParryAndUsedCounterFeint() {
+        CombatStateMachine server = new CombatStateMachine();
+        server.startAttack(AttackType.SLASH, TIMINGS);
+        server.counterFeint(AttackType.STAB, TIMINGS, 1, true);
+        server.counter(2, 5);
+        CombatStateMachine client = copySnapshot(server);
+        assertTrue(client.isActiveParry());
+        assertFalse(client.counterFeint(AttackType.SLASH, TIMINGS, 0, false));
+        assertEquals(server.attackSerial(), client.attackSerial());
+    }
+
     // ---- counter-feint (architecture plan section 13.1)
 
     @Test

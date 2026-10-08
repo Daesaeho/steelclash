@@ -36,6 +36,7 @@ public final class ClientPayloadHandler {
             data.machine.apply(payload.phase(), payload.attackType(), payload.phaseElapsedUs(), payload.phaseDurationUs(),
                     payload.timings(), payload.riposteTicks(), payload.heavy(), payload.morphed(), payload.comboAllowed(),
                     payload.variant(), payload.mirrored(), payload.thwacked(), payload.recoverFrom());
+            data.machine.applyPredictionState(payload.predictionState());
             data.profileKey = payload.profile()
                     .map(location -> ResourceKey.create(WeaponProfiles.REGISTRY_KEY, location))
                     .orElse(null);

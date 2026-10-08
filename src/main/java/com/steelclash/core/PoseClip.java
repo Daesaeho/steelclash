@@ -43,6 +43,14 @@ public final class PoseClip {
 
     /** Offsets (degrees, xyz) for every part this clip animates, at progress {@code t}. */
     public Map<String, double[]> sample(double t) {
+        return sample(t, 1, false);
+    }
+
+    /**
+     * Samples, scales and mirrors in one pass, so a heavy mirrored windup needs only one map and one array per part.
+     * Mirroring flips yaw and roll of the body, head and torso; limb offsets stay on their authored side.
+     */
+    public Map<String, double[]> sample(double t, double scale, boolean mirrored) {
         Map<String, double[]> out = new HashMap<>();
         if (keyframes.isEmpty()) {
             return out;
@@ -65,7 +73,14 @@ public final class PoseClip {
         for (String part : partNames) {
             double[] va = a.parts().getOrDefault(part, ZERO);
             double[] vb = b.parts().getOrDefault(part, ZERO);
-            out.put(part, new double[]{lerp(va, vb, 0, f), lerp(va, vb, 1, f), lerp(va, vb, 2, f)});
+            double x = lerp(va, vb, 0, f) * scale;
+            double y = lerp(va, vb, 1, f) * scale;
+            double z = lerp(va, vb, 2, f) * scale;
+            if (mirrored && (part.equals("body") || part.equals("head") || part.equals("torso"))) {
+                y = -y;
+                z = -z;
+            }
+            out.put(part, new double[]{x, y, z});
         }
         return out;
     }

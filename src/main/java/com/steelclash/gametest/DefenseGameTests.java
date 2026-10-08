@@ -21,10 +21,13 @@ import com.steelclash.compat.Compat;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
+import com.steelclash.net.CombatStatePayload;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.concurrent.atomic.AtomicBoolean;
+import io.netty.buffer.Unpooled;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -58,6 +61,44 @@ public final class DefenseGameTests {
         check(helper, data(attacker).machine.phase() == Phase.STAGGER, "the parried attacker should be staggered");
         check(helper, data(defender).machine.isRiposteReady(), "the defender should have a riposte ready");
         check(helper, data(defender).stamina.current() < data(defender).stamina.max(), "parrying costs stamina");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void rejectedParryCancelDoesNotFeintForFree(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(player);
+        check(helper, Combat.startParry(player, d), "guard starts");
+        check(helper, Combat.start(player, d, AttackType.SLASH), "attack starts from the guard");
+        float stamina = d.stamina.current();
+        check(helper, !Combat.startParry(player, d), "cooldown rejects the parry-cancel");
+        check(helper, d.machine.phase() == Phase.WINDUP, "rejection preserves the committed attack");
+        check(helper, d.stamina.current() == stamina, "a rejected input does not spend stamina");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void statePacketPreservesCaughtParryAndCooldown(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        CombatData d = data(defender);
+        d.machine.startParry(20, 8, 5);
+        d.machine.parrySucceeded(10);
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            CombatStatePayload.STREAM_CODEC.encode(buf, CombatStatePayload.of(defender, d, true));
+            CombatStatePayload decoded = CombatStatePayload.STREAM_CODEC.decode(buf);
+            check(helper, decoded.predictionState().equals(d.machine.predictionState()), "prediction state survives the wire format");
+            var client = new com.steelclash.core.CombatStateMachine();
+            client.apply(decoded.phase(), decoded.attackType(), decoded.phaseElapsedUs(), decoded.phaseDurationUs(),
+                    decoded.timings(), decoded.riposteTicks(), decoded.heavy(), decoded.morphed(), decoded.comboAllowed(),
+                    decoded.variant(), decoded.mirrored(), decoded.thwacked(), decoded.recoverFrom());
+            client.applyPredictionState(decoded.predictionState());
+            client.releaseParry();
+            check(helper, client.phase() == Phase.IDLE, "a caught guard releases straight to idle");
+            check(helper, client.parryCooldownLeft() == 5, "the guard cooldown is preserved");
+        } finally {
+            buf.release();
+        }
         helper.succeed();
     }
 

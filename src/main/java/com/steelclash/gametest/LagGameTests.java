@@ -13,6 +13,7 @@ import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.LagCompensation;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.AttackTimings;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import net.minecraft.gametest.framework.GameTest;
@@ -108,6 +109,28 @@ public final class LagGameTests {
         TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
         swing(attacker, AttackType.SLASH);
         check(helper, isHurt(defender), "no latency, no delay");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void expiredMatchingCounterDoesNotSkipParryGrace(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.start(attacker, data(attacker), AttackType.SLASH);
+        Combat.start(defender, data(defender), AttackType.SLASH);
+        var m = data(defender).machine;
+        // The attack still winds up, but its counter window has expired.
+        m.apply(Phase.WINDUP, AttackType.SLASH, 50L * AttackTimings.TICK_US, 100L * AttackTimings.TICK_US,
+                AttackTimings.ofTicks(100, 5, 5), 0, false, false, false, 0, false);
+        LagCompensation.forceLatency(defender, PING);
+        var spec = Combat.currentSpec(attacker, data(attacker)).orElseThrow();
+        var hit = new Combat.Hit(AttackType.SLASH, spec, 1f, spec.staminaDamage(), false);
+        check(helper, LagCompensation.hold(attacker, defender, hit), "an expired counter cannot end the grace early");
+        LagCompensation.tick();
+        check(helper, !isHurt(defender), "keep waiting for a real defense or the deadline");
+        Combat.requestParry(defender);
+        LagCompensation.tick();
+        check(helper, !isHurt(defender) && m.parriedHits() > 0, "the actual parry can still arrive during the grace");
         helper.succeed();
     }
 }

@@ -21,6 +21,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
@@ -77,14 +78,23 @@ public final class CombatEvents {
         }
         CombatProfiler.begin(CombatProfiler.Section.AI);
         try {
-            if (entity instanceof PathfinderMob pathfinder && !(entity instanceof TrainingDummy) && ClashBrain.manages(pathfinder)) {
-                ClashBrain.tick(pathfinder, pathfinder.getData(ModAttachments.COMBAT));
-            } else if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy) && mob.getTarget() != null) {
-                MobCombat.tickDefense(mob, mob.getData(ModAttachments.COMBAT), MobCombat.parryChance(mob));
-            }
-            if (entity instanceof Mob mob && MobCombat.isFighter(mob) && !(mob instanceof TrainingDummy)) {
-                MobCombat.keepAggressive(mob, mob.getData(ModAttachments.COMBAT));
-                Sidearms.tick(mob, mob.getData(ModAttachments.COMBAT));
+            if (entity instanceof Mob mob && !(mob instanceof TrainingDummy)) {
+                if (MobCombat.isFighter(mob)) {
+                    CombatData data = mob.getData(ModAttachments.COMBAT);
+                    if (mob instanceof PathfinderMob pathfinder && ClashBrain.manages(pathfinder)) {
+                        ClashBrain.tick(pathfinder, data);
+                    } else {
+                        ClashBrain.stop(mob, data);
+                        if (mob.getTarget() != null) {
+                            MobCombat.tickDefense(mob, data, MobCombat.parryChance(mob));
+                        }
+                    }
+                    MobCombat.keepAggressive(mob, data);
+                    Sidearms.tick(mob, data);
+                } else if (mob.hasData(ModAttachments.COMBAT)) {
+                    // A datapack can remove the fighter tag while the mob is loaded.
+                    ClashBrain.stop(mob, mob.getData(ModAttachments.COMBAT));
+                }
             }
         } finally {
             CombatProfiler.end(CombatProfiler.Section.AI);
@@ -165,6 +175,9 @@ public final class CombatEvents {
         LivingEntity entity = event.getEntity();
         if (event.getNewDamage() > 0) {
             entity.getData(ModAttachments.COMBAT).lastHurtAt = entity.level().getGameTime();
+            if (entity instanceof Player player && !entity.level().isClientSide()) {
+                Downed.onReviverHurt(player);
+            }
             RangedDefense.interruptDraw(entity);
         }
         if (event.getNewDamage() <= 0 || !entity.hasData(ModAttachments.COMBAT) || Config.FLINCH_TICKS.get() <= 0) {
@@ -234,6 +247,11 @@ public final class CombatEvents {
     }
 
     @SubscribeEvent
+    static void onEntityInteractSpecific(PlayerInteractEvent.EntityInteractSpecific event) {
+        cancelIfDowned(event);
+    }
+
+    @SubscribeEvent
     static void onAttackEntity(AttackEntityEvent event) {
         if (Downed.isDowned(event.getEntity())) {
             event.setCanceled(true);
@@ -279,6 +297,13 @@ public final class CombatEvents {
     static void onServerStopped(ServerStoppedEvent event) {
         ClashBrain.TOKENS.clear();
         LagCompensation.clear();
+    }
+
+    @SubscribeEvent
+    static void onLeaveLevel(EntityLeaveLevelEvent event) {
+        if (!event.getLevel().isClientSide() && event.getEntity() instanceof LivingEntity entity) {
+            ClashBrain.TOKENS.removeEntity(entity.getId());
+        }
     }
 
     /** Hits held for lagged defenders land (or are parried) at the end of the tick. */

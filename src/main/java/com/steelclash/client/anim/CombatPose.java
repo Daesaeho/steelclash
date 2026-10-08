@@ -40,6 +40,15 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
     private static final double WRIST_RELAX = 0.45;
     private static final double[] NO_OFFSET = {0, 0, 0};
 
+    /** The animation layer's activation check needs availability, not an interpolated pose and sampled clips. */
+    public static boolean isAvailable(LivingEntity entity) {
+        if (!entity.hasData(ModAttachments.COMBAT)) {
+            return false;
+        }
+        CombatData data = entity.getData(ModAttachments.COMBAT);
+        return data.machine.phase() != Phase.IDLE && Combat.currentSpec(entity, data).isPresent();
+    }
+
     public static Optional<CombatPose> of(LivingEntity entity, float partialTick) {
         if (!entity.hasData(ModAttachments.COMBAT)) {
             return Optional.empty();
@@ -55,21 +64,20 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
 
         double progress = data.machine.phaseProgress(partialTick);
         String key = AnimationSet.clipKey(pose.phase(), pose.type());
+        boolean mirrored = data.machine.isMirrored() && pose.phase().isAttack();
         Map<String, double[]> offsets;
         if (data.machine.isHeavy() && pose.phase() == Phase.WINDUP) {
             // Heavies have their own windup clip; older animation sets just exaggerate the light one.
             PoseClip heavy = animation.clip(pose.type().serializedName() + ".heavy_windup");
             offsets = heavy.isEmpty()
-                    ? PoseClip.scale(animation.clip(key).sample(progress), animation.heavyWindupScale())
-                    : heavy.sample(progress);
+                    ? animation.clip(key).sample(progress, animation.heavyWindupScale(), mirrored)
+                    : heavy.sample(progress, 1, mirrored);
         } else if (data.machine.isThwacked() && pose.phase() == Phase.RECOVERY) {
             // The blade stopped in a body: hold the body where the release was at contact while the pose eases out.
-            offsets = animation.clip(AnimationSet.clipKey(Phase.RELEASE, pose.type())).sample(data.machine.recoverFrom());
+            offsets = animation.clip(AnimationSet.clipKey(Phase.RELEASE, pose.type()))
+                    .sample(data.machine.recoverFrom(), 1, mirrored);
         } else {
-            offsets = animation.clip(key).sample(progress);
-        }
-        if (data.machine.isMirrored() && pose.phase().isAttack()) {
-            offsets = mirror(offsets);
+            offsets = animation.clip(key).sample(progress, 1, mirrored);
         }
         boolean twoHanded = animation.twoHanded()
                 || (Config.Client.TWO_HANDED_SWORDS.get() && "sword".equals(archetype) && entity.getOffhandItem().isEmpty());
@@ -97,16 +105,6 @@ public record CombatPose(Phase phase, double weight, double aimYaw, double aimPi
         return entity instanceof net.minecraft.world.entity.player.Player
                 ? entity.getViewYRot(partialTick)
                 : Mth.rotLerp(partialTick, entity.yHeadRotO, entity.yHeadRot);
-    }
-
-    /** A swing from the other side: twist and lean the other way (yaw and roll flip, pitch stays). */
-    private static Map<String, double[]> mirror(Map<String, double[]> offsets) {
-        Map<String, double[]> out = new java.util.HashMap<>();
-        offsets.forEach((part, v) -> out.put(part, switch (part) {
-            case "body", "head", "torso" -> new double[]{v[0], -v[1], -v[2]};
-            default -> v;
-        }));
-        return out;
     }
 
     /** Additive offset for a part, radians, already weighted. */

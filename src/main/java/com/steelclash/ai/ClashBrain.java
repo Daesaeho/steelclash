@@ -77,15 +77,35 @@ public final class ClashBrain {
         LivingEntity target = mob.getTarget();
         BrainState brain = data.brain != null ? data.brain : (data.brain = new BrainState());
         if (target == null || !target.isAlive()) {
-            TOKENS.releaseAll(mob.getId());
-            brain.wantsSpace = false;
+            stop(mob, data);
             return;
+        }
+        if (brain.targetId != target.getId()) {
+            TOKENS.releaseAll(mob.getId());
+            brain.targetId = target.getId();
         }
         BotSkill skill = skill(mob);
         observe(brain, target);
-        defend(mob, data, brain, skill);
-        offend(mob, data, brain, skill, target);
+        // Defense/offense share this tick's weapon. Keep the lookup tick-local so reloads and swaps stay visible.
+        var heldBeforeDefense = mob.getMainHandItem();
+        var itemBeforeDefense = heldBeforeDefense.getItem();
+        Optional<WeaponProfile> profile = WeaponProfiles.resolveFor(mob).map(WeaponProfiles.Resolved::profile);
+        defend(mob, data, brain, skill, profile);
+        if (mob.getMainHandItem() != heldBeforeDefense || mob.getMainHandItem().getItem() != itemBeforeDefense) {
+            // Other mods can replace the weapon from shield-use or attack callbacks during defense.
+            profile = WeaponProfiles.resolveFor(mob).map(WeaponProfiles.Resolved::profile);
+        }
+        offend(mob, data, brain, skill, target, profile);
         steerSwing(mob, data, brain, target);
+    }
+
+    /** The dispatcher calls this even when manages() is false, making no-target cleanup reachable. */
+    public static void stop(Mob mob, CombatData data) {
+        if (data.brain != null) {
+            TOKENS.releaseAll(mob.getId());
+            data.brain.targetId = -1;
+            data.brain.wantsSpace = false;
+        }
     }
 
     /**
@@ -123,11 +143,12 @@ public final class ClashBrain {
 
     // ------------------------------------------------------------------ defense
 
-    private static void defend(PathfinderMob mob, CombatData data, BrainState brain, BotSkill skill) {
-        if (WeaponProfiles.resolveFor(mob).flatMap(r -> r.profile().guard()).isEmpty() && !hasShield(mob)) {
+    private static void defend(PathfinderMob mob, CombatData data, BrainState brain, BotSkill skill,
+                               Optional<WeaponProfile> profile) {
+        if (profile.flatMap(WeaponProfile::guard).isEmpty() && !hasShield(mob)) {
             return; // claws and beasts can't parry
         }
-        for (LivingEntity attacker : threats(mob)) {
+        for (LivingEntity attacker : threats(mob, brain)) {
             CombatStateMachine incoming = attacker.getData(ModAttachments.COMBAT).machine;
             if (brain.answeredAttacker != attacker.getId() || brain.answeredSerial != incoming.attackSerial()) {
                 brain.answeredAttacker = attacker.getId();
@@ -142,6 +163,7 @@ public final class ClashBrain {
             // reaction time, its counter changes to match.
             if (brain.counterTarget == attacker.getId() && brain.counterSerial == data.machine.attackSerial()
                     && data.machine.phase() == Phase.WINDUP
+                    && incoming.phase() == Phase.WINDUP
                     && Combat.isWeaponAttack(data.machine.type()) && Combat.isWeaponAttack(incoming.type())
                     && incoming.type() != data.machine.type()) {
                 if (skill.canReact(incoming.phaseTick())) {
@@ -260,23 +282,32 @@ public final class ClashBrain {
         return false;
     }
 
-    private static List<LivingEntity> threats(PathfinderMob mob) {
+    private static List<LivingEntity> threats(PathfinderMob mob, BrainState brain) {
         List<LivingEntity> result = new ArrayList<>();
         // defend answers only the first threat. Filter the cone before the limit, and preserve the level query's order.
         mob.level().getEntities(EntityTypeTest.forClass(LivingEntity.class), mob.getBoundingBox().inflate(THREAT_RADIUS),
-                e -> e != mob && e.hasData(ModAttachments.COMBAT)
-                        && e.getData(ModAttachments.COMBAT).machine.phase() == Phase.WINDUP
+                e -> e != mob && e.hasData(ModAttachments.COMBAT) && isThreat(e.getId(), e.getData(ModAttachments.COMBAT).machine, brain)
                         && Guard.inCone(CombatMath.viewYaw(e), e.getX(), e.getZ(), mob.getX(), mob.getZ(), THREAT_CONE),
                 result, 1);
         return result;
     }
 
+    /**
+     * A windup, or the release the bot planned to late-parry. Other releases are past answering, and would hide a
+     * windup behind them from the one-threat answer.
+     */
+    private static boolean isThreat(int attackerId, CombatStateMachine incoming, BrainState brain) {
+        return incoming.phase() == Phase.WINDUP
+                || incoming.phase() == Phase.RELEASE && brain.answer == BrainState.Answer.LATE_PARRY
+                && brain.answeredAttacker == attackerId && brain.answeredSerial == incoming.attackSerial();
+    }
+
     // ------------------------------------------------------------------ offense
 
-    private static void offend(PathfinderMob mob, CombatData data, BrainState brain, BotSkill skill, LivingEntity target) {
+    private static void offend(PathfinderMob mob, CombatData data, BrainState brain, BotSkill skill, LivingEntity target,
+                               Optional<WeaponProfile> profile) {
         CombatStateMachine m = data.machine;
         RandomSource random = mob.getRandom();
-        Optional<WeaponProfile> profile = WeaponProfiles.resolveFor(mob).map(WeaponProfiles.Resolved::profile);
         if (profile.isEmpty() || profile.get().attacks().isEmpty()) {
             return;
         }
@@ -412,9 +443,15 @@ public final class ClashBrain {
     }
 
     static double reach(Mob mob, WeaponProfile profile) {
-        WeaponProfile.AttackSpec spec = profile.attack(AttackType.SLASH)
-                .orElseGet(() -> profile.attacks().values().iterator().next());
-        return CombatMath.bladeLength(mob, spec);
+        WeaponProfile.AttackSpec spec = profile.attack(AttackType.SLASH).orElse(null);
+        if (spec == null) {
+            var attacks = profile.attacks().values().iterator();
+            if (attacks.hasNext()) {
+                spec = attacks.next();
+            }
+        }
+        // Guard-only profiles are valid, including after a datapack reload while the spacing goal is running.
+        return spec == null ? 2.0 : CombatMath.bladeLength(mob, spec);
     }
 
     /** Distance from the mob's pivot to the near edge of the target's hitbox, horizontally. */

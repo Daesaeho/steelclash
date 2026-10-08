@@ -4,6 +4,7 @@ import com.steelclash.SteelClash;
 import com.steelclash.combat.CombatData;
 import com.steelclash.core.AttackTimings;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Phase;
 import java.util.Optional;
 import net.minecraft.network.FriendlyByteBuf;
@@ -16,6 +17,7 @@ import net.minecraft.world.entity.LivingEntity;
 public record CombatStatePayload(int entityId, Phase phase, AttackType attackType, long phaseElapsedUs, long phaseDurationUs,
                                  AttackTimings timings, int riposteTicks, boolean heavy, boolean morphed,
                                  boolean comboAllowed, int variant, boolean mirrored, boolean thwacked, float recoverFrom,
+                                 CombatStateMachine.PredictionState predictionState,
                                  Optional<ResourceLocation> profile, boolean authoritative) implements CustomPacketPayload {
     public static final Type<CombatStatePayload> TYPE = new Type<>(SteelClash.id("combat_state"));
 
@@ -27,6 +29,7 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
                 data.machine.phaseElapsedUs(), data.machine.phaseDurationUs(), data.machine.timings(), data.machine.riposteTicks(),
                 data.machine.isHeavy(), data.machine.isMorphed(), data.machine.isComboAllowed(),
                 data.machine.variant(), data.machine.isMirrored(), data.machine.isThwacked(), (float) data.machine.recoverFrom(),
+                data.machine.predictionState(),
                 Optional.ofNullable(data.profileKey).map(key -> key.location()), authoritative);
     }
 
@@ -45,6 +48,14 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         if (thwacked) {
             buf.writeFloat(recoverFrom);
         }
+        buf.writeVarInt(predictionState.guardRecovery());
+        buf.writeVarInt(predictionState.parryCooldown());
+        buf.writeVarInt(predictionState.parryCooldownLeft());
+        buf.writeVarInt(predictionState.parriedHits());
+        buf.writeVarInt(predictionState.activeParryTicks());
+        buf.writeByte((predictionState.staggerAllowsParry() ? 1 : 0) | (predictionState.fromGuard() ? 2 : 0)
+                | (predictionState.counterFeinted() ? 4 : 0));
+        buf.writeVarInt(predictionState.attackSerial());
         buf.writeOptional(profile, FriendlyByteBuf::writeResourceLocation);
         buf.writeBoolean(authoritative);
     }
@@ -61,8 +72,18 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         int variant = buf.readVarInt();
         boolean thwacked = (flags & 16) != 0;
         float recoverFrom = thwacked ? buf.readFloat() : 1f;
+        int guardRecovery = buf.readVarInt();
+        int parryCooldown = buf.readVarInt();
+        int parryCooldownLeft = buf.readVarInt();
+        int parriedHits = buf.readVarInt();
+        int activeParryTicks = buf.readVarInt();
+        int predictionFlags = buf.readByte();
+        int attackSerial = buf.readVarInt();
+        CombatStateMachine.PredictionState predictionState = new CombatStateMachine.PredictionState(guardRecovery,
+                parryCooldown, parryCooldownLeft, parriedHits, (predictionFlags & 1) != 0, activeParryTicks,
+                (predictionFlags & 2) != 0, (predictionFlags & 4) != 0, attackSerial);
         return new CombatStatePayload(entityId, phase, type, phaseElapsedUs, phaseDurationUs, timings, riposteTicks,
-                (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, variant, (flags & 8) != 0, thwacked, recoverFrom,
+                (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, variant, (flags & 8) != 0, thwacked, recoverFrom, predictionState,
                 buf.readOptional(FriendlyByteBuf::readResourceLocation), buf.readBoolean());
     }
 

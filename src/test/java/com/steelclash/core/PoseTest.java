@@ -43,6 +43,53 @@ class PoseTest {
     @Test
     void emptyClipSamplesNothing() {
         assertTrue(PoseClip.EMPTY.sample(0.5).isEmpty());
+        assertTrue(PoseClip.EMPTY.sample(0.5, 1.5, true).isEmpty());
+    }
+
+    @Test
+    void fusedSamplingScalesThenMirrorsOnlyBodyHeadAndTorso() {
+        PoseClip clip = new PoseClip(List.of(new PoseClip.Keyframe(0, Map.of(
+                "body", new double[]{10, 20, 30}, "head", new double[]{4, 5, 6},
+                "torso", new double[]{1, 2, 3}, "leftArm", new double[]{7, 8, 9}))));
+        Map<String, double[]> pose = clip.sample(0.5, 2, true);
+        assertArrayEquals(new double[]{20, -40, -60}, pose.get("body"), EPS);
+        assertArrayEquals(new double[]{8, -10, -12}, pose.get("head"), EPS);
+        assertArrayEquals(new double[]{2, -4, -6}, pose.get("torso"), EPS);
+        assertArrayEquals(new double[]{14, 16, 18}, pose.get("leftArm"), EPS);
+        assertArrayEquals(new double[]{10, 20, 30}, clip.sample(0.5).get("body"), EPS,
+                "sampling must not mutate shared keyframes");
+    }
+
+    @Test
+    void fusedSamplingPreservesInterpolationClampingAndMissingAxes() {
+        PoseClip clip = new PoseClip(List.of(
+                new PoseClip.Keyframe(1, Map.of("head", new double[]{-20, 30, -40})),
+                new PoseClip.Keyframe(0.2, Map.of("body", new double[]{10, 5}, "leftLeg", new double[]{5}))));
+        for (double t : new double[]{-1, 0, 0.2, 0.3, 0.6, 0.99, 1, 2}) {
+            for (double factor : new double[]{0, 1, 1.5, -2}) {
+                for (boolean mirrored : new boolean[]{false, true}) {
+                    Map<String, double[]> expected = PoseClip.scale(clip.sample(t), factor);
+                    if (mirrored) {
+                        for (String part : List.of("body", "head")) {
+                            expected.get(part)[1] = -expected.get(part)[1];
+                            expected.get(part)[2] = -expected.get(part)[2];
+                        }
+                    }
+                    Map<String, double[]> actual = clip.sample(t, factor, mirrored);
+                    assertEquals(expected.keySet(), actual.keySet());
+                    expected.forEach((part, v) -> assertArrayEquals(v, actual.get(part), EPS));
+                }
+            }
+        }
+    }
+
+    @Test
+    void returnedSamplesOwnTheirArrays() {
+        PoseClip clip = new PoseClip(List.of(new PoseClip.Keyframe(0, Map.of("body", new double[]{1, 2, 3}))));
+        Map<String, double[]> first = clip.sample(0, 2, true);
+        first.get("body")[0] = 999;
+        assertArrayEquals(new double[]{2, -4, -6}, clip.sample(0, 2, true).get("body"), EPS);
+        assertArrayEquals(new double[]{1, 2, 3}, clip.sample(0).get("body"), EPS);
     }
 
     @Test

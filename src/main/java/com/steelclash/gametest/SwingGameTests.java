@@ -1,11 +1,14 @@
 package com.steelclash.gametest;
 
 import com.steelclash.SteelClash;
+import com.steelclash.Config;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
+import com.steelclash.combat.SwingTracer;
 import com.steelclash.compat.Compat;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
 import com.steelclash.profile.WeaponProfiles;
@@ -95,6 +98,38 @@ public final class SwingGameTests {
         Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
         TestSupport.swing(player, AttackType.SLASH);
         TestSupport.check(helper, !TestSupport.isHurt(zombie), "swings must not hit through walls");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void disablingClanksStillBlocksHitsThroughWalls(GameTestHelper helper) {
+        boolean original = Config.ENVIRONMENT_CLANK.get();
+        try {
+            for (int y = 2; y <= 4; y++) {
+                for (int z = 2; z <= 6; z++) {
+                    helper.setBlock(2, y, z, Blocks.STONE);
+                }
+            }
+            Player player = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+            Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+            CombatData data = TestSupport.data(player);
+            TestSupport.check(helper, Combat.start(player, data, AttackType.SLASH), "attack starts");
+            WeaponProfile.AttackSpec spec = Combat.currentSpec(player, data).orElseThrow();
+            CombatStateMachine.Sweep sweep = new CombatStateMachine.Sweep(0.4, 0.6);
+
+            Config.ENVIRONMENT_CLANK.set(true);
+            TestSupport.check(helper, SwingTracer.trace(player, data, spec, sweep).clank() != null,
+                    "the test wall must produce a clank when enabled");
+
+            Config.ENVIRONMENT_CLANK.set(false);
+            SwingTracer.Result result = SwingTracer.trace(player, data, spec, sweep);
+            TestSupport.check(helper, result.clank() == null, "disabled clanks must not stop the trace");
+            TestSupport.check(helper, result.contacts().isEmpty(), "line-of-sight checks must still reject the hidden target");
+            TestSupport.finish(player);
+            TestSupport.check(helper, !TestSupport.isHurt(zombie), "disabling clanks must never permit through-wall damage");
+        } finally {
+            Config.ENVIRONMENT_CLANK.set(original);
+        }
         helper.succeed();
     }
 

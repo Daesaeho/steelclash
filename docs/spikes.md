@@ -284,6 +284,23 @@ Attack phases are now timed in integer **microseconds** and resolved **inside** 
 
   Skipped: the telegraph labels are opt-in and cost microseconds. Per-entity position history is about 0.8 KB per entity, and recording only some entities risks missing the history a lagged swing needs.
 
+### Follow-up optimization patch (2026-10-07, based on 1cfe922)
+
+- `Blade.intersectsBox` now uses scalar slab data, and the tracer passes AABB bounds directly. This removes four temporary arrays and two temporary bounds vectors per candidate/sub-step at source level; actual allocation savings depend on the JVM's escape analysis.
+- `SwingTracer` honors `environmentClank` before tracing clanks. Previously the caller suppressed the stagger but the tracer still clipped blocks and could return early. Visibility checks against targets remain enabled; empty traces skip blade sampling when clanks are off.
+- `PoseClip` can sample, scale and mirror in one pass, avoiding intermediate maps/arrays for mirrored poses and fallback heavy windups. Clips and returned samples keep their existing ownership.
+- The optional enemy telegraph uses a nearby living-entity query, reuses its finite set of labels and only flushes buffers after drawing. This is lower priority, and has no effect while the option is off.
+- Applied 2026-10-08 together with the second follow-up and the bug audit below; build, JUnit and all GameTests pass (see the audit's validation).
+
+### Second follow-up optimization patch (2026-10-08)
+
+- Attack tokens now have an attacker-to-target reverse index, so `releaseAll` visits only that attacker's held targets. `CombatEvents` calls brain cleanup even when `manages` is false, releases old tokens on a target change, and removes target/attacker entries on server-side `EntityLeaveLevelEvent`. This fixes retained IDs/buckets after abandoned fights; the reverse index adds bookkeeping memory for active holders.
+- The fighter tick reuses its combat attachment and tag classification across defense, aggression and sidearm handling. Defense/offense share one tick-local profile resolution, with a fresh lookup if a defense callback changes the main-hand stack/item. No cross-tick profile cache was added.
+- `Combat.finishTick` records turn/pivot snapshots only while entering, continuing or leaving windup/release. `start` still initializes fresh snapshots, and stamina, queued attacks and phase synchronization still tick normally during idle.
+- Player-animation `isActive` checks phase/spec availability instead of constructing and sampling an entire pose; `setupAnim` still computes the pose for rendering.
+- Patrol members recheck chunk availability before each heightmap lookup. Their random walk can leave the originally checked 10-block area; reaching an unloaded chunk now ends the remaining spawn attempts instead of accessing it.
+- **Benchmark: no measurable change.** On 2026-10-08 the machine was too noisy to measure savings this small. Alternating runs gave unpatched 1.04/1.39 and patched 0.30/1.36 ms per tick in scene F (unpatched had measured 0.27 earlier the same day). The bot-scene slowdown seen in the first runs was machine state, not the patch: unpatched code reproduced it. Re-measure on a quiet machine before quoting numbers.
+
 ## Cleave and thwack (architecture plan §18, 2026-10-07)
 - **Rule** (`core/ContactPolicy`): each weapon attack (slash, overhead, stab) is `cleave`, `thwack` or `cleave_on_kill`. Unset, blunt attacks are `cleave_on_kill` (Chivalry 2 since Fight Knight) and everything else cleaves. Heavies always cleave. Kicks, jabs, throws and specials are untouched.
 - **Thwack** (`CombatStateMachine.thwack`): the release ends at the contact and the thwack recovery replaces the normal one, timed from the moment of contact. It's sub-tick, so if the contact was 20 ms into a tick, the remaining 30 ms already count. It works even when the release ran out later in the same tick. The time comes from `thwack_ms` (scaled for attack speed like the other phases), or by default the normal recovery, so a thwack saves the rest of the release. Bodies behind the first are spared, the clank check is skipped for a thwacked swing, and a combo can follow straight away.
@@ -350,3 +367,19 @@ Attack phases are now timed in integer **microseconds** and resolved **inside** 
 - **Modpacks:** Better Combat and Epic Fight are declared incompatible in `neoforge.mods.toml`, so the loader refuses them with a message. Other mods' fake players are handled by the tracking-send fix (see "Downed and revive").
 - **Not done:** a full modpack playtest and a two-machine dedicated-server session. Those are manual checks (M7/M8 in docs/testing.md).
 
+## Bug audit and fixes (2026-10-08)
+
+Reviewed `1cfe922` plus both local optimization passes. Ten distinct findings were present:
+
+1. `ClashBrain.defend` planned a `LATE_PARRY` in RELEASE, but `threats` admitted only WINDUP, so bots never late-parried. The patch admitted every RELEASE; applied narrower: a RELEASE is a threat only when it's the attack the bot planned to late-parry (same attacker and serial). Otherwise an attacker already mid-swing, which the bot can't answer any more, would hide a windup it can, since `defend` answers only the first threat (`anUnplannedReleaseDoesNotHideAWindup`). Counter-feint reactions stay restricted to WINDUP.
+2. Attack selection assumed a nonempty set: a kick-only profile reached `nextInt(0)` in the basic mob controller, and an empty profile reached `iterator.next()` through a running spacing goal after a reload. Guard both paths and return an empty selection/fallback reach. Counted as one finding.
+3. `Combat.startParry` feinted first, then rejected the parry during its cooldown, leaving an unpaid cancellation. `CombatStateMachine.cancelIntoParry` now rejects without changing the windup.
+4. Release finalization required the tick to start in RELEASE. A WINDUP and short RELEASE can both finish inside one tick, skipping whiff stamina and slam effects. Detect the completed sweep instead, including when recovery already finished.
+5. Combat snapshots omitted the rules needed to continue prediction: caught-parry count, guard recovery/cooldown, stagger permission, active parry, guard origin, counter-feint use and attack serial. A caught parry released to IDLE on the server but GUARD_RECOVERY on a fresh client. Serialize/apply `PredictionState`; network protocol is now **10**.
+6. The client sent weapon-guard release only if its predicted phase was PARRY. If the server accepted a press that prediction rejected, that guard could stay held. Track the submitted press and always balance its release.
+7. Friendly swings skipped weapon defense in `onIncomingDamage`, but the subsequent shield event still blocked, drained stamina and bounced the attacker. Disable that shield block for allied swing damage, preserving the ordinary damage hooks.
+8. Revive interruption checked only whether a reviver was hurt in the patient's current tick. Damage after the patient's tick, especially a held hit delivered in ServerTick.Post, was missed next tick. Reset the matching revive at damage time.
+9. Downed interaction cancellation covered EntityInteract but omitted EntityInteractSpecific. Armor-stand equipment interaction could succeed before the general event. Cancel both routes.
+10. Lag grace ended for any matching windup, even after the counter window or outside its guard cone. Share the actual counter eligibility check with Defense before resolving early.
+
+Validation (2026-10-08, Java 21, with both optimization follow-ups): build, JUnit and all 139 GameTests pass. Two of the audit's GameTests had never run and failed at first, both test mistakes, not code faults. `botCarriesItsLateParryPlanIntoRelease` attacked with a mock player, which isn't in the level, so the bot's threat query could never see it; it now uses a training dummy. `aTeammatesShieldNeverBlocksOrBouncesTheSwing` formed the team before an 8-tick wait for the shield, and every mock player shares one scoreboard name, so another test's cleanup took the player off the team; the team is now formed after the wait. Mutation check: 13 of 13 caught. Reverting each fix (threat narrowing both ways, cancel-into-parry cooldown, completed-release finalization, prediction state applied and serialized, ally shield, revive reset, precise interaction, counter grace, token cleanup on stop and on leave, clank switch) fails its test. Not covered by automation: the client guard-release bookkeeping (`ClientInput`) and the real LAN behaviour; see docs/testing.md.

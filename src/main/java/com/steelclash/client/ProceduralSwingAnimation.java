@@ -63,7 +63,7 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public boolean isActive() {
-        return pose != null || CombatPose.of(player, 0f).isPresent();
+        return pose != null || CombatPose.isAvailable(player);
     }
 
     @Override

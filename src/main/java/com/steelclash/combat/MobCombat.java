@@ -49,7 +49,8 @@ public final class MobCombat {
             return false;
         }
         Optional<WeaponProfiles.Resolved> profile = WeaponProfiles.resolveFor(mob);
-        if (profile.isEmpty() || profile.get().profile().attacks().isEmpty()) {
+        if (profile.isEmpty() || profile.get().profile().attacks().isEmpty()
+                || (profile.get().profile().attacks().size() == 1 && profile.get().profile().attacks().containsKey(AttackType.KICK))) {
             return false; // nothing to telegraph with: let vanilla hit
         }
         if (ClashBrain.manages(mob)) {
@@ -57,7 +58,11 @@ public final class MobCombat {
         }
         CombatData data = mob.getData(ModAttachments.COMBAT);
         if (!data.machine.isBusy()) {
-            Combat.requestAttack(mob, pickAttack(mob, profile.get().profile()));
+            Optional<AttackType> attack = pickAttack(mob, profile.get().profile());
+            if (attack.isEmpty()) {
+                return false;
+            }
+            Combat.requestAttack(mob, attack.get());
             if (mob.getRandom().nextDouble() < Config.MOB_HEAVY_CHANCE.get()) {
                 Combat.requestHeavy(mob);
             }
@@ -65,11 +70,11 @@ public final class MobCombat {
         return true;
     }
 
-    private static AttackType pickAttack(Mob mob, WeaponProfile profile) {
+    private static Optional<AttackType> pickAttack(Mob mob, WeaponProfile profile) {
         List<AttackType> options = new ArrayList<>(profile.attacks().keySet());
         options.remove(AttackType.KICK);
         options.sort(null);
-        return options.get(mob.getRandom().nextInt(options.size()));
+        return options.isEmpty() ? Optional.empty() : Optional.of(options.get(mob.getRandom().nextInt(options.size())));
     }
 
     /** A target this close keeps a fighter in its fighting stance between swings. */

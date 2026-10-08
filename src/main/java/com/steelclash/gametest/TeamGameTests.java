@@ -21,11 +21,13 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -125,6 +127,26 @@ public final class TeamGameTests {
         check(helper, attacker.machine.phase() != Phase.STAGGER, "the attacker isn't parried by a teammate");
         check(helper, guard.stamina.current() == stamina, "the teammate's guard doesn't pay for it");
         done(helper);
+    }
+
+    @GameTest(template = ARENA)
+    public static void aTeammatesShieldNeverBlocksOrBouncesTheSwing(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy ally = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        ally.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+        ally.startUsingItem(InteractionHand.OFF_HAND);
+        helper.runAfterDelay(8, () -> {
+            // Teamed only now: every mock player shares one scoreboard name, so another test's cleanup during the
+            // wait for the shield would take the player off the team.
+            team(helper, player, ally);
+            check(helper, ally.isBlocking(), "the teammate's shield is raised");
+            float stamina = data(ally).stamina.current();
+            swing(player, AttackType.SLASH);
+            check(helper, TestSupport.isHurt(ally), "a friendly swing still does reduced damage through a shield");
+            check(helper, data(ally).stamina.current() == stamina, "a teammate's shield loses no stamina");
+            check(helper, data(player).machine.phase() != Phase.STAGGER, "the teammate never bounces the attacker");
+            done(helper);
+        });
     }
 
     @GameTest(template = ARENA)

@@ -98,17 +98,11 @@ public final class Defense {
      * parries it and fast-forwards your own swing so it lands first.
      */
     private static boolean tryCounter(LivingEntity defender, CombatData data, SwingContext.Active swing) {
-        if (data.machine.phase() != Phase.WINDUP || data.machine.type() != swing.type()
-                || !Combat.isWeaponAttack(swing.type()) || !(swing.attacker() instanceof LivingEntity attacker)) {
+        if (!(swing.attacker() instanceof LivingEntity attacker)) {
             return false;
         }
-        int attackerWindupUs = attacker.getData(ModAttachments.COMBAT).machine.timings().windupUs();
-        if (data.machine.phaseTick() > Guard.counterWindow(Config.COUNTER_WINDOW_TICKS.get(), attackerWindupUs)) {
-            return false;
-        }
-        Optional<WeaponProfile.GuardSpec> guard = Combat.currentProfile(defender, data).flatMap(WeaponProfile::guard);
-        if (guard.isEmpty() || !Guard.inCone(CombatMath.viewYaw(defender), defender.getX(), defender.getZ(),
-                attacker.getX(), attacker.getZ(), guard.get().cone())) {
+        Optional<WeaponProfile.GuardSpec> guard = counterGuard(defender, data, attacker, swing.type());
+        if (guard.isEmpty()) {
             return false;
         }
         data.stamina.spend(swing.staminaDamage() * guard.get().staminaMult() * 0.5f);
@@ -117,6 +111,21 @@ public final class Defense {
         Feedback.parry(defender, attacker);
         Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);
         return true;
+    }
+
+    /** The same eligibility check is used before ending a lagged defender's grace period. Does not change state. */
+    static Optional<WeaponProfile.GuardSpec> counterGuard(LivingEntity defender, CombatData data,
+                                                         LivingEntity attacker, AttackType type) {
+        if (data.machine.phase() != Phase.WINDUP || data.machine.type() != type || !Combat.isWeaponAttack(type)) {
+            return Optional.empty();
+        }
+        int attackerWindupUs = attacker.getData(ModAttachments.COMBAT).machine.timings().windupUs();
+        if (data.machine.phaseTick() > Guard.counterWindow(Config.COUNTER_WINDOW_TICKS.get(), attackerWindupUs)) {
+            return Optional.empty();
+        }
+        return Combat.currentProfile(defender, data).flatMap(WeaponProfile::guard)
+                .filter(guard -> Guard.inCone(CombatMath.viewYaw(defender), defender.getX(), defender.getZ(),
+                        attacker.getX(), attacker.getZ(), guard.cone()));
     }
 
     /**
@@ -158,6 +167,10 @@ public final class Defense {
         }
 
         SwingContext.Active swing = SwingContext.forAttacker(source.getEntity());
+        if (swing != null && swing.attacker() instanceof LivingEntity attacker && Allies.areAllies(attacker, blocker)) {
+            event.setBlocked(false); // friendly hits are scaled, but never defended by a teammate's shield
+            return;
+        }
         float base = swing != null ? swing.staminaDamage()
                 : source.is(DamageTypeTags.IS_PROJECTILE) ? Config.PROJECTILE_STAMINA_DAMAGE.get().floatValue()
                 : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();

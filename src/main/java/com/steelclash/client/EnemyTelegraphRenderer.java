@@ -13,7 +13,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -30,6 +29,8 @@ import org.joml.Matrix4f;
 public final class EnemyTelegraphRenderer {
     private static final double MAX_DISTANCE = 16;
     private static final int SEGMENTS = 6;
+    /** Labels have only seven countdown states; reuse them across fighters and frames. */
+    private static final Component[][][] LABELS = createLabels();
 
     private EnemyTelegraphRenderer() {
     }
@@ -47,17 +48,19 @@ public final class EnemyTelegraphRenderer {
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         Font font = mc.font;
-        for (Entity e : mc.level.entitiesForRendering()) {
-            if (!(e instanceof LivingEntity entity) || entity == mc.player || !entity.hasData(ModAttachments.COMBAT)
-                    || entity.distanceToSqr(mc.player) > MAX_DISTANCE * MAX_DISTANCE) {
-                continue;
-            }
+        boolean drewLabel = false;
+        // Use the level's spatial index instead of visiting every loaded entity on every rendered frame.
+        for (LivingEntity entity : mc.level.getEntitiesOfClass(LivingEntity.class,
+                mc.player.getBoundingBox().inflate(MAX_DISTANCE),
+                e -> e != mc.player && e.hasData(ModAttachments.COMBAT)
+                        && e.distanceToSqr(mc.player) <= MAX_DISTANCE * MAX_DISTANCE)) {
             CombatData data = entity.getData(ModAttachments.COMBAT);
             if (data.machine.phase() != Phase.WINDUP) {
                 continue;
             }
-            Component label = Component.literal(label(data.machine.type(), data.machine.isHeavy()) + " "
-                    + bar(data.machine.phaseProgress(partialTick)));
+            int filled = Math.max(0, Math.min(SEGMENTS,
+                    (int) Math.ceil((1 - data.machine.phaseProgress(partialTick)) * SEGMENTS)));
+            Component label = LABELS[data.machine.type().ordinal()][data.machine.isHeavy() ? 1 : 0][filled];
             Vec3 pos = entity.getPosition(partialTick).add(0, entity.getBbHeight() + 0.6, 0);
             poseStack.pushPose();
             poseStack.translate(pos.x - cam.x, pos.y - cam.y, pos.z - cam.z);
@@ -69,8 +72,11 @@ public final class EnemyTelegraphRenderer {
             font.drawInBatch(label, x, 0, color, false, matrix, buffers, Font.DisplayMode.SEE_THROUGH, 0x40000000,
                     LightTexture.FULL_BRIGHT);
             poseStack.popPose();
+            drewLabel = true;
         }
-        buffers.endBatch();
+        if (drewLabel) {
+            buffers.endBatch();
+        }
     }
 
     private static String label(AttackType type, boolean heavy) {
@@ -86,9 +92,16 @@ public final class EnemyTelegraphRenderer {
         return heavy ? "HEAVY " + name : name;
     }
 
-    /** Remaining windup as filled segments: full when the attack starts, empty when it lands. */
-    private static String bar(double progress) {
-        int filled = (int) Math.ceil((1 - progress) * SEGMENTS);
-        return "▮".repeat(Math.max(0, filled)) + "▯".repeat(Math.max(0, SEGMENTS - filled));
+    private static Component[][][] createLabels() {
+        Component[][][] labels = new Component[AttackType.values().length][2][SEGMENTS + 1];
+        for (AttackType type : AttackType.values()) {
+            for (int heavy = 0; heavy < 2; heavy++) {
+                for (int filled = 0; filled <= SEGMENTS; filled++) {
+                    labels[type.ordinal()][heavy][filled] = Component.literal(label(type, heavy == 1) + " "
+                            + "▮".repeat(filled) + "▯".repeat(SEGMENTS - filled));
+                }
+            }
+        }
+        return labels;
     }
 }

@@ -77,6 +77,10 @@ public final class SoldierPatrols {
             members.add(ModEntities.ARCHER.get());
         }
         for (int i = 0; i < members.size(); i++) {
+            // The random walk can leave the initially checked 10-block area; don't load a new chunk for a member.
+            if (!level.hasChunksAt(pos.getX(), pos.getZ(), pos.getX(), pos.getZ())) {
+                break;
+            }
             pos.setY(level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos).getY());
             Soldier soldier = spawnMember(level, members.get(i), pos, i == 0);
             if (soldier == null && i == 0) {

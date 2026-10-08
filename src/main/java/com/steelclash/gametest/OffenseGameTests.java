@@ -12,9 +12,11 @@ import static com.steelclash.gametest.TestSupport.swing;
 import static com.steelclash.gametest.TestSupport.swordsman;
 
 import com.steelclash.SteelClash;
+import com.steelclash.Config;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.AttackTimings;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import net.minecraft.gametest.framework.GameTest;
@@ -37,6 +39,36 @@ public final class OffenseGameTests {
     private static final String ARENA = "arena";
 
     private OffenseGameTests() {
+    }
+
+    @GameTest(template = ARENA)
+    public static void releaseEntirelyInsideOneTickStillFinalizes(GameTestHelper helper) {
+        boolean clanks = Config.ENVIRONMENT_CLANK.get();
+        Config.ENVIRONMENT_CLANK.set(false);
+        try {
+            Player whiff = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 6);
+            CombatData d = data(whiff);
+            Combat.start(whiff, d, AttackType.SLASH);
+            float stamina = d.stamina.current();
+            float cost = Combat.currentSpec(whiff, d).orElseThrow().staminaCost();
+            d.machine.apply(Phase.WINDUP, AttackType.SLASH, 0, 25_000,
+                    new AttackTimings(25_000, 25_000, 100_000), 0, false, false, false, 0, false);
+            Combat.tickServer(whiff, d);
+            check(helper, d.machine.phase() == Phase.RECOVERY, "the whole release fit inside the windup tick");
+            check(helper, Math.abs(d.stamina.current() - (stamina - cost)) < 0.01, "the sub-tick whiff still costs stamina");
+
+            Player slammer = swordsman(helper, new ItemStack(Items.MACE), FACING_POSITIVE_X, 1);
+            Zombie nearby = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 2);
+            CombatData slam = data(slammer);
+            Combat.start(slammer, slam, AttackType.SPECIAL);
+            slam.machine.apply(Phase.WINDUP, AttackType.SPECIAL, 0, 25_000,
+                    new AttackTimings(25_000, 25_000, 100_000), 0, false, false, false, 0, false);
+            Combat.tickServer(slammer, slam);
+            check(helper, data(nearby).machine.phase() == Phase.STAGGER, "the sub-tick slam still applies its area effect");
+        } finally {
+            Config.ENVIRONMENT_CLANK.set(clanks);
+        }
+        helper.succeed();
     }
 
     @GameTest(template = ARENA)

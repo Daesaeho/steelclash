@@ -226,10 +226,10 @@ public final class Combat {
             return false; // mid-dash
         }
         boolean parryCancel = data.machine.phase() == Phase.WINDUP && data.machine.type() != AttackType.KICK;
-        if (parryCancel) {
-            data.machine.feint();
-        }
-        if (!data.machine.startParry(parryTicks(entity, guard.get()), guard.get().recovery(), Config.PARRY_COOLDOWN_TICKS.get())) {
+        boolean started = parryCancel
+                ? data.machine.cancelIntoParry(parryTicks(entity, guard.get()), guard.get().recovery(), Config.PARRY_COOLDOWN_TICKS.get())
+                : data.machine.startParry(parryTicks(entity, guard.get()), guard.get().recovery(), Config.PARRY_COOLDOWN_TICKS.get());
+        if (!started) {
             return false;
         }
         if (parryCancel) {
@@ -413,10 +413,13 @@ public final class Combat {
             if (result.clank() != null && machine.isAttacking() && !machine.isThwacked() && Config.ENVIRONMENT_CLANK.get()) {
                 clank(entity, data, result.clank());
             }
-            if (before == Phase.RELEASE && machine.phase() == Phase.RECOVERY && data.hitThisSwing.isEmpty()) {
+            // A sub-tick attack may enter and leave RELEASE within a tick that began in WINDUP, and may even finish
+            // recovery. Finalize from the sweep, rather than requiring RELEASE at the beginning of the tick.
+            boolean completedRelease = sweep.to() == 1 && (machine.phase() == Phase.RECOVERY || machine.phase() == Phase.IDLE);
+            if (completedRelease && data.hitThisSwing.isEmpty()) {
                 spend(entity, data, spec.get().staminaCost()); // whiffing costs stamina
             }
-            if (before == Phase.RELEASE && machine.phase() == Phase.RECOVERY && machine.type() == AttackType.SPECIAL
+            if (completedRelease && machine.type() == AttackType.SPECIAL
                     && specialKind(entity, data) == WeaponProfile.SpecialSpec.Kind.SLAM) {
                 Specials.slam(entity, spec.get());
             }
@@ -429,10 +432,13 @@ public final class Combat {
         CombatStateMachine machine = data.machine;
         // The same turn-capped view this tick's sweep used (the phase may already have moved on to recovery).
         boolean capped = isTurnCapped(before) || isTurnCapped(machine.phase());
-        float[] view = CombatMath.swingView(entity, data, capped);
-        data.prevYaw = view[0];
-        data.prevPitch = view[1];
-        data.prevPivot = CombatMath.pivot(entity, 1f);
+        if (capped) {
+            float[] view = CombatMath.swingView(entity, data, true);
+            data.prevYaw = view[0];
+            data.prevPitch = view[1];
+            data.prevPivot = CombatMath.pivot(entity, 1f);
+        }
+        // Non-swing phases never trace a blade. start() initializes fresh snapshots for the next attack.
 
         if (data.queuedAttack != null && machine.canStartAttack()) {
             AttackType queued = data.queuedAttack;

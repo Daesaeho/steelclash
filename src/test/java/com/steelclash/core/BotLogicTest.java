@@ -40,6 +40,52 @@ class BotLogicTest {
         assertEquals(0, tokens.holderCount(2));
     }
 
+    @Test
+    void inactivePruningKeepsTheReverseIndexConsistent() {
+        AttackTokens tokens = new AttackTokens();
+        tokens.acquire(1, 10, 2, id -> true);
+        tokens.acquire(2, 10, 2, id -> true);
+        tokens.acquire(1, 11, 2, id -> false);
+        tokens.releaseAll(10);
+        assertTrue(tokens.holds(1, 11), "pruning 10 on target 1 must not remove 11");
+        assertEquals(0, tokens.holderCount(2));
+        tokens.releaseAll(11);
+        assertEquals(0, tokens.holderCount(1));
+    }
+
+    @Test
+    void leavingAnEntityRemovesItsTargetAndAttackerRoles() {
+        AttackTokens tokens = new AttackTokens();
+        tokens.acquire(1, 10, 3, id -> true);
+        tokens.acquire(1, 11, 3, id -> true);
+        tokens.acquire(2, 1, 3, id -> true);
+        tokens.acquire(2, 10, 3, id -> true);
+        tokens.removeEntity(1);
+        assertEquals(0, tokens.holderCount(1), "the removed target's bucket is gone");
+        assertFalse(tokens.holds(2, 1), "the removed attacker is gone");
+        assertTrue(tokens.holds(2, 10), "unrelated holders stay");
+        tokens.releaseAll(10);
+        tokens.releaseAll(11); // their reverse indexes must no longer mention the removed bucket
+        assertEquals(0, tokens.holderCount(2));
+    }
+
+    @Test
+    void repeatedReleaseClearAndIdReuseDoNotLeaveStaleIndexEntries() {
+        AttackTokens tokens = new AttackTokens();
+        tokens.acquire(1, 10, 1, id -> true);
+        tokens.release(1, 10);
+        tokens.release(1, 10);
+        tokens.releaseAll(10);
+        tokens.acquire(1, 10, 1, id -> true);
+        tokens.clear();
+        tokens.releaseAll(10);
+        assertTrue(tokens.acquire(1, 10, 1, id -> true));
+        tokens.removeEntity(1);
+        tokens.removeEntity(1);
+        tokens.releaseAll(10);
+        assertTrue(tokens.acquire(1, 11, 1, id -> true));
+    }
+
     // ---- skill
 
     @Test

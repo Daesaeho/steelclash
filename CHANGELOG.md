@@ -3,6 +3,25 @@
 **Performance**
 - Combat on the server costs about 40% less at large fights: bots stop scanning for threats once they've found the one they'll answer, swing hitboxes and arc paths are computed once instead of every sub-step, and less garbage is made per tick (150-bot benchmark: 0.46 → 0.27 ms per tick).
 - Fighting mobs on screen work out their combat pose once per frame instead of twice (body lean and arms shared it), and combat packets no longer make garbage checking for fake players.
+- Less garbage in hit detection, pose sampling, attack-slot bookkeeping and the optional telegraph labels.
+
+**Fixes**
+- Bots now use their late parry (waiting for the blade to actually come, against feinters); before, they never saw the release it waits for.
+- Parrying during a riposte's cooldown no longer cancels the attack for free.
+- After a caught parry, lowering the guard no longer leaves your client in a guard recovery the server doesn't have, so the next attack isn't delayed.
+- The parry key's release always reaches the server, so a guard can't stay up after you let go.
+- A teammate's shield no longer blocks your friendly-fire swing, drains their stamina or bounces you.
+- Hurting a reviver always resets the revive, whenever in the tick the damage lands.
+- Downed players can no longer use armor stands.
+- Lag grace for a parry still on its way is no longer cut short by a counter that can't happen any more.
+- Datapack attacks so short that the windup and release fit in one tick still charge whiff stamina and run slams.
+- Profiles with no selectable attack (guard-only, or kick-only for basic mobs) no longer crash the mob AI.
+- Bots release their attack slot when they lose or switch targets, or when the target leaves.
+- With `environmentClank` off, blades no longer stop at walls (line of sight still blocks hits through them).
+- Patrols no longer spawn members into unloaded chunks.
+
+**Network**
+- Protocol 10: combat state packets carry the parry and attack state the client needs to keep predicting. Server and clients must update together.
 
 # 0.3.0-beta
 
