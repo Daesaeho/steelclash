@@ -75,4 +75,9 @@ public enum DamageType {
     public static double mountedChargeMultiplier(double mountSpeedBlocksPerTick) {
         return Math.min(2.5, 1.0 + Math.max(0, mountSpeedBlocksPerTick) * 3.5);
     }
+
+    /** Mounted slash or overhead: half the couched bonus (Chivalry 2 scales every melee attack with horse speed). */
+    public static double mountedSwingMultiplier(double mountSpeedBlocksPerTick) {
+        return 1.0 + (mountedChargeMultiplier(mountSpeedBlocksPerTick) - 1.0) / 2;
+    }
 }

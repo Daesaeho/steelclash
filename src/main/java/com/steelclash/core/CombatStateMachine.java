@@ -60,6 +60,8 @@ public final class CombatStateMachine {
     private boolean fromGuard;
     /** The current windup has used its counter-feint. */
     private boolean counterFeinted;
+    /** The current windup already caught the attack it answered ({@link #counter}): it's committed. */
+    private boolean countered;
     /** The current attack stopped in a body ({@link #thwack}). */
     private boolean thwacked;
     /** Release progress the recovery starts from: 1 normally, the contact point after a thwack. */
@@ -95,6 +97,7 @@ public final class CombatStateMachine {
         this.thwacked = false;
         this.recoverFrom = 1;
         this.counterFeinted = false;
+        this.countered = false;
         enterUs(Phase.WINDUP, attackTimings.windupUs());
         return true;
     }
@@ -176,6 +179,21 @@ public final class CombatStateMachine {
         }
         phaseDurationUs = Math.min(phaseDurationUs, phaseElapsedUs + (long) Math.max(1, ticksLeft) * AttackTimings.TICK_US);
         activeParryTicks = Math.max(activeParryTicks, activeParry);
+        countered = true;
+        return true;
+    }
+
+    /** A counter that caught its attack and is still winding up (Chivalry 2 2.6: too late to dodge out of it). */
+    public boolean isCounterCommitted() {
+        return countered && phase == Phase.WINDUP;
+    }
+
+    /** Lengthens the current recovery (a missed sprint attack, Chivalry 2 2.10). */
+    public boolean extendRecovery(long extraUs) {
+        if (phase != Phase.RECOVERY || extraUs <= 0) {
+            return false;
+        }
+        phaseDurationUs += extraUs;
         return true;
     }
 
@@ -414,12 +432,12 @@ public final class CombatStateMachine {
     /** State needed to continue an authoritative snapshot with the same parry and attack rules as the server. */
     public record PredictionState(int guardRecovery, int parryCooldown, int parryCooldownLeft, int parriedHits,
                                   boolean staggerAllowsParry, int activeParryTicks, boolean fromGuard,
-                                  boolean counterFeinted, int attackSerial) {
+                                  boolean counterFeinted, boolean countered, int attackSerial) {
     }
 
     public PredictionState predictionState() {
         return new PredictionState(guardRecovery, parryCooldown, parryCooldownLeft, parriedHits, staggerAllowsParry,
-                activeParryTicks, fromGuard, counterFeinted, attackSerial);
+                activeParryTicks, fromGuard, counterFeinted, countered, attackSerial);
     }
 
     /** Restores the lifecycle rules omitted by a phase/animation-only snapshot. */
@@ -432,6 +450,7 @@ public final class CombatStateMachine {
         activeParryTicks = state.activeParryTicks();
         fromGuard = state.fromGuard();
         counterFeinted = state.counterFeinted();
+        countered = state.countered();
         attackSerial = state.attackSerial();
     }
 

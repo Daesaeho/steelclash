@@ -219,4 +219,20 @@ public final class FootworkGameTests {
             Combat.tickServer(attacker, data);
         }
     }
+
+    @GameTest(template = ARENA, timeoutTicks = 60)
+    public static void noDodgingOutOfACounterThatCaughtItsAttack(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        helper.runAfterDelay(5, () -> { // let it settle onto the floor
+            CombatData d = data(defender);
+            Combat.start(defender, d, AttackType.SLASH);
+            check(helper, Dodge.canDodge(defender, d), "an ordinary windup can be dodged out of");
+            TestSupport.swing(attacker, AttackType.SLASH); // countered: same attack, just started
+            check(helper, data(attacker).machine.phase() == Phase.STAGGER, "the slash is countered");
+            check(helper, d.machine.phase() == Phase.WINDUP && !Dodge.canDodge(defender, d),
+                    "the counter that caught it is committed (Chivalry 2 2.6)");
+            helper.succeed();
+        });
+    }
 }

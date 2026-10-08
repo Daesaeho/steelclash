@@ -10,6 +10,7 @@ import com.steelclash.entity.TrainingDummy;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.Set;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
@@ -188,6 +189,9 @@ public final class CombatEvents {
             return; // a kick doesn't interrupt an attack (Chivalry 2); it only breaks guards and staggers the idle
         }
         CombatData data = entity.getData(ModAttachments.COMBAT);
+        if (data.machine.type() == AttackType.THROW && event.getSource().is(DamageTypeTags.IS_PROJECTILE)) {
+            return; // arrows and bolts don't interrupt a throw (Chivalry 2 2.4.2)
+        }
         if (data.machine.phase() == Phase.WINDUP && !Combat.hasHyperArmor(entity, data)) {
             Combat.stagger(entity, data, Config.FLINCH_TICKS.get(), true);
         }

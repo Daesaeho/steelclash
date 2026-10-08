@@ -54,7 +54,7 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         buf.writeVarInt(predictionState.parriedHits());
         buf.writeVarInt(predictionState.activeParryTicks());
         buf.writeByte((predictionState.staggerAllowsParry() ? 1 : 0) | (predictionState.fromGuard() ? 2 : 0)
-                | (predictionState.counterFeinted() ? 4 : 0));
+                | (predictionState.counterFeinted() ? 4 : 0) | (predictionState.countered() ? 8 : 0));
         buf.writeVarInt(predictionState.attackSerial());
         buf.writeOptional(profile, FriendlyByteBuf::writeResourceLocation);
         buf.writeBoolean(authoritative);
@@ -81,7 +81,7 @@ public record CombatStatePayload(int entityId, Phase phase, AttackType attackTyp
         int attackSerial = buf.readVarInt();
         CombatStateMachine.PredictionState predictionState = new CombatStateMachine.PredictionState(guardRecovery,
                 parryCooldown, parryCooldownLeft, parriedHits, (predictionFlags & 1) != 0, activeParryTicks,
-                (predictionFlags & 2) != 0, (predictionFlags & 4) != 0, attackSerial);
+                (predictionFlags & 2) != 0, (predictionFlags & 4) != 0, (predictionFlags & 8) != 0, attackSerial);
         return new CombatStatePayload(entityId, phase, type, phaseElapsedUs, phaseDurationUs, timings, riposteTicks,
                 (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0, variant, (flags & 8) != 0, thwacked, recoverFrom, predictionState,
                 buf.readOptional(FriendlyByteBuf::readResourceLocation), buf.readBoolean());

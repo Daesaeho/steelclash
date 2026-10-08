@@ -31,7 +31,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Morph:** press a *different* attack key during a windup to switch to that attack.
 - **Combo:** attack again during your recovery and the next attack replaces it, alternating sides. As in Chivalry 2 this works after a miss too, but not after a blocked or parried attack. A combo winds up a little longer than a fresh attack, but it's much sooner than waiting out the recovery.
 - **Flinch:** taking damage during your windup interrupts it (except a heavy with hyper armour).
-- **Lunge:** attack while sprinting for extra reach and damage.
+- **Lunge:** attack while sprinting for extra reach and damage. Miss with it and you recover 0.3 s longer, so don't sprint-swing blindly.
 - **Jump attack:** an overhead started in mid-air hits harder.
 - **Gesture attacks (experimental, client config `gestureAttacks`):** hold left click and drag the mouse toward where the attack should come from. Drag left for a slash from the left, right for a slash from the right, up for an overhead, down for a stab. A plain click still slashes, and holding on after the gesture makes it a heavy. Everything is customizable:
   - `gestureLeft`, `gestureRight`, `gestureUp` and `gestureDown` set each direction to a slash from the left, a slash from the right, an overhead, a stab, a kick, or NONE (ignore that direction). For example, swap them to "follow the blade" so that dragging left swings right to left.
@@ -46,7 +46,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Riposte:** attack after blocking a hit. Two-handed weapons riposte faster than they normally attack; one-handers riposte at their normal speed. While it winds up and swings, it also parries anyone else hitting your front (**active parry**). That's how you fight two at once.
 - **Counter:** answer an attack with the **same** attack type, started just after theirs (from your guard or not). Their attack is parried, yours lands first, and it carries an active parry too.
 - **Parry forgiveness:** attack out of your guard with the wrong type, or too late, in the last tenth of a second before a hit lands, and you still block it instead of getting hit.
-- **Dodge** (Left Alt): a quick dash in the direction you're moving, or backwards when standing still. It costs 12 stamina, has a one-second cooldown, and drops a windup or a raised guard. You can't dodge out of a swing that's already coming down, or while staggered. Dodging a swing makes it whiff, leaving the attacker in recovery. You can't raise your guard until the dash is half done, and a jab straight after a dodge comes out a little slower.
+- **Dodge** (Left Alt): a quick dash in the direction you're moving, or backwards when standing still. It costs 12 stamina, has a one-second cooldown, and drops a windup or a raised guard. You can't dodge out of a swing that's already coming down, out of a counter that has already caught its attack, or while staggered. Dodging a swing makes it whiff, leaving the attacker in recovery. You can't raise your guard until the dash is half done, and a jab straight after a dodge comes out a little slower.
 - **Jab** (V): a quick, short thrust for a quarter of your weapon's damage. Use it to interrupt a slow heavy up close. It can be parried, and it can't be feinted, made heavy or cancelled. Two jabs meeting: the one already out blocks the other. Some mobs jab your heavies too.
 - **Feint into a kick or jab:** during a weapon windup, press kick or jab and the attack turns into it (costs the feint's stamina).
 - **Buffered retaliation:** press an attack while staggered (after being parried, say) and it starts the moment the stagger ends.
@@ -59,7 +59,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
   - *Weapon block:* a held weapon guard facing it takes 30% off the damage. It costs a little stamina but never breaks your guard or disarms you.
   - *Shield:* a raised shield stops it outright.
   - *Headshots:* arrows, bolts and thrown weapons that hit the head deal 25% more, and you hear a ding when yours do.
-  - *Drawing a bow:* getting hurt while drawing a bow or loading a crossbow loses the draw, for you and for skeletons. Rush archers.
+  - *Drawing a bow:* getting hurt while drawing a bow or loading a crossbow loses the draw, for you and for skeletons. Rush archers. Arrows don't interrupt a weapon throw, though.
 
 ## Footwork
 
@@ -101,9 +101,9 @@ Damage types (**cut**, **blunt**, **chop**) do more or less damage depending on 
 
 **Cleave and thwack.** Cutting and chopping swings carry on through a crowd, up to the weapon's target limit. A light swing with a blunt weapon stops in the first body it meets (a *thwack*) and you recover from the impact, and a combo can follow straight away; if that hit kills, the swing carries on. Heavy swings always cleave, so a heavy mace reaches the second enemy at the cost of its slower windup. In a crowd, pick which body your blunt light meets first.
 
-- **Special** (R): an archetype move with a cooldown, such as the sword lunge, the hammer slam or the polearm sweep.
+- **Special** (R): an archetype move with a cooldown, such as the sword lunge, the hammer slam or the polearm sweep. A special staggers whatever it hits. It can't be countered, and blocking one with your weapon makes *you* reel instead of opening a riposte, so dodge it or step out of reach (a shield still takes it normally).
 - **Throw** (G): throws your weapon. It does real damage and drops where it lands.
-- **Mounted:** stabs from a moving mount hit harder the faster you ride (couched lance).
+- **Mounted:** attacks from a moving mount hit harder the faster you ride: stabs and specials the most (couched lance), slashes and overheads half as much.
 
 ## Enemies
 

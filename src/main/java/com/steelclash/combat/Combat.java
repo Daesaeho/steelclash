@@ -390,12 +390,20 @@ public final class Combat {
                     if (!held) {
                         float healthBefore = target.getHealth();
                         deliver(entity, target, hit);
+                        if (data.swingBlocked) {
+                            thwack(entity, data, spec.get(), contact.progress());
+                            break; // a special stopped on a weapon guard, the attacker unstaggered
+                        }
                         if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
                             break; // parried, countered or blocked: the swing stops here
                         }
                         landed = true;
                         if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
                             Feedback.hit(entity, target, machine.isHeavy());
+                            if (machine.type() == AttackType.SPECIAL && target.hasData(ModAttachments.COMBAT)) {
+                                // Specials stagger what they hit (Chivalry 2), so the attacker keeps the initiative.
+                                stagger(target, target.getData(ModAttachments.COMBAT), Config.SPECIAL_HIT_STAGGER_TICKS.get(), true);
+                            }
                         }
                     }
                     if (stopsAt(entity, data, spec.get(), !held && target.isDeadOrDying())) {
@@ -418,6 +426,10 @@ public final class Combat {
             boolean completedRelease = sweep.to() == 1 && (machine.phase() == Phase.RECOVERY || machine.phase() == Phase.IDLE);
             if (completedRelease && data.hitThisSwing.isEmpty()) {
                 spend(entity, data, spec.get().staminaCost()); // whiffing costs stamina
+                // A missed sprint attack recovers longer, so it can be punished (Chivalry 2 2.10).
+                if (data.lunge && machine.extendRecovery(Config.LUNGE_WHIFF_RECOVERY_MS.get() * 1000L)) {
+                    sync(entity, data, true);
+                }
             }
             if (completedRelease && machine.type() == AttackType.SPECIAL
                     && specialKind(entity, data) == WeaponProfile.SpecialSpec.Kind.SLAM) {
@@ -579,9 +591,12 @@ public final class Combat {
             damageMult *= (float) profile.get().damageTypeOf(spec).multiplierFor(target.getArmorValue());
             staminaDamage *= (float) profile.get().damageTypeOf(spec).staminaDamageMultiplier();
         }
-        // Couched lance: stabs and lunges from a moving mount hit harder the faster it goes.
-        if (attacker.getVehicle() != null && (type == AttackType.STAB || type == AttackType.SPECIAL)) {
-            damageMult *= (float) DamageType.mountedChargeMultiplier(attacker.getVehicle().getDeltaMovement().horizontalDistance());
+        // Mounted (Chivalry 2): every melee attack hits harder the faster the mount goes; stabs and specials most
+        // (couched lance), slashes and overheads half as much.
+        if (attacker.getVehicle() != null && type != AttackType.JAB) {
+            double speed = attacker.getVehicle().getDeltaMovement().horizontalDistance();
+            boolean couched = type == AttackType.STAB || type == AttackType.SPECIAL;
+            damageMult *= (float) (couched ? DamageType.mountedChargeMultiplier(speed) : DamageType.mountedSwingMultiplier(speed));
         }
         return new Hit(type, spec, damageMult, staminaDamage, data.machine.isHeavy());
     }
@@ -613,6 +628,10 @@ public final class Combat {
     static void deliverHeld(LivingEntity attacker, LivingEntity target, Hit hit) {
         float healthBefore = target.getHealth();
         deliver(attacker, target, hit);
+        CombatData attackerData = attacker.getData(ModAttachments.COMBAT);
+        if (attackerData.swingBlocked && attackerData.machine.phase() == Phase.RELEASE) {
+            thwack(attacker, attackerData, hit.spec(), attackerData.machine.phaseProgress(0));
+        }
         if (target.getHealth() < healthBefore) {
             Feedback.hit(attacker, target, hit.heavy());
             CombatData data = attacker.getData(ModAttachments.COMBAT);

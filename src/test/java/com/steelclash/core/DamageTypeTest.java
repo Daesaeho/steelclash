@@ -38,6 +38,13 @@ class DamageTypeTest {
     }
 
     @Test
+    void mountedSwingsGetHalfTheChargeBonus() {
+        assertEquals(1.0, DamageType.mountedSwingMultiplier(0), 1e-9);
+        assertEquals(1.7, DamageType.mountedSwingMultiplier(0.4), 1e-9, "half of a galloping lance's +140%");
+        assertEquals(1.75, DamageType.mountedSwingMultiplier(5), 1e-9, "capped at half the lance's cap");
+    }
+
+    @Test
     void chopsAndBluntDrainMoreStaminaFromAGuard() {
         org.junit.jupiter.api.Assertions.assertEquals(1.0, DamageType.CUT.staminaDamageMultiplier(), 1e-9);
         org.junit.jupiter.api.Assertions.assertEquals(1.10, DamageType.CHOP.staminaDamageMultiplier(), 1e-9);

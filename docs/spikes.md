@@ -367,6 +367,19 @@ Attack phases are now timed in integer **microseconds** and resolved **inside** 
 - **Modpacks:** Better Combat and Epic Fight are declared incompatible in `neoforge.mods.toml`, so the loader refuses them with a message. Other mods' fake players are handled by the tracking-send fix (see "Downed and revive").
 - **Not done:** a full modpack playtest and a two-machine dedicated-server session. Those are manual checks (M7/M8 in docs/testing.md).
 
+## Report gaps, step A (Chivalry 2 report v2.1, 2026-10-08)
+
+Five small rules from the report that the mod didn't have yet. Network protocol **11** (the counter flag below).
+
+- **Blocking a special** (report §8.5, community-sourced): a weapon guard still stops it and pays its stamina (and disarms when out), but the blocker staggers (`specialBlockStaggerTicks`, 10) instead of opening a riposte, and the attacker isn't staggered. `Defense` marks the attacker's `CombatData.swingBlocked`, and the swing loop thwacks the blade at the contact point, so it stops on the guard without cleaving on. A held hit (lag compensation) stops at its current progress instead. Specials still can't be countered (they aren't weapon attacks), and an active parry still catches them. Shields are unchanged.
+- **Specials stagger on hit** (§8.6, community): `specialHitStaggerTicks` (8) on any enemy the special damages. Allies are skipped, and the slam's area stagger is unchanged.
+- **Missed sprint attack** (§8.2, official 2.10): a lunge that hits nothing gets `lungeWhiffRecoveryMs` (300) more recovery. Chivalry 2 doesn't publish the amount; 300 ms is our choice. Synced authoritatively, so the attacker's client recovers just as long.
+- **Mounted damage** (§20.2, official): every melee attack scales with mount speed. Stabs and specials keep the couched curve (up to 2.5×); slashes and overheads get half the bonus (`DamageType.mountedSwingMultiplier`, up to 1.75×), our choice since the official notes give no numbers. Jabs and kicks get none.
+- **No dodging out of a caught counter** (§7.3, official 2.6): `CombatStateMachine.counter` sets `countered`; `Dodge.canDodge` refuses while that windup lasts. Players dodge client-side, so the flag travels in `PredictionState` (bit 8 of its flags byte), hence protocol 11.
+- **Arrows don't interrupt a throw** (§19.4, official 2.4.2): projectile damage skips the flinch during a throw windup.
+- **Tests:** unit `aCounterThatCaughtItsAttackIsCommittedUntilTheNextAttack`, `extraRecoveryOnlyLengthensARecovery`, `mountedSwingsGetHalfTheChargeBonus`; GameTests `blockingASpecialStaggersTheBlockerNotTheAttacker`, `specialsStaggerWhatTheyHit`, `aMissedSprintAttackRecoversLonger`, `arrowsDontInterruptAThrow`, `noDodgingOutOfACounterThatCaughtItsAttack`. Mutation check: 11 of 11 caught. `arrowsDontInterruptAThrow` was flaky at first: the arrow sat at the world origin and zombies spawn facing anywhere, so the slashing control zombie sometimes deflected it (projectile counter). The zombies now face one way with the arrow behind them. The mounted damage path itself isn't integration-tested (only its formula).
+- **Next (step B):** a hit during the victim's release interrupts it (report §2.8). Interrupts would be collected during the tick and applied at its end, so blades meeting in the same tick trade regardless of entity order.
+
 ## Bug audit and fixes (2026-10-08)
 
 Reviewed `1cfe922` plus both local optimization passes. Ten distinct findings were present:

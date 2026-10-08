@@ -73,6 +73,8 @@ public class CombatData {
     public ItemStack weapon = ItemStack.EMPTY;
     /** Entities already hit by the current swing (each target is hit at most once per swing). */
     public final IntSet hitThisSwing = new IntOpenHashSet();
+    /** A weapon guard blocked the current swing (a special): the blade stops there ({@link Defense}). */
+    public boolean swingBlocked;
     /** View and pivot at the end of the previous tick, so each tick's sweep interpolates the wielder's turning. */
     public float prevYaw;
     public float prevPitch;
@@ -113,5 +115,6 @@ public class CombatData {
 
     public void resetSwing() {
         hitThisSwing.clear();
+        swingBlocked = false;
     }
 }

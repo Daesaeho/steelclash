@@ -79,6 +79,13 @@ public class Config {
     public static final ModConfigSpec.IntValue PARRIED_STAGGER_TICKS = BUILDER
             .comment("How long an attacker is staggered after being parried (they may still parry the riposte)")
             .defineInRange("parriedStaggerTicks", 14, 1, 100);
+    public static final ModConfigSpec.IntValue SPECIAL_BLOCK_STAGGER_TICKS = BUILDER
+            .comment("Blocking a special attack with a weapon guard staggers the blocker this long instead of opening a",
+                    "riposte; the attacker keeps the initiative (Chivalry 2)")
+            .defineInRange("specialBlockStaggerTicks", 10, 1, 100);
+    public static final ModConfigSpec.IntValue SPECIAL_HIT_STAGGER_TICKS = BUILDER
+            .comment("A special attack that hits staggers its target this long (Chivalry 2)")
+            .defineInRange("specialHitStaggerTicks", 8, 1, 100);
     public static final ModConfigSpec.IntValue SHIELD_BOUNCE_STAGGER_TICKS = BUILDER
             .comment("How long an attacker is staggered after their swing hits a shield")
             .defineInRange("shieldBounceStaggerTicks", 8, 0, 100);
@@ -229,6 +236,10 @@ public class Config {
     public static final ModConfigSpec.DoubleValue LUNGE_DAMAGE_MULT = BUILDER
             .comment("Damage multiplier for attacks started while sprinting")
             .defineInRange("lungeDamageMult", 1.15, 0.0, 10.0);
+    public static final ModConfigSpec.IntValue LUNGE_WHIFF_RECOVERY_MS = BUILDER
+            .comment("Extra recovery after an attack started while sprinting hits nothing (Chivalry 2 2.10: missed",
+                    "sprint attacks can be punished)")
+            .defineInRange("lungeWhiffRecoveryMs", 300, 0, 5000);
     public static final ModConfigSpec.BooleanValue DAMAGE_TYPES = BUILDER
             .comment("Cut/chop/blunt/pierce damage versus armour weight (blunt beats plate, cuts beat cloth)")
             .define("damageTypes", true);

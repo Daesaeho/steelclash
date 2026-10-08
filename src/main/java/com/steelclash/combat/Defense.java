@@ -79,14 +79,21 @@ public final class Defense {
         float staminaDamage = swing != null ? swing.staminaDamage() : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
         boolean exhausted = data.stamina.spend(staminaDamage * guard.get().staminaMult());
         Feedback.parry(defender, attacker);
+        // Chivalry 2: blocking a special makes the blocker reel instead of opening a riposte, and the attacker keeps the
+        // initiative: their blade stops on the guard (CombatData.swingBlocked) but they aren't staggered.
+        boolean special = swing != null && swing.type() == AttackType.SPECIAL;
         if (exhausted) {
             Disarm.disarm(defender);
             Combat.stagger(defender, data, Config.GUARD_BREAK_STAGGER_TICKS.get(), false);
+        } else if (special) {
+            Combat.stagger(defender, data, Config.SPECIAL_BLOCK_STAGGER_TICKS.get(), true);
         } else {
             data.machine.parrySucceeded(Config.RIPOSTE_WINDOW_TICKS.get());
             Combat.sync(defender, data, true);
         }
-        if (swing != null) {
+        if (special) {
+            attacker.getData(ModAttachments.COMBAT).swingBlocked = true;
+        } else if (swing != null) {
             // The parried attacker reels back; they may still parry the coming riposte.
             Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);
         }

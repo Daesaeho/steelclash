@@ -716,4 +716,40 @@ class CombatStateMachineTest {
         assertFalse(n.isCounterFeinted());
         assertTrue(n.counterFeint(AttackType.STAB, TIMINGS, 0, false), "a new attack gets its own counter-feint");
     }
+
+    @Test
+    void aCounterThatCaughtItsAttackIsCommittedUntilTheNextAttack() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        assertFalse(m.isCounterCommitted(), "an ordinary windup can still be dodged out of");
+        assertTrue(m.counter(2, 5));
+        assertTrue(m.isCounterCommitted());
+        CombatStateMachine client = new CombatStateMachine();
+        client.applyPredictionState(m.predictionState());
+        assertTrue(client.predictionState().countered(), "the client learns the counter is committed too");
+        m.tick();
+        m.tick();
+        assertEquals(Phase.RELEASE, m.phase());
+        assertFalse(m.isCounterCommitted(), "only the windup is committed");
+        m.cancel();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        assertFalse(m.isCounterCommitted(), "a new attack starts uncommitted");
+    }
+
+    @Test
+    void extraRecoveryOnlyLengthensARecovery() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.STAB, TIMINGS);
+        assertFalse(m.extendRecovery(AttackTimings.TICK_US), "not during a windup");
+        while (m.phase() != Phase.RECOVERY) {
+            m.tick();
+        }
+        assertTrue(m.extendRecovery(2L * AttackTimings.TICK_US));
+        int ticks = 0;
+        while (m.phase() == Phase.RECOVERY) {
+            m.tick();
+            ticks++;
+        }
+        assertEquals(TIMINGS.recovery() + 2, ticks, "two ticks longer");
+    }
 }

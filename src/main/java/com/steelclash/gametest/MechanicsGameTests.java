@@ -28,6 +28,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -261,5 +262,70 @@ public final class MechanicsGameTests {
 
     private static WeaponProfile.AttackSpec decode(String json) {
         return WeaponProfile.AttackSpec.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow();
+    }
+
+    @GameTest(template = ARENA)
+    public static void specialsStaggerWhatTheyHit(GameTestHelper helper) {
+        Player lunger = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 2);
+        Player slasher = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 6);
+        Zombie lunged = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 2);
+        Zombie slashed = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 6);
+        swing(lunger, AttackType.SPECIAL);
+        swing(slasher, AttackType.SLASH);
+        check(helper, isHurt(lunged) && isHurt(slashed), "both attacks land");
+        check(helper, data(lunged).machine.phase() == Phase.STAGGER, "the special staggers its target");
+        check(helper, data(slashed).machine.phase() == Phase.IDLE, "an ordinary hit on an idle target doesn't");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void aMissedSprintAttackRecoversLonger(GameTestHelper helper) {
+        Player sprinter = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 2);
+        Player walker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 6);
+        sprinter.setSprinting(true);
+        int sprinting = attackTicks(sprinter, AttackType.STAB);
+        int walking = attackTicks(walker, AttackType.STAB);
+        int extra = Config.LUNGE_WHIFF_RECOVERY_MS.get() / 50;
+        check(helper, sprinting == walking + extra,
+                "a whiffed sprint stab recovers " + extra + " ticks longer: " + sprinting + " vs " + walking);
+
+        Player hitter = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 4);
+        helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        hitter.setSprinting(true);
+        check(helper, attackTicks(hitter, AttackType.STAB) == walking, "a sprint stab that lands recovers normally");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void arrowsDontInterruptAThrow(GameTestHelper helper) {
+        Zombie thrower = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 2);
+        Zombie slasher = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 6);
+        thrower.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        slasher.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        Combat.start(thrower, data(thrower), AttackType.THROW);
+        Combat.start(slasher, data(slasher), AttackType.SLASH);
+        // From behind: a fresh slash windup facing an arrow would deflect it (projectile counter).
+        Arrow arrow = new Arrow(EntityType.ARROW, helper.getLevel());
+        for (Zombie zombie : new Zombie[]{thrower, slasher}) {
+            TestSupport.face(zombie, FACING_POSITIVE_X);
+            arrow.setPos(zombie.position().add(-3, 1, 0));
+            zombie.hurt(zombie.damageSources().arrow(arrow, null), 1);
+        }
+        check(helper, isHurt(thrower) && isHurt(slasher), "both arrows hurt");
+        check(helper, data(thrower).machine.phase() == Phase.WINDUP, "the throw carries on, phase " + data(thrower).machine.phase());
+        check(helper, data(slasher).machine.phase() == Phase.STAGGER, "a melee windup still flinches");
+        helper.succeed();
+    }
+
+    /** Ticks from starting an attack until the attacker is free again. */
+    private static int attackTicks(Player player, AttackType type) {
+        CombatData data = data(player);
+        Combat.requestAttack(player, type);
+        int ticks = 0;
+        while (data.machine.isAttacking() && ticks < 400) {
+            Combat.tickServer(player, data);
+            ticks++;
+        }
+        return ticks;
     }
 }

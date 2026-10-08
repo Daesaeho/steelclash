@@ -408,4 +408,23 @@ public final class DefenseGameTests {
         check(helper, d.machine.phaseTick() == 0, "and its windup starts over: a second chance at the timing");
         helper.succeed();
     }
+
+    // ---- special attacks (Chivalry 2)
+
+    @GameTest(template = ARENA)
+    public static void blockingASpecialStaggersTheBlockerNotTheAttacker(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        CombatData d = data(defender);
+        Combat.requestParry(defender);
+        float stamina = d.stamina.current();
+        swing(attacker, AttackType.SPECIAL);
+        check(helper, !isHurt(defender), "the guard still stops the special");
+        check(helper, d.stamina.current() < stamina, "blocking it costs stamina");
+        check(helper, d.machine.phase() == Phase.STAGGER, "the blocker reels instead, phase " + d.machine.phase());
+        check(helper, d.machine.riposteTicks() == 0, "no riposte window opens");
+        check(helper, data(attacker).machine.phase() != Phase.STAGGER, "the attacker isn't staggered: they keep the initiative");
+        check(helper, data(attacker).machine.isThwacked(), "the blade stopped on the guard");
+        helper.succeed();
+    }
 }

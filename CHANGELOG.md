@@ -1,3 +1,15 @@
+# Unreleased
+
+**Combat** (from the Chivalry 2 report)
+- Specials stagger whatever they hit. Blocking one with a weapon guard makes the blocker reel instead of opening a riposte, and the attacker isn't staggered; specials still can't be countered.
+- A sprint attack that misses recovers 0.3 s longer (`lungeWhiffRecoveryMs`).
+- Mounted: every melee attack hits harder the faster the mount goes, not just stabs; slashes and overheads get half the couched-lance bonus.
+- A counter that has already caught its attack can't be dodged out of.
+- Arrows and bolts no longer interrupt a weapon throw.
+
+**Network**
+- Protocol 11: server and clients must update together.
+
 # 0.3.2-beta
 
 **Performance**
