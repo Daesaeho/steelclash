@@ -439,3 +439,62 @@ Validation (2026-10-08, Java 21, with both optimization follow-ups): build, JUni
   error. Removing free-arm clip offsets from a solved mob grip does not resolve those geometry limitations.
 
 Validation: build, JUnit and all 148 GameTests pass; mutation check 7 of 7; a before/after pose sheet changed only where expected. Details and manual checks: [animation.md](animation.md).
+
+## Motion check with onion skins (2026-10-08)
+
+Each attack was photographed every 50 ms of its windup, release and recovery (pose sheet with `-PposeSheetPoints` at
+even time steps, `cameraMotion = 0` so the view stays still) and run through the onion-skin skill per camera view.
+
+- **Found:** clips eased in and out of *every* keyframe, so a part stopped dead on intermediate keys. The slash
+  release twists the body 45, 0, -50 degrees with a key at the middle: from behind, the subject moved 15, 22, **1, 25**,
+  2 px per step: a stall at the key, then a lurch. `PoseClip` now uses monotone cubic tangents (Fritsch-Butland): the
+  first and last keys still ease, a key where a part turns round still holds, nothing overshoots, and motion through a
+  middle key keeps its speed. The same steps now read 13, 18, 9, 8, 4 px.
+- **Checked and fine:** windup into release is seamless in every attack (stab: identical frames across the boundary;
+  heavy slash: a 1% step). The heavy slash release is a clean bell (4, 8, 14, 16, 11, 8 px). The first-person ready
+  stance turns continuously into each windup.
+- **Fast but intended:** the windup draw (about 20 px per step for 150 ms) and the start of the overhead release,
+  which follows the server's traced arc and must stay in step with it.
+- **Not real:** single-step centroid jumps with an even changed share are the blade passing behind the body (seen
+  from behind only), or pointing at the camera in first person.
+
+Mutation check: 3 of 3 caught (every key stopping the motion, no hold at a turning key, no ease-in at the first key).
+
+## Broader first-person swings (2026-10-08)
+
+First person drew exactly the traced arc from the eye, which sits behind the hand: the slash (plus or minus 70
+degrees) mostly pointed away from the camera, stayed bottom-centre and barely crossed the screen. In the first-person
+pass only, the swing's angle from the view is now spread (`firstPersonSwingWidth`, yaw times the width, pitch times half
+the extra) and raised (`firstPersonSwingLift`), and both arms slide toward the blade's side (12 px at width 2 and 90
+degrees) and rise (0.1 px per degree of lift). Pose sheets at 1.0/0, 1.4/15 and 1.7/25: 1.4/15 starts the slash with
+the hands at the right edge and ends with the blade out at the left; at 1.7/25 the arms fill the screen. An onion-skin
+run at 1.4/15 shows continuous motion: the largest step is the arms crossing the centre at the fastest point of the
+release, with elevated neighbours. The hit sweep, camera sway, third person and other players are unchanged.
+
+## Arm motion by swing type (2026-10-08)
+
+Filmstrips of slash, overhead, stab and heavy slash (front and back), side views from the mob pose sheet, and both with
+`-PposeSheetDebug` so the traced blade is drawn on the same frame.
+
+- **Mobs held the weapon about 0.7 blocks below the hit.** A mob's held item couldn't be turned in the hand, so
+  `ArmAim.aimArmForBlade` pitched the whole arm about 80 degrees below the aim to point vanilla's handheld blade along
+  it: the hand hung at the hip and every cut and thrust was drawn at waist height while the trace ran at eye height.
+  Players were fine (blade along the trace, small offset). `ItemInHandLayerMixin` now turns the item in a mob's hand
+  just before it is drawn, at the same point and in the same order (Z, Y, X of the hand-frame angles) as Player
+  Animation Library does for players, so mobs use the player's `WeaponRig`. Side views with the trace: husk stab, slash
+  and overhead blades lie on the red line; a vindicator's axe too. A mob type is only turned once the item layer has
+  drawn an item for it; others keep the pitched arm. The mob pose sheet now marks its mob aggressive, as fighters are
+  in game: a vindicator only shows its arms and weapon then.
+- **Windups didn't read as loading the blow.** The slash drew back to 1.25 times its start (87.5 degrees for a sword:
+  the arm straight out sideways, the blade just past the shoulder line); the overhead stopped at straight up because
+  pose pitch was clamped to -90. `ArcPath.windup` now draws back against the arc's own direction of travel (40 degrees
+  light, 55 heavy), so a slash cocks to about 110 degrees and an overhead leans back to about -110; a thrust, which
+  extends rather than turns, is only pulled in and raised as before. Pose pitch may go to -125 (`ArmAim.MIN_POSE_PITCH`:
+  up and behind); the traced blade keeps to -90..90. The first-person spread eases off past 100 degrees so a cocked
+  slash stays at the screen edge.
+- **Smoothness:** onion skins every 50 ms from behind: the slash's settle into the release is a smooth bump (4, 10, 11,
+  5 px) with no step at the hand-over; the overhead is unchanged. In first person the overhead windup raises the arms
+  into a V in 150 ms, continuously, with the blade up out of view.
+
+Mutation check: 7 of 7 caught after one fix (the first run showed that clamping the arm aim back to -90 left the arm
+leaning back but the blade upright, which no test checked; `theArmCanLeanBackOverTheHead` now checks the blade too).

@@ -40,6 +40,10 @@ public class ProceduralSwingAnimation implements IAnimation {
     private static final float HIP_LAG = 0.5f;
     private static final FirstPersonConfiguration[] FIRST_PERSON = firstPersonConfigurations();
     private static final double[] NO_TURN = {0, 0, 0};
+    /** First-person sideways travel of the arms at full spread (width 2) and the swing at 90 degrees, pixels. */
+    private static final double SWEEP_PIXELS = 12;
+    /** First-person rise of the arms per degree of swing lift, pixels. */
+    private static final double LIFT_PIXELS_PER_DEGREE = 0.1;
 
     private final AbstractClientPlayer player;
     @Nullable
@@ -49,6 +53,9 @@ public class ProceduralSwingAnimation implements IAnimation {
     @Nullable
     private CombatPose ready;
     private WeaponRig readyRig = rig;
+    /** First person only: the swing spread across the screen ({@link CombatPose#spreadForView}); null otherwise. */
+    @Nullable
+    private WeaponRig viewRig;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -72,6 +79,11 @@ public class ProceduralSwingAnimation implements IAnimation {
         if (pose != null && !pose.kick()) {
             rig = rigFor(pose);
         }
+        Minecraft mc = Minecraft.getInstance();
+        viewRig = pose != null && !pose.kick() && player == mc.player && mc.options.getCameraType().isFirstPerson()
+                ? rigFor(pose.spreadForView(Config.Client.FIRST_PERSON_SWING_WIDTH.get(), Config.Client.FIRST_PERSON_SWING_LIFT.get(),
+                        player.getViewXRot(state.getPartialTick())))
+                : null;
         ready = wantsReadyStance() ? CombatPose.ready(player, state.getPartialTick()).orElse(null) : null;
         if (ready != null) {
             readyRig = rigFor(ready);
@@ -105,12 +117,16 @@ public class ProceduralSwingAnimation implements IAnimation {
             return bone;
         }
         float w = (float) pose.weight();
+        WeaponRig rig = viewRig != null && FirstPersonMode.isFirstPersonPass() ? viewRig : this.rig;
         switch (bone.getName()) {
             case "right_arm", "left_arm" -> {
                 boolean left = bone.getName().equals("left_arm");
                 boolean main = left == pose.leftHanded();
                 String channel = left ? "leftArm" : "rightArm";
                 firstPersonOffset(bone, pose, readyBase ? 0 : w, w); // over the ready stance, it already moved them
+                if (viewRig != null && FirstPersonMode.isFirstPersonPass()) {
+                    viewSweep(bone, w);
+                }
                 bone.setBend(pose.offset(channel + "Bend", 0)); // PAL 1.21.1 has no bend drawing backend
                 if (main && !pose.kick()) {
                     blendRotation(bone, rig.arm(), w);
@@ -162,6 +178,17 @@ public class ProceduralSwingAnimation implements IAnimation {
             bone.setPosZ(bone.getPosZ() - (float) (pose.firstPerson().forward() * base - retraction * w));
             bone.setPosY(bone.getPosY() - (float) pose.firstPerson().down() * base); // PAL's Y is up
         }
+    }
+
+    /**
+     * First person, with the swing spread across the view: both arms slide toward the side the weapon is on and rise with
+     * the lift, so the hands travel across the screen with the blade instead of pivoting in one spot below the camera.
+     */
+    private void viewSweep(PlayerAnimBone bone, float w) {
+        double side = Math.max(-1, Math.min(1, pose.relativeYaw() / 90)); // + = the fighter's right
+        double width = Config.Client.FIRST_PERSON_SWING_WIDTH.get() - 1;
+        bone.setPosX(bone.getPosX() - (float) (side * width * SWEEP_PIXELS * w)); // the model's right is -X
+        bone.setPosY(bone.getPosY() + (float) (Config.Client.FIRST_PERSON_SWING_LIFT.get() * LIFT_PIXELS_PER_DEGREE * w));
     }
 
     /** The first-person ready stance, in place of vanilla's arm pose: weapon arm, grip hand, and the weapon when idle. */

@@ -17,9 +17,15 @@ public final class ArmAim {
     private ArmAim() {
     }
 
+    /**
+     * Highest an aim may go, degrees: below -90 the direction is up and behind the head, which an overhead windup leans
+     * back into. Presentation only; the traced blade keeps to -90..90.
+     */
+    public static final double MIN_POSE_PITCH = -125;
+
     /** Arm rotation pointing the arm itself along (yaw relative to body, pitch), degrees in, radians out. */
     public static double[] aimArm(double relativeYawDegrees, double pitchDegrees) {
-        double pitch = Math.max(-90, Math.min(90, pitchDegrees));
+        double pitch = Math.max(MIN_POSE_PITCH, Math.min(90, pitchDegrees));
         return new double[]{Math.toRadians(pitch - 90), Math.toRadians(relativeYawDegrees), 0};
     }
 

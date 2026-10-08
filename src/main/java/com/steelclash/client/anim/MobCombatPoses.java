@@ -1,11 +1,20 @@
 package com.steelclash.client.anim;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import com.steelclash.Config;
+import com.steelclash.core.WeaponRig;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.IllagerModel;
 import net.minecraft.client.model.geom.ModelPart;
 import com.steelclash.core.RotationBlend;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
@@ -13,8 +22,11 @@ import org.joml.Quaternionf;
 
 /**
  * Poses humanoid and illager mob models (zombies, skeletons, piglins, vindicators, the training dummy) from their
- * combat state, so their windups are readable. Mobs can't have their held item rotated, so the weapon arm is pitched
- * to put the blade itself on the arc.
+ * combat state, so their windups are readable. The weapon arm and the weapon's turn in the hand come from the same
+ * {@link WeaponRig} as the player's, so the blade lies on the arc the server traces with the hand at chest height; the
+ * item layer applies the turn ({@link #turnHeldItem}). A mob whose renderer doesn't draw its weapon through vanilla's
+ * item layer (some modded ones) can't have it turned: its arm is pitched instead to put the blade on the arc, which
+ * leaves the hand low.
  */
 public final class MobCombatPoses {
     /** Share of the whole-body turn the legs take back, as for players (shoulders twist over the hips). */
@@ -32,6 +44,14 @@ public final class MobCombatPoses {
     @Nullable
     private static CombatPose posed;
 
+    /** This frame's turn of each posed mob's weapon in its hand, for {@link #turnHeldItem}. Render thread only. */
+    private static final Map<LivingEntity, HeldItemTurn> ITEM_TURNS = new WeakHashMap<>();
+    /** Mob types whose held items vanilla's item layer draws, so their weapons can be turned in the hand. */
+    private static final Set<EntityType<?>> TURNABLE = new HashSet<>();
+
+    private record HeldItemTurn(HumanoidArm arm, double[] radians) {
+    }
+
     private MobCombatPoses() {
     }
 
@@ -39,6 +59,7 @@ public final class MobCombatPoses {
         if (entity instanceof Player) {
             return; // players use the Player Animation Library layer
         }
+        ITEM_TURNS.remove(entity);
         Parts parts = parts(model);
         if (parts == null) {
             return;
@@ -56,7 +77,16 @@ public final class MobCombatPoses {
         }
         float w = (float) pose.weight();
         if (!pose.kick()) {
-            double[] arm = pose.mobWeaponArm();
+            double[] arm;
+            if (TURNABLE.contains(entity.getType())) {
+                WeaponRig rig = pose.rig(Config.Client.WEAPON_GRIP_PITCH.get(), Config.Client.BLADE_TWIST.get(),
+                        WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()));
+                arm = rig.arm();
+                ITEM_TURNS.put(entity, new HeldItemTurn(pose.leftHanded() ? HumanoidArm.LEFT : HumanoidArm.RIGHT,
+                        RotationBlend.blend(0, 0, 0, rig.item(), w)));
+            } else {
+                arm = pose.mobWeaponArm();
+            }
             ModelPart mainArm = pose.leftHanded() ? parts.leftArm : parts.rightArm;
             ModelPart offArm = pose.leftHanded() ? parts.rightArm : parts.leftArm;
             String mainName = pose.leftHanded() ? "leftArm" : "rightArm";
@@ -107,6 +137,24 @@ public final class MobCombatPoses {
         poseStack.mulPose(new Quaternionf().rotationZYX((float) Math.toRadians(body[2]), (float) Math.toRadians(body[1]),
                 (float) Math.toRadians(body[0])));
         poseStack.translate(0, -BODY_PIVOT, 0);
+    }
+
+    /**
+     * Called by the item layer just before it draws an item in a mob's hand: turns the weapon in the hand as this frame's
+     * pose solved it (as Player Animation Library does for players: Z, then Y, then X of the hand-frame angles).
+     */
+    public static void turnHeldItem(LivingEntity entity, HumanoidArm arm, PoseStack poseStack) {
+        if (entity instanceof Player) {
+            return;
+        }
+        TURNABLE.add(entity.getType());
+        HeldItemTurn turn = ITEM_TURNS.get(entity);
+        if (turn == null || turn.arm() != arm) {
+            return;
+        }
+        poseStack.mulPose(Axis.ZP.rotation((float) turn.radians()[2]));
+        poseStack.mulPose(Axis.YP.rotation((float) turn.radians()[1]));
+        poseStack.mulPose(Axis.XP.rotation((float) turn.radians()[0]));
     }
 
     /** The pose {@link #applyBodyRotation} just computed for this entity and frame, or a fresh one. */

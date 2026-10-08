@@ -148,8 +148,9 @@ public final class PoseSheet {
                 "item replace entity @s weapon.mainhand with " + item}) {
             player.connection.sendCommand(command);
         }
+        // A mob run's model is still standing there: clear it, or player shots photograph it too.
+        player.connection.sendCommand("kill @e[type=!player,distance=..12]");
         if (MOB != null) {
-            player.connection.sendCommand("kill @e[type=!player,distance=..12]"); // last run's model, still standing there
             player.connection.sendCommand("summon " + MOB + " ~ 301 ~3 {NoAI:1b,Silent:1b,PersistenceRequired:1b,"
                     + "Invulnerable:1b,IsBaby:0b,HandItems:[{id:\"" + item + "\",count:1},{}]}");
         }
@@ -268,6 +269,9 @@ public final class PoseSheet {
         player.yBodyRotO = 0;
         LivingEntity subject = subject(player, shot);
         if (shot.mobYaw() != null) {
+            if (subject instanceof Mob mob) {
+                mob.setAggressive(true); // as a fighter is in game: illagers only show their arms and weapon then
+            }
             float yaw = shot.mobYaw();
             subject.setYRot(yaw);
             subject.yRotO = yaw;

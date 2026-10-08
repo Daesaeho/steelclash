@@ -125,7 +125,7 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
     }
 
     private static double clampPitch(double pitch) {
-        return Math.max(-90, Math.min(90, pitch));
+        return Math.max(ArmAim.MIN_POSE_PITCH, Math.min(90, pitch));
     }
 
     /** Turns unit vector {@code from} a fraction of the way toward {@code to} (spherical, robust when they're opposite). */

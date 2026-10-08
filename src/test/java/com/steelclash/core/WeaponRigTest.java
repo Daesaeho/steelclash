@@ -125,4 +125,19 @@ class WeaponRigTest {
             assertTrue(behind < -1.5, "yaw " + yaw + ": off hand behind the weapon hand, toward the pommel: " + behind);
         }
     }
+
+    /** An overhead windup aims past straight up: the weapon leans back over the head instead of stopping upright. */
+    @Test
+    void theArmCanLeanBackOverTheHead() {
+        WeaponRig rig = WeaponRig.solve(0, -115, -80, 0, WeaponRig.TwistAxis.Z, NO_BODY, 0);
+        Vec arm = Mat3.zyx(rig.arm()[0], rig.arm()[1], rig.arm()[2]).apply(new Vec(0, 1, 0));
+        assertTrue(arm.y() < -0.8, "up (model +Y is down): " + arm);
+        assertTrue(arm.z() > 0.3, "and behind (model -Z is forward): " + arm);
+        // The blade turns on past upright too, smoothly: 25 degrees further back is a real turn, one degree a small one.
+        Mat3 upright = WeaponRig.solve(0, -90, -80, 0, WeaponRig.TwistAxis.Z, NO_BODY, 0).bladeOrientation(NO_BODY);
+        Mat3 back = WeaponRig.solve(0, -115, -80, 0, WeaponRig.TwistAxis.Z, NO_BODY, 0).bladeOrientation(NO_BODY);
+        Mat3 nearBack = WeaponRig.solve(0, -114, -80, 0, WeaponRig.TwistAxis.Z, NO_BODY, 0).bladeOrientation(NO_BODY);
+        assertTrue(upright.distance(back) > 0.3, "blade leans back: " + upright.distance(back));
+        assertTrue(back.distance(nearBack) < 0.05, "continuously: " + back.distance(nearBack));
+    }
 }

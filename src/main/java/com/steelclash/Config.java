@@ -477,6 +477,15 @@ public class Config {
                 .comment("First person: hold your weapon in a ready stance instead of vanilla's hand, so attacks flow out of",
                         "it and back without a cut (not while something is in your offhand). Visual only.")
                 .define("firstPersonReadyStance", true);
+        public static final ModConfigSpec.DoubleValue FIRST_PERSON_SWING_WIDTH = BUILDER
+                .comment("First person: spread your swings this much wider around the view, so the weapon sweeps across the",
+                        "screen instead of pointing away from you. 1 draws the traced arc exactly. Visual only: hits always",
+                        "follow the real arc, and third person and other players are unaffected.")
+                .defineInRange("firstPersonSwingWidth", 1.4, 1.0, 2.0);
+        public static final ModConfigSpec.DoubleValue FIRST_PERSON_SWING_LIFT = BUILDER
+                .comment("First person: raise your swings this many degrees, so they cross the middle of the screen rather than",
+                        "its bottom edge. Visual only.")
+                .defineInRange("firstPersonSwingLift", 15.0, 0.0, 40.0);
 
         public static final ModConfigSpec.DoubleValue CAMERA_MOTION = BUILDER
                 .comment("Scale of camera sway during swings and shake on hits/parries. 0 turns it off (motion sensitivity).")

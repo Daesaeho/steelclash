@@ -124,7 +124,7 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
 
         float headYaw = Mth.wrapDegrees(viewYaw(entity, partialTick) - Mth.rotLerp(partialTick, entity.yBodyRotO, entity.yBodyRot));
         double aimYaw = headYaw + pose.yaw();
-        double aimPitch = Mth.clamp(entity.getViewXRot(partialTick) + pose.pitch(), -90, 90);
+        double aimPitch = Mth.clamp(entity.getViewXRot(partialTick) + pose.pitch(), ArmAim.MIN_POSE_PITCH, 90);
         return Optional.of(new CombatPose(pose.phase(), pose.type(), pose.weight(), aimYaw, aimPitch, offsets,
                 twoHanded, pose.type() == AttackType.KICK && pose.phase().isAttack(), bladeTwist(pose), animation.gripGap(),
                 entity.getMainArm() == HumanoidArm.LEFT, bash, pose.yaw(), pose.extension(), animation.firstPerson(), pose));
@@ -190,6 +190,25 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
         return leftHanded ? solved.mirrored() : solved;
     }
 
+    /**
+     * First person only: the swing spread {@code width} times wider around the view and raised {@code lift} degrees, so
+     * it sweeps across the screen. The camera sits behind the hand, so the traced arc itself mostly points away from it.
+     * Presentation only: the hit sweep never sees this.
+     */
+    public CombatPose spreadForView(double width, double lift, double viewPitch) {
+        double pitchWidth = 1 + (width - 1) / 2; // an overhead already spans most of the vertical view
+        double pitch = Mth.clamp(viewPitch + (aimPitch - viewPitch) * pitchWidth - lift, ArmAim.MIN_POSE_PITCH, 90);
+        double yaw = spread(relativeYaw * width);
+        return new CombatPose(phase, type, weight, aimYaw - relativeYaw + yaw, pitch, offsets, twoHanded, kick,
+                bladeTwist, gripGap, leftHanded, bash, yaw, extension, firstPerson, swing);
+    }
+
+    /** Spread yaw, eased off past 100 degrees so a deep windup stays at the screen's edge rather than behind it. */
+    private static double spread(double yaw) {
+        double size = Math.abs(yaw);
+        return size <= 100 ? yaw : Math.signum(yaw) * (100 + (size - 100) * 0.35);
+    }
+
     public CombatPose withWeight(double nextWeight) {
         return new CombatPose(phase, type, nextWeight, aimYaw, aimPitch, offsets, twoHanded, kick, bladeTwist, gripGap,
                 leftHanded, bash, relativeYaw, extension, firstPerson, swing);
@@ -231,7 +250,8 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
     }
 
     /**
-     * Weapon arm for mobs (the held item can't be rotated): the blade on the arc, with the arm countering the
+     * Weapon arm for mobs whose held item can't be turned in the hand (their renderer doesn't draw it through vanilla's
+     * item layer; see {@code MobCombatPoses}): the blade on the arc, with the arm countering the
      * whole-body rotation the renderer applies (see {@code LivingEntityRendererMixin}), so the twist doesn't swing the
      * blade off the traced arc.
      */

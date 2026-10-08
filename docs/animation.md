@@ -120,7 +120,7 @@ the remaining part of the recommendation. “Deferred” means it is outside thi
 | 41 | Deferred | Effects at actual contact position/normal. |
 | 42 | Deferred | Predicted swing sounds with server-echo deduplication. |
 | 43 | Partial | Separate sway/shake controls and reset behavior; directional impulses remain. |
-| 44 | Deferred | Tangents/continuous velocity through intermediate body keys. |
+| 44 | Included | Monotone cubic tangents carry the speed through intermediate keys; first/last keys still ease. |
 | 45 | Partial | Windup layer entry completes over the first 40% of the windup (at least two ticks); recovery still has authored and layer fading. |
 | 46 | Included | Per-clip shared-default fallback and explicit empty action overrides. |
 | 47 | Included | Format version, bounds, finite values, duplicate times, channel validation and reload fallback. |

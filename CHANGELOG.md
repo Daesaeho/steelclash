@@ -18,6 +18,10 @@
 - Left-handed fighters (main arm set to left) swing with their left arm; an occupied off hand stays visible.
 - Shield bash, the three special kinds (lunge, slam, sweep) and throws have their own motion; a throw finishes its forward gesture as the weapon leaves.
 - First person: thrusts pull the arms back slightly before extending.
+- First person: swings are broader. The blade sweeps across the screen from one side to the other and the hands travel with it, a little higher in view (`firstPersonSwingWidth`, default 1.4; `firstPersonSwingLift`, default 15°). Visual only: hits follow the real arc, and third person is unchanged.
+- Mobs hold their weapon on the line it actually hits along: a natural arm with the weapon turned in the hand (like players), instead of the arm pitched down and the blade passing at hip height, about 0.7 blocks below the hit. Mobs whose renderer draws held items some other way (some modded mobs) keep the old pose.
+- Windups draw the weapon back the way the swing will come from: a slash cocks behind the shoulder, an overhead leans back over the head, heavies further. Thrusts are pulled in and raised as before.
+- Body motion no longer stops on every keyframe: a slash's body twist sweeps through the middle of the swing instead of pausing there and lurching on.
 - Players who come into view show their current guard, attack or downed state straight away.
 - Animation packs: missing clips inherit the default set, `"clip": []` turns a clip off, files are validated with clear errors, a bad edit keeps the last good set, and IDs can be namespaced (`othermod:sword`). See docs/animation.md.
 

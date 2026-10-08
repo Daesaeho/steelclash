@@ -129,13 +129,32 @@ public record ArcPath(List<Keyframe> keyframes) {
         return new Keyframe(t, prev.yaw(), prev.pitch(), prev.extension());
     }
 
-    /** Telegraph clearly, then meet the exact first live blade sample before the windup ends. */
+    /** How far a windup draws the weapon back against the arc's direction of travel, degrees (light, heavy). */
+    private static final double DRAW_BACK = 40;
+    private static final double HEAVY_DRAW_BACK = 55;
+    /** How far a windup raises the weapon, degrees (light, heavy), for arcs that don't already draw back upward. */
+    private static final double LIFT = 10;
+    private static final double HEAVY_LIFT = 25;
+
+    /**
+     * Telegraph clearly, then meet the exact first live blade sample before the windup ends. The weapon is drawn back
+     * the way the arc will come from: a slash cocks past the shoulder, an overhead leans back over the head (pitch below
+     * -90 is up and behind). A thrust extends rather than turns, so it is only pulled in and raised.
+     */
     public Keyframe windup(double progress, boolean heavy) {
         double p = Math.max(0, Math.min(1, progress));
         double settle = PoseClip.smooth(Math.max(0, Math.min(1, (p - 0.65) / 0.35)));
         Keyframe start = sample(0);
-        double drawBack = heavy ? 1.6 : 1.25;
-        return new Keyframe(p, start.yaw() * (drawBack + (1 - drawBack) * settle),
-                start.pitch() - (heavy ? 25 : 10) * (1 - settle), start.extension() * (0.6 + 0.4 * settle));
+        Keyframe ahead = sample(0.1);
+        double dYaw = ahead.yaw() - start.yaw();
+        double dPitch = ahead.pitch() - start.pitch();
+        double travel = Math.hypot(dYaw, dPitch);
+        double sweep = PoseClip.smooth(Math.max(0, Math.min(1, (travel - 2) / 6))); // 0 for a thrust, 1 for a cut
+        double yawDir = travel < 1e-9 ? 0 : dYaw / travel;
+        double pitchDir = travel < 1e-9 ? 0 : dPitch / travel;
+        double back = (heavy ? HEAVY_DRAW_BACK : DRAW_BACK) * sweep * (1 - settle);
+        double lift = (heavy ? HEAVY_LIFT : LIFT) * (1 - sweep * Math.abs(pitchDir)) * (1 - settle);
+        return new Keyframe(p, start.yaw() - yawDir * back, start.pitch() - pitchDir * back - lift,
+                start.extension() * (0.6 + 0.4 * settle));
     }
 }

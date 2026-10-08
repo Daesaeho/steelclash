@@ -31,6 +31,43 @@ class PoseTest {
     }
 
     @Test
+    void motionCarriesThroughAKeyframeInTheMiddleOfASweep() {
+        // A slash release turns the body 45, 0, -50: it must not stop on the middle key and lurch on.
+        PoseClip clip = new PoseClip(List.of(
+                new PoseClip.Keyframe(0, Map.of("body", new double[]{0, 45, 0})),
+                new PoseClip.Keyframe(0.5, Map.of("body", new double[]{0, 0, 0})),
+                new PoseClip.Keyframe(1, Map.of("body", new double[]{0, -50, 0}))));
+        double h = 0.02;
+        double before = clip.sample(0.5).get("body")[1] - clip.sample(0.5 - h).get("body")[1];
+        double after = clip.sample(0.5 + h).get("body")[1] - clip.sample(0.5).get("body")[1];
+        assertTrue(before < -0.8 * h * 90 && after < -0.8 * h * 90, "still turning at full speed through the key");
+        assertEquals(before, after, 0.1 * Math.abs(before), "no change of speed at the key");
+        double previous = Double.MAX_VALUE;
+        double biggestStep = 0;
+        for (int i = 0; i <= 20; i++) {
+            double y = clip.sample(i / 20.0).get("body")[1];
+            assertTrue(y <= previous + EPS && y >= -50 - EPS && y <= 45 + EPS, "monotone, no overshoot");
+            if (i > 0) {
+                biggestStep = Math.max(biggestStep, previous - y);
+            }
+            previous = y;
+        }
+        assertTrue(biggestStep < 0.12 * 95, "no single step does most of the turn: " + biggestStep);
+        assertEquals(0, clip.sample(0.01).get("body")[1] - 45, 0.05, "still eases in at the first key");
+    }
+
+    @Test
+    void aKeyWhereTheMotionTurnsRoundIsHeldNotOvershot() {
+        PoseClip clip = new PoseClip(List.of(
+                new PoseClip.Keyframe(0, Map.of("leftArm", new double[]{0, 0, 0})),
+                new PoseClip.Keyframe(0.4, Map.of("leftArm", new double[]{-40, 0, 0})),
+                new PoseClip.Keyframe(1, Map.of("leftArm", new double[]{0, 0, 0}))));
+        for (int i = 0; i <= 50; i++) {
+            assertTrue(clip.sample(i / 50.0).get("leftArm")[0] >= -40 - EPS, "never past the turning key");
+        }
+    }
+
+    @Test
     void missingPartsCountAsZeroAndUnsortedInputIsSorted() {
         PoseClip clip = new PoseClip(List.of(
                 new PoseClip.Keyframe(1, Map.of("leftLeg", new double[]{-20, 0, 0})),

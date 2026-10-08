@@ -397,3 +397,20 @@ The server-side fixes have GameTests. These need real clients (protocol 10 on bo
 ## Animation presentation patch (2026-10-08)
 
 See [animation.md](animation.md) for review coverage, resource-pack settings and the client acceptance matrix. Build, JUnit and GameTests pass; the client checks there are still to do.
+
+## Broader first-person swings (added 2026-10-08)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | First person: slash both ways, overhead, stab, with a sword and a two-handed weapon | The blade sweeps across the screen and the hands travel with it; nothing pops at the start or end of a swing. |
+| 2 | Set `firstPersonSwingWidth` to 1 and `firstPersonSwingLift` to 0 | Swings look as before this change. |
+| 3 | `/steelclash_debug` in first person | The drawn blade is wider than the red trace (expected: visual only); hits still land where the trace goes. |
+
+## Mob arms and windups (added 2026-10-08)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | `/steelclash_debug`, watch a zombie, skeleton with a sword, vindicator and piglin attack (third person, from the side) | The weapon lies along the red line at shoulder height through the release, not low at the hip. |
+| 2 | Same mobs idle and walking | Vanilla poses, weapon held as normal. |
+| 3 | Slash and overhead, light and heavy, third person | The slash cocks behind the shoulder; the overhead leans back over the head; both swing smoothly into the release. |
+| 4 | A modded mob, if any are installed | It still swings; if it draws its weapon its own way, its arm pose is the old one. |
