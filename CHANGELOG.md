@@ -1,9 +1,17 @@
 # Unreleased
 
+**Development**
+- Add three focused Codex skills for project context, change verification, and animation review, with helpers for current source routes, fresh test-result summaries, and chronologically ordered pose captures.
+
 **Combat** (from the Chivalry 2 report)
+- Running out of stamina leaves you **exhausted** until it regenerates back to a quarter (`exhaustionRecoverFraction`): any blow you block breaks your guard (weapon: disarm and stagger; shield: guard broken), and you can't feint, morph or dash. The stamina bar pulses red meanwhile. Before, an empty bar only mattered on the exact hit that emptied it, and feints were free at zero.
+- A bare-handed punch no longer interrupts anyone's windup or release.
+- Shields cost much less stamina to block with, as in Chivalry 2: 35% of the hit's stamina damage for basic shields and 25% for tower shields (were 70% and 50%). Arrows and bolts never break a shield guard, even at zero stamina.
 - Specials stagger whatever they hit. Blocking one with a weapon guard makes the blocker reel instead of opening a riposte, and the attacker isn't staggered; specials still can't be countered.
 - A sprint attack that misses recovers 0.3 s longer (`lungeWhiffRecoveryMs`).
 - Mounted: every melee attack hits harder the faster the mount goes, not just stabs; slashes and overheads get half the couched-lance bonus.
+- Counters now require an attack started from guard and avoid the incoming block stamina cost; bots raise guard before countering too. Existing action costs remain, with no counter stamina refund.
+- Dodges no longer cancel jab, kick, or heavy windups. Rejected dodges preserve the attack, stamina, cooldowns, and queued input.
 - A counter that has already caught its attack can't be dodged out of.
 - Arrows and bolts no longer interrupt a weapon throw.
 - Combos can be pressed during the release, a little earlier, as in Chivalry 2: the combo starts the moment the swing ends.
@@ -18,6 +26,7 @@
 - Left-handed fighters (main arm set to left) swing with their left arm; an occupied off hand stays visible.
 - Shield bash, the three special kinds (lunge, slam, sweep) and throws have their own motion; a throw finishes its forward gesture as the weapon leaves.
 - First person: thrusts pull the arms back slightly before extending.
+- First person: the arms sit 2 pixels lower (3.5 instead of 1.5) and rise half as much during swings, so they take up less of the screen.
 - First person: swings are broader. The blade sweeps across the screen from one side to the other and the hands travel with it, a little higher in view (`firstPersonSwingWidth`, default 1.4; `firstPersonSwingLift`, default 15°). Visual only: hits follow the real arc, and third person is unchanged.
 - Mobs hold their weapon on the line it actually hits along: a natural arm with the weapon turned in the hand (like players), instead of the arm pitched down and the blade passing at hip height, about 0.7 blocks below the hit. Mobs whose renderer draws held items some other way (some modded mobs) keep the old pose.
 - Windups draw the weapon back the way the swing will come from: a slash cocks behind the shoulder, an overhead leans back over the head, heavies further. Thrusts are pulled in and raised as before.

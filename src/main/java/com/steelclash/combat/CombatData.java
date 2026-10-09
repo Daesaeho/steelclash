@@ -103,6 +103,7 @@ public class CombatData {
     /** Weapon unusable until this game time (HOLSTER disarm mode for mobs). */
     public long holsteredUntil;
     public float lastSentStamina = -1;
+    public boolean lastSentExhausted;
     /** Game time this entity last took damage (health regeneration waits for a quiet spell). */
     public long lastHurtAt = Long.MIN_VALUE / 2;
     /** Last tick this fighter attacked, guarded or shield-blocked (pauses health regeneration). */

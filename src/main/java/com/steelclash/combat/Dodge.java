@@ -8,7 +8,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Chivalry 2 dash / dodge: a quick burst of movement that costs stamina and has a cooldown. It can abandon a windup
- * (like a feint) or a raised guard, but not a counter that already caught its attack, a swing already in its release,
+ * (like a feint) or a raised guard, but not a jab, kick, heavy, counter that already caught its attack, or swing in release,
  * its recovery, or a stagger. The rules are shared: the client checks them before moving itself (players move
  * client-side), the server checks them again to charge the stamina and cancel the attack or guard.
  */
@@ -36,11 +36,10 @@ public final class Dodge {
 
     public static boolean canDodge(LivingEntity entity, CombatData data) {
         Phase phase = data.machine.phase();
-        // A counter that already caught its attack is committed (Chivalry 2 2.6).
-        boolean free = phase == Phase.IDLE || (phase == Phase.WINDUP && !data.machine.isCounterCommitted())
+        boolean free = phase == Phase.IDLE || data.machine.canDodgeWindup()
                 || phase == Phase.PARRY || phase == Phase.GUARD_RECOVERY;
         return free && entity.onGround() && entity.level().getGameTime() >= data.dodgeReadyAt
-                && data.stamina.current() >= Config.DODGE_STAMINA_COST.get();
+                && !data.stamina.isExhausted() && data.stamina.current() >= Config.DODGE_STAMINA_COST.get();
     }
 
     /** Spends the stamina, starts the cooldown and drops a windup or guard. Moving is up to the caller. */

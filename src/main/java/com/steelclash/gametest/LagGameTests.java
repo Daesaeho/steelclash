@@ -117,11 +117,17 @@ public final class LagGameTests {
         Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
         Combat.start(attacker, data(attacker), AttackType.SLASH);
+        check(helper, Combat.startParry(defender, data(defender)), "the counter attempt starts from guard");
         Combat.start(defender, data(defender), AttackType.SLASH);
         var m = data(defender).machine;
+        // The simulated old windup must not retain a freshly ended guard's cooldown.
+        while (m.parryCooldownLeft() > 0) {
+            m.tick();
+        }
         // The attack still winds up, but its counter window has expired.
         m.apply(Phase.WINDUP, AttackType.SLASH, 50L * AttackTimings.TICK_US, 100L * AttackTimings.TICK_US,
                 AttackTimings.ofTicks(100, 5, 5), 0, false, false, false, 0, false);
+        check(helper, m.isFromGuard(), "the expired attempt retains its guard origin");
         LagCompensation.forceLatency(defender, PING);
         var spec = Combat.currentSpec(attacker, data(attacker)).orElseThrow();
         var hit = new Combat.Hit(AttackType.SLASH, spec, 1f, spec.staminaDamage(), false);

@@ -188,6 +188,12 @@ public final class CombatStateMachine {
         return countered && phase == Phase.WINDUP;
     }
 
+    /** Dash cancellation is unavailable for committed jabs, kicks, heavies, and counters that caught an attack. */
+    public boolean canDodgeWindup() {
+        return phase == Phase.WINDUP && type != AttackType.JAB && type != AttackType.KICK
+                && !heavy && !countered;
+    }
+
     /** Lengthens the current recovery (a missed sprint attack, Chivalry 2 2.10). */
     public boolean extendRecovery(long extraUs) {
         if (phase != Phase.RECOVERY || extraUs <= 0) {

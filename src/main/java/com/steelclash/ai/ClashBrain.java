@@ -198,8 +198,10 @@ public final class ClashBrain {
                     }
                 }
                 case COUNTER -> {
-                    // Start the same attack shortly before theirs lands; the counter window does the rest.
-                    if (incoming.phase() == Phase.WINDUP && incoming.ticksLeftInPhase() <= 5 && data.machine.canStartAttack()) {
+                    // Counters start from guard, for bots just as for players. A blocked guard/cooldown must not
+                    // silently turn this defensive answer into a neutral attack.
+                    if (incoming.phase() == Phase.WINDUP && incoming.ticksLeftInPhase() <= 5 && data.machine.canStartAttack()
+                            && (data.machine.phase() == Phase.PARRY || Combat.startParry(mob, data))) {
                         Combat.requestAttack(mob, incoming.type());
                         brain.answer = BrainState.Answer.NONE;
                         brain.counterTarget = attacker.getId();

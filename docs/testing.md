@@ -414,3 +414,26 @@ See [animation.md](animation.md) for review coverage, resource-pack settings and
 | 2 | Same mobs idle and walking | Vanilla poses, weapon held as normal. |
 | 3 | Slash and overhead, light and heavy, third person | The slash cocks behind the shoulder; the overhead leans back over the head; both swing smoothly into the release. |
 | 4 | A modded mob, if any are installed | It still swings; if it draws its weapon its own way, its arm pose is the old one. |
+
+
+## Counter and dodge fidelity (2026-10-09)
+
+| Check | Expected |
+|---|---|
+| Start a matching light attack from neutral while a dummy attacks you, then repeat after raising guard | The neutral attack can be hit; a correctly timed guard-origin attack counters. |
+| Counter repeatedly with partly depleted stamina; compare ordinary blocks and a wrong counter caught by forgiveness | A true counter has no incoming block charge or refund. Ordinary and forgiven blocks still cost stamina; other action costs retain their existing behavior. |
+| Dodge during a light windup, then during a heavy upgrade, jab, and kick | The ordinary light windup can be abandoned. The other three remain committed, with no dodge movement or stamina/cooldown/queued-input change on rejection. |
+| Fight a bot that counters and counter-feints | Its defensive matching attack starts from guard and can still follow a feint into another attack family. |
+| Repeat guard-to-counter inputs on a LAN connection with latency | Prediction and authoritative correction agree on guard origin; delayed guards and expired counter windows still use the existing lag grace. |
+
+The existing dodge timing for unconnected light counter attempts is retained. Final Chivalry timing for the late-attempt cutoff needs a separate measured comparison.
+
+## Exhaustion, unarmed blows and shields (added 2026-10-09)
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | Spend all your stamina (feints, holding block) | The bar pulses red until about a quarter has come back; feints, morphs and dashes don't work meanwhile. |
+| 2 | While exhausted, block a zombie's or a soldier's blow | Your guard breaks: disarmed and staggered (with a shield: lowered, can't raise it for a moment). |
+| 3 | Punch a winding-up mob with an empty hand | It keeps swinging. With a sword in hand the same hit interrupts it. |
+| 4 | Block a few hits with a shield, then the same hits with a sword guard | The shield costs much less stamina. |
+| 5 | Let a skeleton shoot your raised shield with an empty bar | The arrow is blocked and the shield stays up. |

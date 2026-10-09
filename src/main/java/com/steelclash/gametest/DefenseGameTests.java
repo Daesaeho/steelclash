@@ -16,6 +16,7 @@ import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.Disarm;
+import com.steelclash.combat.Dodge;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.compat.Compat;
 import com.steelclash.core.AttackType;
@@ -211,6 +212,7 @@ public final class DefenseGameTests {
         Player first = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -45f, 2);
         Player second = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), -135f, 6);
         CombatData d = data(defender);
+        check(helper, Combat.startParry(defender, d), "the counter starts from guard");
         Combat.start(defender, d, AttackType.SLASH);
         swing(first, AttackType.SLASH); // countered: same attack, just started
         check(helper, data(first).machine.phase() == Phase.STAGGER, "the slash is countered");
@@ -264,6 +266,52 @@ public final class DefenseGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void anExhaustedGuardBreaksBeforeTheBarIsEmpty(GameTestHelper helper) {
+        // A sword slash costs 20 to parry: with 22 a fresh guard holds, an exhausted one (not yet back to a quarter) breaks.
+        // The two duels stand five blocks apart, so neither slash (random side, 140 degrees) can reach the other dummy.
+        Player first = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 2);
+        TrainingDummy fresh = dummy(helper, 3, 2, FACING_NEGATIVE_X);
+        data(fresh).stamina.set(22);
+        Combat.requestParry(fresh);
+        swing(first, AttackType.SLASH);
+        check(helper, !fresh.getMainHandItem().isEmpty() && data(fresh).machine.phase() != Phase.STAGGER,
+                "a guard with enough stamina holds");
+
+        Player second = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 7);
+        TrainingDummy tired = dummy(helper, 3, 7, FACING_NEGATIVE_X);
+        data(tired).stamina.set(22);
+        data(tired).stamina.setExhausted(true);
+        Combat.requestParry(tired);
+        swing(second, AttackType.SLASH);
+        check(helper, tired.getMainHandItem().isEmpty(), "an exhausted guard is broken: disarmed");
+        check(helper, data(tired).machine.phase() == Phase.STAGGER, "and staggered");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void anExhaustedFighterCannotFeintMorphOrDash(GameTestHelper helper) {
+        TrainingDummy fighter = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        helper.runAfterDelay(5, () -> exhaustedFighter(helper, fighter)); // let it settle onto the floor: dashes need it
+    }
+
+    private static void exhaustedFighter(GameTestHelper helper, TrainingDummy fighter) {
+        CombatData d = data(fighter);
+        d.stamina.set(50);
+        d.stamina.setExhausted(true);
+        Combat.requestAttack(fighter, AttackType.SLASH);
+        check(helper, !Combat.feint(fighter, d), "no feint while exhausted");
+        check(helper, !Combat.morph(fighter, d, AttackType.STAB), "no morph while exhausted");
+        check(helper, !Combat.feintInto(fighter, d, AttackType.KICK), "no feint into a kick while exhausted");
+        check(helper, d.machine.phase() == Phase.WINDUP && d.machine.type() == AttackType.SLASH, "the slash carries on");
+        check(helper, fighter.onGround(), "standing on the floor");
+        check(helper, !Dodge.canDodge(fighter, d), "no dash while exhausted");
+        d.stamina.setExhausted(false);
+        check(helper, Dodge.canDodge(fighter, d), "recovered, a dash out of the slash is allowed again");
+        check(helper, Combat.feint(fighter, d), "and so is the feint");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void shieldBlocksFromTheFrontOnly(GameTestHelper helper) {
         TrainingDummy front = dummy(helper, 3, 4, FACING_NEGATIVE_X);
         front.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
@@ -280,6 +328,30 @@ public final class DefenseGameTests {
             Player second = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
             swing(second, AttackType.SLASH);
             check(helper, isHurt(front), "a shield facing away must not block");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = ARENA, timeoutTicks = 120)
+    public static void arrowsNeverBreakAShieldGuardButBlowsDo(GameTestHelper helper) {
+        TrainingDummy front = dummy(helper, 4, 2, FACING_NEGATIVE_X);
+        front.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+        front.startUsingItem(InteractionHand.OFF_HAND);
+        helper.runAfterDelay(8, () -> {
+            data(front).stamina.set(0); // empty and exhausted: before, any blocked hit here broke the guard
+            shoot(helper, new Vec3(1.5, 3.5, 2.5));
+        });
+        helper.runAfterDelay(40, () -> {
+            check(helper, !isHurt(front), "the arrow is blocked");
+            check(helper, front.isBlocking() && data(front).machine.phase() != Phase.STAGGER,
+                    "an arrow at zero stamina must not break the shield guard (Chivalry 2)");
+            // Exhausted with 15 left: the slash costs the shield only 7, so only the exhaustion can break the guard.
+            data(front).stamina.set(15);
+            data(front).stamina.setExhausted(true);
+            Player attacker = TestSupport.swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X, 2);
+            swing(attacker, AttackType.SLASH);
+            check(helper, !front.isBlocking() && data(front).machine.phase() == Phase.STAGGER,
+                    "a blow on the exhausted shield guard breaks it");
             helper.succeed();
         });
     }
@@ -384,6 +456,7 @@ public final class DefenseGameTests {
         CombatData a = data(attacker);
         CombatData d = data(defender);
         Combat.start(attacker, a, AttackType.SLASH);
+        check(helper, Combat.startParry(defender, d), "the counter-feint starts from guard");
         Combat.start(defender, d, AttackType.OVERHEAD);
         check(helper, Combat.morph(defender, d, AttackType.SLASH), "the defender morphs to counter the slash");
         check(helper, Combat.morph(attacker, a, AttackType.STAB), "the attacker feints into a stab");
@@ -402,6 +475,7 @@ public final class DefenseGameTests {
         TrainingDummy attacker = dummy(helper, 1, 4, FACING_POSITIVE_X);
         CombatData d = data(defender);
         Combat.start(attacker, data(attacker), AttackType.SLASH);
+        check(helper, Combat.startParry(defender, d), "the alternate counter starts from guard");
         Combat.start(defender, d, AttackType.SLASH, 0, false);
         advance(defender, 3);
         Combat.requestAttack(defender, AttackType.SLASH, 0, true);

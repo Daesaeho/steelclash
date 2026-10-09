@@ -737,6 +737,42 @@ class CombatStateMachineTest {
     }
 
     @Test
+    void dodgeCannotCancelJabsKicksOrHeavyWindups() {
+        CombatStateMachine m = new CombatStateMachine();
+        assertFalse(m.canDodgeWindup(), "idle is not a windup");
+        for (AttackType type : new AttackType[]{AttackType.JAB, AttackType.KICK}) {
+            assertTrue(m.startAttack(type, TIMINGS));
+            assertFalse(m.canDodgeWindup(), type + " is committed");
+            m.cancel();
+        }
+        assertTrue(m.startAttack(AttackType.SLASH, TIMINGS));
+        assertTrue(m.canDodgeWindup(), "an ordinary light windup can be abandoned");
+        assertTrue(m.makeHeavy(TIMINGS.windupUs() + AttackTimings.TICK_US));
+        assertFalse(m.canDodgeWindup(), "upgrading to heavy commits the windup");
+        m.cancel();
+        assertTrue(m.startAttack(AttackType.STAB, TIMINGS));
+        assertTrue(m.canDodgeWindup(), "commitment resets with the next attack");
+        assertTrue(m.counter(2, 5));
+        assertFalse(m.canDodgeWindup(), "a successful counter is committed");
+    }
+
+    @Test
+    void dodgeWindupPermissionEndsAtRelease() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, TIMINGS);
+        for (int tick = 0; tick < TIMINGS.windup(); tick++) {
+            assertTrue(m.canDodgeWindup());
+            m.tick();
+        }
+        assertEquals(Phase.RELEASE, m.phase());
+        assertFalse(m.canDodgeWindup());
+        while (m.isAttacking()) {
+            m.tick();
+            assertFalse(m.canDodgeWindup(), "release/recovery never allow windup cancellation");
+        }
+    }
+
+    @Test
     void extraRecoveryOnlyLengthensARecovery() {
         CombatStateMachine m = new CombatStateMachine();
         m.startAttack(AttackType.STAB, TIMINGS);

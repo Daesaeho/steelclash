@@ -15,6 +15,7 @@ import com.steelclash.profile.WeaponProfiles;
 import java.util.Set;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
@@ -208,6 +209,9 @@ public final class CombatEvents {
         if (swing != null && swing.type() == AttackType.KICK) {
             return; // a kick doesn't interrupt an attack (Chivalry 2); it only breaks guards and staggers the idle
         }
+        if (swing == null && unarmedBlow(event.getSource())) {
+            return; // a bare-handed punch doesn't stop a swing
+        }
         CombatData data = entity.getData(ModAttachments.COMBAT);
         if (data.machine.type() == AttackType.THROW && event.getSource().is(DamageTypeTags.IS_PROJECTILE)) {
             return; // arrows and bolts don't interrupt a throw (Chivalry 2 2.4.2)
@@ -218,6 +222,17 @@ public final class CombatEvents {
                 && !Combat.hasHyperArmor(entity, data)) {
             Interrupts.releaseHit(entity); // a blow, not fire or a fall: applied at the end of the tick
         }
+    }
+
+    /**
+     * A melee blow from someone holding no weapon (an empty hand, a block, food): the attacker struck directly, not
+     * through a projectile, and their main hand has no weapon profile. Steel Clash swings are never unarmed.
+     */
+    static boolean unarmedBlow(DamageSource source) {
+        if (!(source.getEntity() instanceof LivingEntity attacker) || source.getDirectEntity() != attacker) {
+            return false;
+        }
+        return WeaponProfiles.resolve(attacker.getMainHandItem(), attacker.level().registryAccess()).isEmpty();
     }
 
     /** Chivalry 2: a lethal blow downs a player instead (if an ally is around to revive them). */

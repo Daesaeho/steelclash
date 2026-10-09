@@ -29,7 +29,7 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gr
 
     /** Pixels in model space; retraction is first-person-only, so rigid third-person shoulders stay attached. */
     public record FirstPerson(double forward, double down, double retraction) {
-        public static final FirstPerson DEFAULT = new FirstPerson(4, 1.5, 3);
+        public static final FirstPerson DEFAULT = new FirstPerson(4, 3.5, 3);
     }
 
     public AnimationSet(boolean twoHanded, double heavyWindupScale, double gripGap, Map<String, PoseClip> clips) {
@@ -73,7 +73,7 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gr
         FirstPerson firstPerson = FirstPerson.DEFAULT;
         if (firstPersonJson != null) {
             firstPerson = new FirstPerson(number(firstPersonJson, "forward", 4, -16, 16),
-                    number(firstPersonJson, "down", 1.5, -16, 16), number(firstPersonJson, "retraction", 3, 0, 8));
+                    number(firstPersonJson, "down", 3.5, -16, 16), number(firstPersonJson, "retraction", 3, 0, 8));
         }
         Map<String, PoseClip> clips = new HashMap<>();
         JsonObject clipsJson = json.getAsJsonObject("clips");

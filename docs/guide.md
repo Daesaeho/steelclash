@@ -51,7 +51,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 - **Jab** (V): a quick, short thrust for a quarter of your weapon's damage. Use it to interrupt a slow heavy up close. It can be parried, and it can't be feinted, made heavy or cancelled. Two jabs meeting: the one already out blocks the other. Some mobs jab your heavies too.
 - **Feint into a kick or jab:** during a weapon windup, press kick or jab and the attack turns into it (costs the feint's stamina).
 - **Buffered retaliation:** press an attack while staggered (after being parried, say) and it starts the moment the stagger ends.
-- **Shields:** with a shield in your offhand, the parry key raises it. Shields hold for as long as you keep the key down, but every block costs stamina. Tower shields (Spartan Shields) cover more and stop arrows from the front only.
+- **Shields:** with a shield in your offhand, the parry key raises it. Shields hold for as long as you keep the key down. Every block costs stamina, but far less than a weapon parry (a basic shield about a third, a tower shield a quarter). Arrows never break a shield guard, even with no stamina left. Tower shields (Spartan Shields) cover more and stop arrows from the front only.
 - **Kick / shield bash** (Z): can't be parried. It breaks a raised parry or shield and staggers an idle target. Use it on turtles. It does **not** interrupt someone who is already attacking (they swing straight through it), and two kicks meeting cancel out.
 - **Counter-feint:** if the attacker feints into a different attack while you're countering, switch your counter to match it. You get this switch even if you already changed attack once. Your windup starts over, so time it to their new attack. With the two-slash-key scheme you can also switch your counter slash to the other side, which gives you a second try at the timing. It only works against an attack actually coming at you. Bots counter-feint too, once they've seen your new windup.
 - **Counter windows depend on the attacker's weapon:** against fast weapons (daggers) you have slightly less time to counter, against slow ones (greatswords, heavies) slightly more.
@@ -81,6 +81,8 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
 All of this is in the `movement` and `health` sections of the common config.
 
 ## Stamina
+
+**Running out** leaves you exhausted until a quarter of the bar has come back; the bar pulses red. While exhausted, any blow you block breaks your guard (with a weapon you're disarmed and staggered), and you can't feint, morph or dash. Bare-handed punches never interrupt an attack.
 
 As in Chivalry 2: **jumping costs 12 stamina while you're fighting** (within 5 seconds of attacking, guarding or being hit; jumping around outside a fight is free), and **crouching pauses stamina regeneration**. Chop weapons drain 10% more stamina from a guard, blunt ones 25% more.
 

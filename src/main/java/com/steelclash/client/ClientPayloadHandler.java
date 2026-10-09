@@ -86,6 +86,7 @@ public final class ClientPayloadHandler {
                 CombatData data = mc.player.getData(ModAttachments.COMBAT);
                 data.stamina.setMax(payload.max());
                 data.stamina.set(payload.current());
+                data.stamina.setExhausted(payload.exhausted()); // so feints, morphs and dashes are predicted as the server rules
             }
         });
     }

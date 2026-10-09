@@ -226,12 +226,45 @@ public final class FootworkGameTests {
         Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         helper.runAfterDelay(5, () -> { // let it settle onto the floor
             CombatData d = data(defender);
+            check(helper, Combat.startParry(defender, d), "raise guard for the counter attempt");
             Combat.start(defender, d, AttackType.SLASH);
-            check(helper, Dodge.canDodge(defender, d), "an ordinary windup can be dodged out of");
+            check(helper, Dodge.canDodge(defender, d), "an early counter attempt can be abandoned");
             TestSupport.swing(attacker, AttackType.SLASH); // countered: same attack, just started
             check(helper, data(attacker).machine.phase() == Phase.STAGGER, "the slash is countered");
             check(helper, d.machine.phase() == Phase.WINDUP && !Dodge.canDodge(defender, d),
                     "the counter that caught it is committed (Chivalry 2 2.6)");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = ARENA, timeoutTicks = 60)
+    public static void committedWindupsRejectDodgeWithoutChangingState(GameTestHelper helper) {
+        TrainingDummy fighter = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        helper.runAfterDelay(5, () -> {
+            CombatData d = data(fighter);
+            check(helper, fighter.onGround(), "the fighter has settled onto the floor");
+            for (AttackType type : new AttackType[]{AttackType.JAB, AttackType.KICK, AttackType.SLASH}) {
+                d.machine.cancel();
+                d.dodgeReadyAt = 0;
+                d.stamina.set(50);
+                check(helper, Combat.start(fighter, d, type), "start " + type);
+                if (type == AttackType.SLASH) {
+                    advance(fighter, Combat.HEAVY_HOLD_TICKS);
+                    check(helper, Combat.makeHeavy(fighter, d), "upgrade the slash to heavy");
+                }
+                Combat.queue(d, AttackType.STAB, 0, false);
+                var queued = d.queuedAttack;
+                float stamina = d.stamina.current();
+                long dodgedAt = d.dodgedAt;
+                long readyAt = d.dodgeReadyAt;
+                check(helper, !Dodge.canDodge(fighter, d), type + " windup is committed");
+                check(helper, !Dodge.perform(fighter, d), "reject the dodge for " + type);
+                check(helper, d.machine.phase() == Phase.WINDUP && d.machine.type() == type,
+                        "a rejected dodge must preserve the attack");
+                check(helper, d.stamina.current() == stamina && d.dodgedAt == dodgedAt && d.dodgeReadyAt == readyAt,
+                        "a rejected dodge must not spend stamina or change cooldowns");
+                check(helper, d.queuedAttack == queued, "a rejected dodge must preserve queued input");
+            }
             helper.succeed();
         });
     }

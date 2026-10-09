@@ -43,7 +43,7 @@ public class ProceduralSwingAnimation implements IAnimation {
     /** First-person sideways travel of the arms at full spread (width 2) and the swing at 90 degrees, pixels. */
     private static final double SWEEP_PIXELS = 12;
     /** First-person rise of the arms per degree of swing lift, pixels. */
-    private static final double LIFT_PIXELS_PER_DEGREE = 0.1;
+    private static final double LIFT_PIXELS_PER_DEGREE = 0.05;
 
     private final AbstractClientPlayer player;
     @Nullable

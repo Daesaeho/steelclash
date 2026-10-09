@@ -77,7 +77,8 @@ public final class Defense {
         }
 
         float staminaDamage = swing != null ? swing.staminaDamage() : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
-        boolean exhausted = data.stamina.spend(staminaDamage * guard.get().staminaMult());
+        boolean wasExhausted = data.stamina.isExhausted();
+        boolean exhausted = data.stamina.spend(staminaDamage * guard.get().staminaMult()) || wasExhausted;
         Feedback.parry(defender, attacker);
         // Chivalry 2: blocking a special makes the blocker reel instead of opening a riposte, and the attacker keeps the
         // initiative: their blade stops on the guard (CombatData.swingBlocked) but they aren't staggered.
@@ -112,7 +113,7 @@ public final class Defense {
         if (guard.isEmpty()) {
             return false;
         }
-        data.stamina.spend(swing.staminaDamage() * guard.get().staminaMult() * 0.5f);
+        // A successful counter avoids the incoming block cost. Action/feint costs remain separate; no refund.
         data.machine.counter(Config.COUNTER_RELEASE_TICKS.get(), Config.COUNTER_ACTIVE_PARRY_TICKS.get());
         Combat.sync(defender, data, true);
         Feedback.parry(defender, attacker);
@@ -123,7 +124,7 @@ public final class Defense {
     /** The same eligibility check is used before ending a lagged defender's grace period. Does not change state. */
     static Optional<WeaponProfile.GuardSpec> counterGuard(LivingEntity defender, CombatData data,
                                                          LivingEntity attacker, AttackType type) {
-        if (data.machine.phase() != Phase.WINDUP || data.machine.type() != type || !Combat.isWeaponAttack(type)) {
+        if (!data.machine.isFromGuard() || data.machine.type() != type || !Combat.isWeaponAttack(type)) {
             return Optional.empty();
         }
         int attackerWindupUs = attacker.getData(ModAttachments.COMBAT).machine.timings().windupUs();
@@ -183,7 +184,10 @@ public final class Defense {
                 : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
         double mult = tower ? Config.TOWER_SHIELD_STAMINA_MULT.get() : Config.BASIC_SHIELD_STAMINA_MULT.get();
         CombatData data = blocker.getData(ModAttachments.COMBAT);
-        if (data.stamina.spend((float) (base * mult))) {
+        boolean wasExhausted = data.stamina.isExhausted();
+        boolean drained = data.stamina.spend((float) (base * mult));
+        // Arrows and bolts never break a shield guard, even at zero stamina (Chivalry 2); a blow on an exhausted guard does.
+        if ((drained || wasExhausted) && !source.is(DamageTypeTags.IS_PROJECTILE)) {
             breakShieldGuard(blocker, data, shield);
         }
 

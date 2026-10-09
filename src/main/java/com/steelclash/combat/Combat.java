@@ -151,7 +151,7 @@ public final class Combat {
      */
     public static boolean feintInto(LivingEntity entity, CombatData data, AttackType type) {
         if ((type != AttackType.KICK && type != AttackType.JAB) || data.machine.phase() != Phase.WINDUP
-                || !isWeaponAttack(data.machine.type())) {
+                || !isWeaponAttack(data.machine.type()) || data.stamina.isExhausted()) {
             return false;
         }
         data.machine.feint();
@@ -160,8 +160,9 @@ public final class Combat {
     }
 
     public static boolean feint(LivingEntity entity, CombatData data) {
-        // Kicks and jabs can't be cancelled (Chivalry 2 2.2).
-        if (data.machine.type() == AttackType.KICK || data.machine.type() == AttackType.JAB || !data.machine.feint()) {
+        // Kicks and jabs can't be cancelled (Chivalry 2 2.2); an exhausted fighter has no stamina to feint with.
+        if (data.machine.type() == AttackType.KICK || data.machine.type() == AttackType.JAB || data.stamina.isExhausted()
+                || !data.machine.feint()) {
             return false;
         }
         spend(entity, data, Config.FEINT_STAMINA_COST.get());
@@ -173,7 +174,8 @@ public final class Combat {
     }
 
     public static boolean morph(LivingEntity entity, CombatData data, AttackType newType, int variant, boolean mirrored) {
-        if (data.machine.phase() != Phase.WINDUP || !isWeaponAttack(newType) || !isWeaponAttack(data.machine.type())) {
+        if (data.machine.phase() != Phase.WINDUP || !isWeaponAttack(newType) || !isWeaponAttack(data.machine.type())
+                || data.stamina.isExhausted()) {
             return false;
         }
         Optional<WeaponProfile> profile = currentProfile(entity, data);
@@ -340,7 +342,7 @@ public final class Combat {
         }
         boolean crouchPause = Config.CROUCH_PAUSES_STAMINA_REGEN.get() && entity.isCrouching();
         data.stamina.tick(crouchPause ? 0f : Config.STAMINA_REGEN_PER_SECOND.get().floatValue() / 20f,
-                Config.STAMINA_REGEN_DELAY_TICKS.get());
+                Config.STAMINA_REGEN_DELAY_TICKS.get(), Config.EXHAUSTION_RECOVER_FRACTION.get().floatValue());
         syncStaminaIfChanged(entity, data);
 
         CombatStateMachine machine = data.machine;
@@ -812,9 +814,12 @@ public final class Combat {
             return;
         }
         float current = data.stamina.current();
-        if (Math.abs(current - data.lastSentStamina) >= 1f || (current == data.stamina.max() && data.lastSentStamina != current)) {
+        boolean exhausted = data.stamina.isExhausted();
+        if (Math.abs(current - data.lastSentStamina) >= 1f || (current == data.stamina.max() && data.lastSentStamina != current)
+                || exhausted != data.lastSentExhausted) {
             data.lastSentStamina = current;
-            ModNetwork.sendTo(player, new StaminaPayload(current, data.stamina.max()));
+            data.lastSentExhausted = exhausted;
+            ModNetwork.sendTo(player, new StaminaPayload(current, data.stamina.max(), exhausted));
         }
     }
 }

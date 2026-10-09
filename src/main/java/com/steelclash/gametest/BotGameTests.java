@@ -222,6 +222,7 @@ public final class BotGameTests {
         brain.answer = BrainState.Answer.COUNTER;
         ClashBrain.tick(zombie, z);
         check(helper, z.machine.phase() == Phase.WINDUP && z.machine.type() == AttackType.SLASH, "the bot counters the slash");
+        check(helper, z.machine.isFromGuard(), "bots must enter guard before starting a counter");
         Combat.morph(attacker, a, AttackType.OVERHEAD);
         BotSkill skill = ClashBrain.skill(zombie);
         ClashBrain.tick(zombie, z);

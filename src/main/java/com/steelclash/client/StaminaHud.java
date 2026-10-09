@@ -44,6 +44,13 @@ public final class StaminaHud {
         int y = graphics.guiHeight() / 2 + OFFSET_BELOW_CROSSHAIR;
         graphics.fill(x - 1, y - 1, x + WIDTH + 1, y + HEIGHT + 1, 0x90000000);
         int color = riposte ? 0xFFFFFFFF : fraction < 0.25f ? 0xFFD04040 : 0xFFE8C860;
+        if (data.stamina.isExhausted()) {
+            // Exhausted: the frame pulses red, so it's clear the next blocked blow breaks the guard.
+            float pulse = 0.5f + 0.5f * (float) Math.sin((player.tickCount + deltaTracker.getGameTimeDeltaPartialTick(true)) * 0.6f);
+            int alpha = 0x60 + Math.round(0x9F * pulse);
+            graphics.fill(x - 1, y - 1, x + WIDTH + 1, y + HEIGHT + 1, alpha << 24 | 0xC02020);
+            color = 0xFFFF5050;
+        }
         graphics.fill(x, y, x + Math.round(WIDTH * fraction), y + HEIGHT, color);
     }
 }

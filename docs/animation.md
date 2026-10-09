@@ -46,12 +46,12 @@ valid set for that ID, if one exists. Otherwise the shared default is used. Erro
 clip/channel where available. Removed resources disappear on reload, and presentation caches invalidate.
 
 The optional `format_version` is 1; legacy files without it are accepted. Optional first-person composition uses
-model pixels and defaults to the prior four-pixel forward and 1.5-pixel down placement, plus thrust retraction:
+model pixels and defaults to four pixels forward and 3.5 pixels down (1.5 before 2026-10-09), plus thrust retraction:
 
 ```json
 {
   "format_version": 1,
-  "first_person": {"forward": 4, "down": 1.5, "retraction": 3}
+  "first_person": {"forward": 4, "down": 3.5, "retraction": 3}
 }
 ```
 

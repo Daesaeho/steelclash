@@ -169,6 +169,23 @@ public final class OffenseGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void anUnarmedPunchDoesNotInterruptAnAttack(GameTestHelper helper) {
+        Player puncher = swordsman(helper, ItemStack.EMPTY, FACING_POSITIVE_X);
+        TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(dummy, AttackType.STAB);
+        dummy.hurt(helper.getLevel().damageSources().playerAttack(puncher), 1f);
+        check(helper, isHurt(dummy), "the punch lands");
+        check(helper, data(dummy).machine.phase() == Phase.WINDUP, "a bare-handed punch must not interrupt the windup");
+
+        TrainingDummy second = dummy(helper, 3, 6, FACING_NEGATIVE_X);
+        Player armed = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        Combat.requestAttack(second, AttackType.STAB);
+        second.hurt(helper.getLevel().damageSources().playerAttack(armed), 1f);
+        check(helper, data(second).machine.phase() == Phase.STAGGER, "the same blow with a weapon in hand still interrupts");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void jabInterruptsAWindup(GameTestHelper helper) {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
@@ -327,13 +344,46 @@ public final class OffenseGameTests {
     public static void sameAttackCounters(GameTestHelper helper) {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy dummy = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        check(helper, Combat.startParry(dummy, data(dummy)), "a counter starts from guard");
         Combat.requestAttack(dummy, AttackType.SLASH);
+        check(helper, data(dummy).machine.isFromGuard(), "the counter preserves its guard origin");
         int before = data(dummy).machine.phaseDuration();
+        data(dummy).stamina.set(50);
+        float stamina = data(dummy).stamina.current();
         swing(player, AttackType.SLASH);
         check(helper, !isHurt(dummy), "a counter parries the incoming slash");
         check(helper, data(player).machine.phase() == Phase.STAGGER, "the countered attacker is staggered");
         check(helper, data(dummy).machine.phase() == Phase.WINDUP && data(dummy).machine.phaseDuration() < before,
                 "the counter keeps winding up, faster");
+        check(helper, Math.abs(data(dummy).stamina.current() - stamina) < 0.01,
+                "a counter neither pays the incoming block cost nor grants a refund");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void matchingNeutralAttackDoesNotCounter(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Combat.requestAttack(defender, AttackType.SLASH);
+        check(helper, !data(defender).machine.isFromGuard(), "this matching slash started from neutral");
+        swing(attacker, AttackType.SLASH);
+        check(helper, isHurt(defender), "a matching neutral attack must not parry the incoming hit");
+        check(helper, !data(defender).machine.isCounterCommitted(), "the neutral slash never became a counter");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void forgivenWrongCounterStillPaysBlockStamina(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        CombatData d = data(defender);
+        check(helper, Combat.startParry(defender, d), "raise guard");
+        check(helper, Combat.start(defender, d, AttackType.STAB), "start the wrong counter family");
+        d.stamina.set(50);
+        swing(attacker, AttackType.SLASH);
+        check(helper, !isHurt(defender), "parry forgiveness still catches the hit");
+        check(helper, d.stamina.current() < 50, "the forgiven input pays ordinary block stamina");
+        check(helper, !d.machine.isCounterCommitted(), "forgiveness is not a true counter");
         helper.succeed();
     }
 

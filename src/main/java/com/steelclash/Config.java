@@ -37,6 +37,10 @@ public class Config {
     public static final ModConfigSpec.IntValue STAMINA_REGEN_DELAY_TICKS = BUILDER
             .comment("Ticks after spending stamina before it starts regenerating")
             .defineInRange("regenDelayTicks", 25, 0, 1200);
+    public static final ModConfigSpec.DoubleValue EXHAUSTION_RECOVER_FRACTION = BUILDER
+            .comment("Running out of stamina leaves you exhausted until it regenerates back to this share of the pool.",
+                    "While exhausted, blocking a blow breaks your guard and you can't feint, morph or dash (Chivalry 2).")
+            .defineInRange("exhaustionRecoverFraction", 0.25, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue VANILLA_MELEE_STAMINA_DAMAGE = BUILDER
             .comment("Stamina lost when parrying or shield-blocking an attack that isn't a Steel Clash swing (vanilla mob melee)")
             .defineInRange("vanillaMeleeStaminaDamage", 15.0, 0.0, 1000.0);
@@ -106,10 +110,10 @@ public class Config {
             .defineInRange("towerShieldCone", 180.0, 10.0, 360.0);
     public static final ModConfigSpec.DoubleValue BASIC_SHIELD_STAMINA_MULT = BUILDER
             .comment("Stamina a basic shield block costs, as a fraction of the hit's stamina damage")
-            .defineInRange("basicShieldStaminaMult", 0.7, 0.0, 10.0);
+            .defineInRange("basicShieldStaminaMult", 0.35, 0.0, 10.0);
     public static final ModConfigSpec.DoubleValue TOWER_SHIELD_STAMINA_MULT = BUILDER
             .comment("Stamina a tower shield block costs, as a fraction of the hit's stamina damage")
-            .defineInRange("towerShieldStaminaMult", 0.5, 0.0, 10.0);
+            .defineInRange("towerShieldStaminaMult", 0.25, 0.0, 10.0);
 
     static {
         BUILDER.pop().push("offense");

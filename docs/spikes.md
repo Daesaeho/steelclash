@@ -498,3 +498,56 @@ Filmstrips of slash, overhead, stab and heavy slash (front and back), side views
 
 Mutation check: 7 of 7 caught after one fix (the first run showed that clamping the arm aim back to -90 left the arm
 leaning back but the blade upright, which no test checked; `theArmCanLeanBackOverTheHead` now checks the blade too).
+
+
+## Counter and dodge fidelity patch (2026-10-09)
+
+- Melee counter eligibility now requires the existing `CombatStateMachine.isFromGuard` flag, shared by the direct hit and lag-grace paths. A neutral matching attack takes the hit rather than acquiring a counter. Existing prediction snapshots already carry this flag; packet formats stay the same.
+- A successful counter avoids the incoming block stamina charge. Feint/heavy/whiff action costs keep their existing accounting, and no stamina refund is added. A wrong counter caught by parry forgiveness still pays ordinary block stamina.
+- Bots enter guard before starting their matching counter. A guard cooldown must not silently convert that defensive decision into an ordinary attack. Counter-feints retain their guard origin.
+- `CombatStateMachine.canDodgeWindup` is the shared cancellation predicate for client prediction and server requests. Jab, kick, heavy, and already successful counter windups reject a dodge. Rejection preserves the attack, stamina, cooldowns, and queued input.
+- Unconnected light counter attempts retain the existing dodge behavior. The exact late-attempt cutoff still needs measurement; no undocumented percentage is introduced here.
+- Counter fixtures now enter guard explicitly. The expired-counter lag test lets the guard cooldown expire before simulating an old windup, so its later guard request tests latency grace rather than a fresh cooldown.
+
+References: the supplied combat report sections 4.4-4.5 for counter origin/accounting; Torn Banner's [Fight Knight 2.2 notes](https://chivalry2.com/2021/10/25/chivalry-2-content-update-fight-knight-2-2/) for committed jabs/kicks/heavies, and [Reinforced 2.6 notes](https://chivalry2.com/2022/10/04/reinforced-update-patch-notes/) for counter commitment. Exact counter refunds and the late unsuccessful-counter dodge cutoff are not established by these sources.
+
+Validation in an isolated copy: compileJava, 64 focused JUnit tests (state machine, defense math, turn limits), and all 151 GameTests with the Spartan integrations and again without them pass. Mutation check: 7 of 7 valid mutations caught by their intended tests (guard origin, counter impact stamina, jab/kick/heavy commitment, server dodge wiring, and bot guard entry). Client/LAN checks above remain manual.
+
+Re-verified on this repository after applying: build, JUnit and all 151 GameTests pass; mutation check 6 of 6 caught by their intended tests (neutral matching attack countering, counter paying half a block, jab and heavy dodge-cancels, the server dodge ignoring the shared predicate, bots countering from neutral).
+
+## Lower first-person arms (2026-10-09)
+
+The arms took up a large part of the screen: they sat 1.5 px down, and the swing lift (0.1 px per degree, 1.5 px at the
+default 15 degrees) raised them back to the shoulder line during swings. Default first-person `down` is now 3.5 px
+(`AnimationSet.FirstPerson.DEFAULT`, the parser fallback and `default.json`) and the lift is 0.05 px per degree. Pose
+sheets at 1.5, 3.5 and 5 px (idle ready stance, slash, overhead, stab): 3.5 keeps the weapon fully in view with clearly
+less arm on screen; at 5 the ready-stance hands nearly leave the bottom edge. A resource pack can still set its own
+`first_person.down`.
+
+## Exhaustion, unarmed blows and shields (2026-10-09)
+
+- **Exhaustion.** Reaching zero stamina only mattered on the hit that emptied it: `Stamina.spend` reported the drain and
+  only the parry path used it, so feints and morphs were free at zero and the next tick of regeneration ended any
+  consequence. The report treats zero as a state ("a high-value punish state with a restricted action set", 4.13,
+  14.5). `Stamina` now has an exhausted flag: set on reaching zero, cleared once stamina regenerates back to
+  `exhaustionRecoverFraction` (0.25; the report gives no number, and without a threshold the state would end on the
+  next regeneration tick). While exhausted, a blocked melee blow breaks the guard (weapon: disarm and stagger; shield:
+  guard break and cooldown), and feints, feints into kicks/jabs, morphs and dashes are refused. The flag rides on the
+  stamina packet so the client predicts the same refusals; the HUD frame pulses red.
+- **Unarmed blows.** Any damage during a windup flinched it and any blow during a release interrupted it, so a punch
+  with an empty hand cancelled a mob's attack. `CombatEvents.unarmedBlow`: a direct melee hit from an attacker whose
+  main hand has no weapon profile doesn't interrupt; weapon blows, Steel Clash swings and projectiles are unchanged.
+  It applies to everyone, mobs and players alike.
+- **Shields vs Chivalry 2 (report 9).** Checked: kicks break shield guards, attackers bounce off shields, cones cover
+  the front (tower wider), vanilla durability wears shields out. Changed: block cost was 70% (basic) and 50% (tower) of
+  the hit's stamina damage, less mitigation than even a Chivalry 2 light shield (~50%); now 35% and 25%, in line with the
+  reported medium (~65%) and heavy (~75%) mitigation and the official "substantially less than a weapon parry".
+  Arrows broke a shield guard when they drained the last stamina; official patch notes say they mustn't, so projectiles
+  never break one now. Not applicable: Chivalry 2's shield on the back stopping arrows from behind (Minecraft keeps the
+  shield in the offhand).
+
+Tests: `StaminaTest` (3), GameTests `anUnarmedPunchDoesNotInterruptAnAttack`, `anExhaustedGuardBreaksBeforeTheBarIsEmpty`,
+`anExhaustedFighterCannotFeintMorphOrDash`, `arrowsNeverBreakAShieldGuardButBlowsDo`; all 155 GameTests pass. Mutation
+check: 9 of 9 caught by their intended tests after strengthening three tests (the first run showed the arrow test never
+drained the shield, the dash check ran on an airborne fighter, and two duels close enough that a random-side slash hit
+the wrong dummy). `skeletonSwitchesOnItsOwn` failed in some runs regardless of the change: still flaky.
