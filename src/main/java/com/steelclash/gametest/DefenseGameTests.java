@@ -250,9 +250,27 @@ public final class DefenseGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void trainingDummyDisarmDoesNotDuplicateEquipment(GameTestHelper helper) {
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        ItemStack copiedEquipment = new ItemStack(Items.DIAMOND_SWORD);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            defender.setItemSlot(EquipmentSlot.MAINHAND, copiedEquipment.copy());
+            Disarm.disarm(defender);
+            check(helper, defender.getMainHandItem().isEmpty(), "the dummy can still be disarmed for practice");
+            check(helper, helper.getLevel().getEntitiesOfClass(ItemEntity.class, defender.getBoundingBox().inflate(3),
+                    e -> e.getItem().is(Items.DIAMOND_SWORD)).isEmpty(), "copied training equipment must never become loot");
+            check(helper, data(defender).lostWeapon == null, "the dummy has no real weapon to retrieve");
+        }
+        check(helper, copiedEquipment.getCount() == 1, "the player's source equipment remains untouched");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void parryingWithNoStaminaDisarms(GameTestHelper helper) {
         Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
-        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        Husk defender = helper.spawnWithNoFreeWill(EntityType.HUSK, 3, 2, 4);
+        defender.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        face(defender, FACING_NEGATIVE_X);
         data(defender).stamina.set(1);
         Combat.requestParry(defender);
         swing(attacker, AttackType.SLASH);

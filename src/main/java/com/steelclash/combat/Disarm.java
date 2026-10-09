@@ -1,6 +1,7 @@
 package com.steelclash.combat;
 
 import com.steelclash.Config;
+import com.steelclash.entity.TrainingDummy;
 import java.util.List;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -45,6 +46,12 @@ public final class Disarm {
         }
 
         victim.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        // Dummy equipment is copied for practice; letting that copy become loot duplicates the player's item.
+        if (victim instanceof TrainingDummy) {
+            data.lostWeapon = null;
+            Feedback.disarm(victim);
+            return;
+        }
         Vec3 look = victim.getLookAngle();
         ItemEntity drop = new ItemEntity(victim.level(), victim.getX(), victim.getEyeY() - 0.3, victim.getZ(), weapon);
         drop.setDeltaMovement(look.x * 0.25 + (victim.getRandom().nextDouble() - 0.5) * 0.1, 0.3,

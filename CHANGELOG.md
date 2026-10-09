@@ -1,6 +1,14 @@
 # Unreleased
 
+**Fixes**
+- A rejected jab/kick feint preserves the original windup and stamina. Eligibility is checked before cancellation, and rejected predicted windup replacements send the owning client an authoritative correction.
+- Downed and dead players no longer retain a standing first-person combat-ready pose or activate its animation layer.
+- Landed jabs, kicks, specials and throws retain their recovery instead of unlocking an unintended weapon combo. The timing HUD keeps showing recovery; normal cuts and thrusts still combo after a hit or miss.
+- Disarming a training dummy removes its copied practice weapon without creating recoverable loot. Actual mobs and players still drop their real weapons.
+- Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
+
 **Development**
+- Record the combat/animation goal and original weapon-family style directions in `docs/combat-animation-goal.md`. Pose-sheet staging clears player effects so potion particles do not pollute motion captures.
 - Add three focused Codex skills for project context, change verification, and animation review, with helpers for current source routes, fresh test-result summaries, and chronologically ordered pose captures.
 
 **Combat** (from the Chivalry 2 report)
@@ -19,6 +27,7 @@
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Animation**
+- Original weapon-family style draft: distinct first-person ready positions, body preparation and follow-through rhythm for daggers, swords, greatswords, axes, blunt weapons, polearms, spears, rapiers and staves. Pack authors can set `first_person.ready_yaw` and `ready_pitch`; omitted values preserve the old stance. Gameplay timing and hit arcs retain their existing behavior.
 - First person: a ready stance while holding a weapon (off hand empty), so attacks start from it and return to it instead of cutting from vanilla's hand (`firstPersonReadyStance`).
 - Combos, ripostes, morphs, feints, staggers and guards blend from the arm's last pose over 0.2 s instead of snapping back to rest first; a combo goes straight from the end of one swing into the next windup. Heavy upgrades and weapon morphs blend too.
 - Windups ease in, telegraph, then settle exactly onto the start of the swing: no jump at the release, including all 33 heavy windup clips.

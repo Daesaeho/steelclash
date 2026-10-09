@@ -142,6 +142,28 @@ public final class OffenseGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void landedNonweaponActionsRetainRecovery(GameTestHelper helper) {
+        for (AttackType type : new AttackType[]{AttackType.JAB, AttackType.KICK, AttackType.SPECIAL}) {
+            Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+            TrainingDummy target = dummy(helper, 2, 4, FACING_NEGATIVE_X);
+            CombatData d = data(player);
+            check(helper, Combat.start(player, d, type), "start " + type);
+            for (int tick = 0; tick < 100 && d.machine.phase() != Phase.RECOVERY; tick++) {
+                Combat.tickServer(player, d);
+            }
+            check(helper, isHurt(target), type + " lands so this exercises the hit path");
+            check(helper, d.machine.phase() == Phase.RECOVERY && !d.machine.isComboAllowed(),
+                    type + " must recover after landing");
+            int serial = d.machine.attackSerial();
+            Combat.requestAttack(player, AttackType.SLASH);
+            check(helper, d.machine.phase() == Phase.RECOVERY && d.machine.attackSerial() == serial,
+                    type + " cannot skip recovery into the requested slash");
+            target.discard();
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void whiffCanBeComboed(GameTestHelper helper) {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         Combat.requestAttack(player, AttackType.SLASH);

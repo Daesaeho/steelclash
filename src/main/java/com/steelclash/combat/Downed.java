@@ -54,7 +54,12 @@ public final class Downed {
             return false;
         }
         CombatData data = player.getData(ModAttachments.COMBAT);
-        if (data.isDowned() || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.is(BLED_OUT)
+        if (data.isDowned()) {
+            stand(player, data);
+            sync(player, data);
+            return false; // a finishing blow ends crawling and revival before the death proceeds
+        }
+        if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.is(BLED_OUT)
                 || !allyNearby(player)) {
             return false; // finished off, /kill or the void, or nobody to come for them
         }
@@ -96,6 +101,11 @@ public final class Downed {
     /** Each server tick for players: bleed out, or progress a revive. */
     public static void tick(Player player, CombatData data) {
         if (!data.isDowned()) {
+            return;
+        }
+        if (!player.isAlive()) {
+            stand(player, data);
+            sync(player, data);
             return;
         }
         player.setForcedPose(Pose.SWIMMING);

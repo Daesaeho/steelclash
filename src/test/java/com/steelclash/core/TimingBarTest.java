@@ -50,7 +50,7 @@ class TimingBarTest {
     }
 
     @Test
-    void recoveryDrainsAndTurnsIntoComboAfterAHit() {
+    void nonweaponRecoveryDrainsWithoutAdvertisingACombo() {
         CombatStateMachine m = new CombatStateMachine();
         m.startAttack(AttackType.KICK, AttackTimings.ofTicks(1, 1, 4)); // a kick's recovery can't be comboed
         m.tick();
@@ -59,6 +59,16 @@ class TimingBarTest {
         TimingBar b = bar(m, false);
         assertEquals(TimingBar.Kind.RECOVERY, b.kind());
         assertEquals(1.0, b.fraction(), 1e-6, "full at the start of recovery, draining");
+        m.allowCombo();
+        assertEquals(TimingBar.Kind.RECOVERY, bar(m, false).kind(), "landing a kick does not unlock a combo");
+    }
+
+    @Test
+    void aWeaponThwackAdvertisesTheComboWindow() {
+        CombatStateMachine m = new CombatStateMachine();
+        m.startAttack(AttackType.SLASH, AttackTimings.ofTicks(1, 2, 4));
+        m.tick();
+        m.thwack(4 * (int) AttackTimings.TICK_US, 0.5);
         m.allowCombo();
         assertEquals(TimingBar.Kind.COMBO, bar(m, false).kind());
     }

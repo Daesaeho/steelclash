@@ -108,6 +108,43 @@ public final class DownedGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void aFinishedOffPlayerCannotBeRevived(GameTestHelper helper) {
+        ServerPlayer patient = player(helper, 2.5, 2.5);
+        ServerPlayer ally = player(helper, 3.5, 2.5);
+        lethal(helper, patient);
+        check(helper, data(patient).isDowned(), "the first lethal blow downs them");
+        ally.setShiftKeyDown(true);
+        Downed.tick(patient, data(patient));
+        check(helper, data(patient).reviveTicks == 1, "the ally starts a revive");
+        lethal(helper, patient);
+        check(helper, !patient.isAlive(), "the second lethal blow kills them");
+        check(helper, !data(patient).isDowned() && data(patient).reviveTicks == 0,
+                "death clears downed state and revive progress");
+        check(helper, patient.getForcedPose() == null, "death clears the crawling pose");
+        for (int tick = 0; tick <= Downed.reviveTicksNeeded(); tick++) {
+            Downed.tick(patient, data(patient));
+        }
+        check(helper, !patient.isAlive() && patient.getHealth() <= 0, "a nearby ally cannot resurrect the corpse");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void aDeadPatientCannotFinishARevive(GameTestHelper helper) {
+        ServerPlayer patient = player(helper, 2.5, 2.5);
+        ServerPlayer ally = player(helper, 3.5, 2.5);
+        lethal(helper, patient);
+        CombatData d = data(patient);
+        ally.setShiftKeyDown(true);
+        d.reviverId = ally.getId();
+        d.reviveTicks = Downed.reviveTicksNeeded() - 1;
+        patient.setHealth(0); // a lifecycle change outside the ordinary lethal-damage event
+        Downed.tick(patient, d);
+        check(helper, !patient.isAlive() && patient.getHealth() <= 0, "a corpse cannot complete a revive");
+        check(helper, !d.isDowned() && d.reviverId == -1 && d.reviveTicks == 0, "the stale downed state is cleared");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
     public static void downedPlayersBleedOut(GameTestHelper helper) {
         ServerPlayer downed = player(helper, 2.5, 2.5);
         player(helper, 4.5, 2.5);

@@ -551,3 +551,81 @@ Tests: `StaminaTest` (3), GameTests `anUnarmedPunchDoesNotInterruptAnAttack`, `a
 check: 9 of 9 caught by their intended tests after strengthening three tests (the first run showed the arrow test never
 drained the shield, the dash check ran on an airborne fighter, and two duels close enough that a random-side slash hit
 the wrong dummy). `skeletonSwitchesOnItsOwn` failed in some runs regardless of the change: still flaky.
+
+## Beta combat/animation audit (2026-10-09)
+
+User direction: Chivalry 2 combat fidelity, animation improvements and original styles per weapon family. See
+`docs/combat-animation-goal.md`. The supplied full technical report describes a separate protocol-12 patch and
+72 potential bugs; this checkout began at `1b1f992`, protocol 11. Findings must be evaluated against current code.
+
+Confirmed and fixed against this checkout:
+- **C03:** `allowCombo` accepted clean-hit notifications for every action. Require slash/overhead/stab so landed
+  jabs, kicks, specials and throws retain recovery. Normal weapon whiffs and thwacks still combo. The old timing
+  HUD test explicitly granted a kick a combo; replace that obsolete expectation and verify the weapon HUD case.
+- **A02:** a dummy copies supplied practice gear, so its disarm must remove the copy without spawning loot or
+  registering a recoverable lost weapon. The real-drop test now uses an armed husk, preserving actual mob drops.
+- **A01:** a second lethal blow previously left downed/revive fields and crawl modifiers intact. Clear them when
+  the finishing death proceeds; the downed tick also rejects a dead patient before completing a stale revive.
+
+New real GameTests reproduced all three bugs before the fixes. After fixing: 184 unit tests and 159 GameTests
+with Spartan integrations passed; the fresh build and all 159 optional-mod-free GameTests passed too.
+Mutation check: 4/4 valid mutants caught by the intended tests (nonweapon
+combo, copied dummy drop, finishing-death cleanup, dead-patient revive). Full rebuild and optional-mod-free
+verification are recorded with fresh logs under `C:/dev/steelclash-beta-audit/20261009`.
+
+Animation evidence: isolated dev directory and copied world, camera motion 0, sword slash sampled every 50 ms
+(500/425/750 ms base phases). The first capture retained potion particles; it is not valid smoothness evidence.
+Pose-sheet staging now clears effects. The repeated clean capture has 34 frames per view. Third-person back flags
+0–150 ms and 650–700 ms by centroid displacement; the pose sheet shows a gradual raise and a continuous rotating
+release with blade occlusion, not a proven snap. Keep this baseline for finer/live and before/after comparisons.
+Weapon style clips currently vary largely in amplitudes on common patterns; authored style work remains open.
+
+## Weapon style draft and downed ready-state check (2026-10-09)
+
+Authored nine family styles in the existing phase-normalized pose files: family ready yaw/pitch, preparation
+timing, torso/hip motion and follow-through. Daggers keep the free hand guarded; rapiers retain a side-on body;
+axe and blunt drive peak at different release times. The live arc still solves the weapon arm. No weapon profile,
+reach, hit sweep or packet changes were made in this style pass. Optional ready fields default to 65/-45 and are
+finite/bounded; clip fallback preserves each pack's metadata.
+
+Visual evidence: 351 new-style poses and 351 original-asset poses for nine items, idle/light/heavy slash/overhead/stab,
+first/third person, right main arm, camera motion 0 in the isolated copied world. The valid original baseline uses
+an external Gradle resource override and verifies all nine copied files against the saved original bytes before
+launching. An earlier resource-pack capture loaded below mod resources and is invalid; the initial screenshot
+copy also compared local/UTC times incorrectly. Corrected UTC copying and asset validation prevent silent reuse.
+Focused differences show changed first-person ready orientation and body preparation, confined to the subject.
+These static samples do not prove uniform motion or live transitions.
+
+N11: ready-pose creation and PAL layer eligibility previously ignored downed state. Both now suppress standing
+ready presentation while downed/dead. `PoseSheet` can stage a `downed` player client scene, supplying the same
+downed fields/forced crawl pose as client snapshots, and asserts no ready pose or layer activation. Removing
+each guard independently makes the real client fail with its corresponding `DownedReadyScene` exception.
+This verifies rendering eligibility, not the complete LAN lifecycle.
+
+Verification: fresh build and all 186 JUnit checks pass. Five valid mutants caught: ignored ready yaw, invalid
+ready bounds, lost metadata during fallback, downed ready-pose creation, and downed layer activation. The last
+two run actual client scenes, and failure logs were inspected for the intended exception. Source restored and
+rebuilt afterward. Asset-number formatting was cleaned without changing any parsed animation values.
+
+Remaining: uniform before/after motion capture, mob rendered-blade alignment, handedness/offhand/model/renderer
+matrix and real input/network transitions. Blockbench is a useful body-motion authoring path, but its exports
+need coordinate/bone/phase conversion into this format while preserving procedural weapon-arm ownership.
+
+## Atomic built-in attack replacement (2026-10-09)
+
+Confirmed C01 with real GameTests: a post-disarm jab cooldown rejected `start` only after `feintInto` had
+cancelled the original windup and spent stamina. The windup request branch then returned without correcting
+the client. The new tests failed on both intact-state and owning-client packet assertions before the fix.
+
+Shared action eligibility now checks downed state, holster/item cooldown (retaining the kick exception), and
+jab cooldown before cancelling a windup or charging the feint. Rejected built-in or changed-type/side requests
+send an authoritative correction; a repeated unchanged attack input does not create extra correction traffic.
+Accepted jab/kick replacements still start and pay exactly once at cooldown expiry.
+
+`ActionReplacementGameTests` checks the complete attack snapshot, stamina, queued input and hit bookkeeping
+under rejection; accepted cooldown boundaries and kick exceptions; and production dispatch through `ModNetwork`
+to a recording owning-player listener. This tests correction contents/delivery paths, not negotiated network
+transport or latency. All 162 with-compat GameTests passed. Mutation check: 3/3 caught by their intended tests
+(late eligibility check, off-by-one cooldown, omitted correction). The restored build and no-compat results are
+kept under `C:/dev/steelclash-beta-audit/20261009/action-replacement`. The fresh build passed all 186 JUnit checks,
+and all 162 GameTests passed without the optional mods too. Mutation source was restored before the final build.

@@ -47,17 +47,13 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
     private static final double WRIST_RELAX = 0.45;
     private static final double[] NO_OFFSET = {0, 0, 0};
 
-    /** First-person ready stance: weapon held up at the weapon side, blade rising, degrees from the view. */
-    private static final double READY_YAW = 65;
-    private static final double READY_PITCH = -45;
-
     /** The animation layer's activation check needs availability, not an interpolated pose and sampled clips. */
     public static boolean isAvailable(LivingEntity entity) {
-        if (!entity.hasData(ModAttachments.COMBAT)) {
+        if (!entity.isAlive() || !entity.hasData(ModAttachments.COMBAT)) {
             return false;
         }
         CombatData data = entity.getData(ModAttachments.COMBAT);
-        return data.machine.phase() != Phase.IDLE && Combat.currentSpec(entity, data).isPresent();
+        return !data.isDowned() && data.machine.phase() != Phase.IDLE && Combat.currentSpec(entity, data).isPresent();
     }
 
     /**
@@ -66,6 +62,9 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
      * {@link #type()} and {@link #swing()} are null.
      */
     public static Optional<CombatPose> ready(LivingEntity entity, float partialTick) {
+        if (!entity.isAlive() || (entity.hasData(ModAttachments.COMBAT) && entity.getData(ModAttachments.COMBAT).isDowned())) {
+            return Optional.empty();
+        }
         return WeaponProfiles.resolve(entity.getMainHandItem(), entity.level().registryAccess()).map(resolved -> {
             String archetype = resolved.profile().archetype();
             AnimationSet animation = AnimationLibrary.INSTANCE.get(archetype);
@@ -74,8 +73,8 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
             boolean leftHanded = entity.getMainArm() == HumanoidArm.LEFT;
             float headYaw = Mth.wrapDegrees(viewYaw(entity, partialTick) - Mth.rotLerp(partialTick, entity.yBodyRotO, entity.yBodyRot));
             double[] tuning = PoseSheet.readyOverride();
-            double readyYaw = (tuning != null ? tuning[0] : READY_YAW) * (leftHanded ? -1 : 1);
-            double readyPitch = tuning != null ? tuning[1] : READY_PITCH;
+            double readyYaw = (tuning != null ? tuning[0] : animation.firstPerson().readyYaw()) * (leftHanded ? -1 : 1);
+            double readyPitch = tuning != null ? tuning[1] : animation.firstPerson().readyPitch();
             double aimPitch = Mth.clamp(entity.getViewXRot(partialTick) + readyPitch, -90, 90);
             return new CombatPose(Phase.IDLE, null, 1, headYaw + readyYaw, aimPitch, Map.of(), twoHanded, false, 0,
                     animation.gripGap(), leftHanded, false, readyYaw, 1, animation.firstPerson(), null);

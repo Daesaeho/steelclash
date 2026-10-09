@@ -37,8 +37,8 @@ Use **survival** for stamina (creative works too). Get a **Training Dummy Spawn 
 | 2 | Dummy in **Attack** mode: parry its slash on time | No damage, sparks plus an anvil "clank". Its arm snaps back (staggered, magenta). Your stamina bar under the crosshair flashes **white** = riposte ready. |
 | 3 | Attack right after a successful parry | Noticeably faster windup (riposte). |
 | 4 | Parry too early, or stand beside/behind the dummy's swing | You get hit. |
-| 5 | Hit the dummy in **Parry** mode repeatedly | It parries and you get staggered each time. Its stamina drains; eventually its **sword flies out of its hand**. |
-| 6 | Walk over the dropped sword | You can pick it up; zombies standing on it can't. |
+| 5 | Hit the dummy in **Parry** mode repeatedly | It parries and you get staggered each time. Its stamina drains; eventually it loses its copied practice sword. The dummy creates no weapon loot. |
+| 6 | Disarm an armed zombie, then walk over its dropped sword | You can pick up the real weapon; other zombies standing on it can't. Its former owner may retrieve it first. |
 | 7 | Parry several attackers in quick succession (2–3 Spar dummies, or a group of zombies) until your stamina runs out | You get disarmed (your weapon drops). One dummy alone won't do it: stamina regenerates between its swings. `disarmMode = HOLSTER` in the common config locks the weapon for 3 s instead. |
 | 8 | Shield in offhand + sword: hold right-click | Vanilla shield guard. Hits from the front cost stamina; from behind they go through. Run out → shield break sound, shield on cooldown, staggered. |
 | 9 | Spartan tower shield vs a skeleton | Arrows from the front are stopped, arrows from behind are not. |
@@ -57,12 +57,12 @@ New keys (Controls → Steel Clash): **Feint = X**, **Kick / Shield Bash = Z**. 
 | 2 | Tap X during a windup | Feint: the attack cancels and costs stamina. The Parry dummy raises its guard, then gets punished. |
 | 3 | Right-click during a windup | Cancels straight into a parry (costs stamina). |
 | 4 | Start a slash, then scroll down/up before it releases | Morph into a stab/overhead. Works once per swing. |
-| 5 | Hit something, then attack again during recovery | Combo: the next attack starts at once. After a **miss**, the next attack waits for the recovery to end. |
+| 5 | Slash/overhead/stab, then attack again during recovery after a hit or miss | Combo: the next weapon attack starts at once in either case. Landed jabs, kicks, specials and throws retain their recovery. |
 | 6 | Hit the Attack-mode dummy while it winds up | Its attack is interrupted (flinch). |
 | 7 | Give the dummy a mace or Spartan greatsword, then hit it during a *heavy* | It keeps swinging (hyper armor). |
 | 8 | Z at a shield-blocking or parrying dummy | Guard broken: shield drops, dummy staggered, stamina drained, no damage. With a shield in your offhand, Z is a stronger shield bash. |
 | 9 | Z at an unguarded dummy/zombie | Short stagger, a little damage, a shove. |
-| 10 | Attack-mode dummy slashes at you: slash back early | Counter: its slash is parried and yours lands first. Stab vs slash doesn't counter. |
+| 10 | Attack-mode dummy slashes at you: raise guard, then slash back within the counter window | Counter: its slash is parried and yours lands first. A neutral slash or a mismatched stab does not counter. |
 | 11 | Slash next to a wall or tree | Clank: sparks, sound, short stagger. Overheads into the ground and swinging under a 3-block ceiling don't clank. |
 | 12 | Sprint and attack | Lunge: you surge forward and reach farther. |
 | 13 | Jump and overhead | Extra damage. |
@@ -386,7 +386,7 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 
 ## Bug audit checks (2026-10-08)
 
-The server-side fixes have GameTests. These need real clients (protocol 10 on both sides):
+The server-side fixes have GameTests. These need real clients with the same current protocol on both sides:
 
 | Check | Expected |
 |---|---|
@@ -437,3 +437,52 @@ The existing dodge timing for unconnected light counter attempts is retained. Fi
 | 3 | Punch a winding-up mob with an empty hand | It keeps swinging. With a sword in hand the same hit interrupts it. |
 | 4 | Block a few hits with a shield, then the same hits with a sword guard | The shield costs much less stamina. |
 | 5 | Let a skeleton shoot your raised shield with an empty bar | The arrow is blocked and the shield stays up. |
+
+## Beta regression checks (2026-10-09)
+
+Automated: `RecoveryCommitmentTest`, the timing HUD recovery/weapon-combo checks,
+`landedNonweaponActionsRetainRecovery`, `trainingDummyDisarmDoesNotDuplicateEquipment`,
+`aFinishedOffPlayerCannotBeRevived`, `aDeadPatientCannotFinishARevive`, and the real-husk disarm test.
+The three reported bugs failed before their fixes; all four targeted mutation checks are caught.
+
+| Check | Expected |
+|---|---|
+| Land a jab, kick or special, then immediately request a slash | The timing HUD stays in recovery and the slash waits; a normal unblocked weapon swing still combos after a hit or miss. |
+| Give a dummy valuable practice gear, disarm it, rearm and repeat | The dummy loses its copied weapon without spawning collectible loot; disarming a real armed mob still drops its weapon. |
+| LAN: begin reviving a downed ally, then finish the ally off | Crawl/revive presentation clears and the nearby reviver cannot bring the corpse back. |
+
+Weapon-family style directions and remaining animation gates are in [combat-animation-goal.md](combat-animation-goal.md).
+For pose-sheet motion evidence use a disposable world. Staging clears player effects; GUI/camera changes, equipping,
+teleporting, platform building and nearby-entity cleanup also affect that world. Keep particles and camera effects out
+of uniformly timed sequences, and do not infer live transition/latency correctness from frozen pose sheets.
+
+## Weapon-family style and ready-state checks (2026-10-09)
+
+`AnimationFilesTest` verifies all shipped light/heavy windup and recovery seams. `AnimationSetValidationTest`
+covers ready yaw/pitch defaults, finite bounds and metadata retention when clips inherit. The staged client
+`-PposeSheet=downed` scene checks both ready-pose eligibility and ready-layer activation; its two guards were
+individually removed and the actual client failed for the intended reason. This does not replace a LAN downing test.
+
+| Check | Expected |
+|---|---|
+| First person with each family, empty offhand | Distinct ready position; sword keeps its familiar stance, spear/rapier use a narrower preparation and greatsword a higher one. |
+| Light/heavy slash, overhead and stab, both sides, first/third person | Family preparation and follow-through are readable; the windup/release and release/recovery boundaries do not snap. |
+| Downed with a melee weapon; then revived or finished off | The standing ready override clears immediately. Revival restores eligible presentation; death cannot keep a ready layer. |
+| Left main arm, shield/torch in offhand, default/slim skins; Sodium on/off | Ready yaw mirrors appropriately, occupied offhand stays visible and grip/clip behavior remains usable. |
+| Watch armed humanoid mobs with debug blade on | Body style must preserve release-blade alignment; check long weapons and strong torso leans closely. |
+
+Static comparisons: 351 original-asset and 351 authored-style poses in the isolated evidence directory. Ready
+and body changes are visible in focused diffs. Uniform motion captures, live transitions and the full model/renderer
+matrix are still pending; static comparisons are not a smoothness verdict.
+
+## Rejected action replacement (2026-10-09)
+
+`ActionReplacementGameTests` reproduces C01. Rejected jab replacements under the post-disarm cooldown, holster,
+or downed state must preserve the complete attack snapshot, stamina, queued input and hit bookkeeping. Eligible
+jab/kick replacements must still start and pay once, including at exact cooldown expiry and the kick holster
+exception. A recording server packet listener verifies actual correction dispatch through `ModNetwork` to the
+owning player; it does not emulate round-trip latency or connection negotiation.
+
+Manual LAN check: disarm, equip a spare weapon after the stagger, start a slash while the jab cooldown remains,
+then press jab. The slash continues, the feint is not charged, and prediction returns to the authoritative slash.
+Repeat rejected morph/replacement inputs under latency and watch for stale animation or queued-input behavior.

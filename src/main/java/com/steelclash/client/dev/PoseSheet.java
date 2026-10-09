@@ -3,6 +3,9 @@ package com.steelclash.client.dev;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.steelclash.SteelClash;
 import com.steelclash.client.CombatDebugRenderer;
+import com.steelclash.client.ProceduralSwingAnimation;
+import com.steelclash.client.anim.CombatPose;
+import com.steelclash.client.anim.CombatPresentation;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackTimings;
@@ -27,6 +30,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.api.distmarker.Dist;
@@ -78,6 +82,7 @@ public final class PoseSheet {
     private static List<Shot> shots;
     private static int index = -1;
     private static int wait;
+    private static boolean stagedDowned;
 
     private PoseSheet() {
     }
@@ -144,6 +149,7 @@ public final class PoseSheet {
         String item = items().get(0);
         for (String command : new String[]{
                 "gamerule doDaylightCycle false", "gamerule doWeatherCycle false", "time set noon", "weather clear",
+                "effect clear @s",
                 "fill ~-3 300 ~-3 ~3 300 ~3 minecraft:polished_andesite", "tp @s ~ 301 ~ 0 0",
                 "item replace entity @s weapon.mainhand with " + item}) {
             player.connection.sendCommand(command);
@@ -194,8 +200,11 @@ public final class PoseSheet {
                             prefix + base.replace(':', '_') + "_" + viewName, mobYaw));
                     continue;
                 }
-                if (base.equals("idle")) {
-                    out.add(new Shot(item, AttackType.SLASH, false, false, Phase.IDLE, 0, view, prefix + "idle_" + viewName, mobYaw));
+                if (base.equals("idle") || base.equals("downed")) {
+                    if (base.equals("downed") && MOB != null) {
+                        throw new IllegalArgumentException("Pose sheet: downed is a player-only scene");
+                    }
+                    out.add(new Shot(item, AttackType.SLASH, false, false, Phase.IDLE, 0, view, prefix + base + "_" + viewName, mobYaw));
                     continue;
                 }
                 if (base.equals("parry")) {
@@ -283,6 +292,16 @@ public final class PoseSheet {
             subject.xRotO = 0;
         }
         CombatData data = subject.getData(ModAttachments.COMBAT);
+        boolean downedShot = shot.name().startsWith("downed_") || shot.name().contains("_downed_");
+        if (downedShot) {
+            data.downedTicksLeft = 200; // the client state a DownedPayload supplies, without changing server gameplay
+            player.setForcedPose(Pose.SWIMMING);
+            stagedDowned = true;
+        } else if (stagedDowned) {
+            data.downedTicksLeft = -1;
+            player.setForcedPose(null);
+            stagedDowned = false;
+        }
         Optional<WeaponProfiles.Resolved> resolved = WeaponProfiles.resolve(subject.getMainHandItem(), player.level().registryAccess());
         data.profileKey = resolved.map(WeaponProfiles.Resolved::key).orElse(null);
         Optional<WeaponProfile.AttackSpec> spec = switch (shot.type()) {
@@ -314,6 +333,15 @@ public final class PoseSheet {
         long elapsed = Math.min(duration - 1, Math.round(shot.progress() * duration));
         data.machine.apply(shot.phase(), shot.type(), Math.max(0, elapsed), duration, timings, 0, shot.heavy(), false, false, 0,
                 shot.mirrored());
+        if (downedShot) {
+            CombatPresentation.get(player, 0); // discard any standing-pose tail, as normal downed rendering does
+            if (CombatPose.ready(player, 0).isPresent()) {
+                throw new IllegalStateException("DownedReadyScene: a downed player still has a combat-ready pose");
+            }
+            if (new ProceduralSwingAnimation(player).isActive()) {
+                throw new IllegalStateException("DownedReadyScene: the ready animation still activates while downed");
+            }
+        }
     }
 
     /** Who is being photographed: the player, or the nearest mob for mob shots (the player if it isn't there yet). */
@@ -331,6 +359,12 @@ public final class PoseSheet {
     }
 
     private static void finish(Minecraft mc, LocalPlayer player) {
+        if (stagedDowned) {
+            player.getData(ModAttachments.COMBAT).downedTicksLeft = -1;
+            player.setForcedPose(null);
+            stagedDowned = false;
+            SteelClash.LOGGER.info("Pose sheet: downed ready-pose and layer-activation checks passed");
+        }
         mc.options.hideGui = false;
         mc.options.setCameraType(CameraType.FIRST_PERSON);
         player.getData(ModAttachments.COMBAT).machine.apply(Phase.IDLE, AttackType.SLASH, 0, 0, AttackTimings.ofTicks(1, 1, 1), 0,

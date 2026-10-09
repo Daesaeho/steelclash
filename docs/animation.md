@@ -51,11 +51,16 @@ model pixels and defaults to four pixels forward and 3.5 pixels down (1.5 before
 ```json
 {
   "format_version": 1,
-  "first_person": {"forward": 4, "down": 3.5, "retraction": 3}
+  "first_person": {"forward": 4, "down": 3.5, "retraction": 3, "ready_yaw": 65, "ready_pitch": -45}
 }
 ```
 
+Ready yaw/pitch are degrees relative to the view; the yaw mirrors for left-handed fighters. They default to the
+previous 65/-45 stance when omitted, and packs keep their own ready metadata when inheriting missing clips.
+Ready presentation and layer activation are suppressed while downed/dead.
+
 Set `retraction` to 0 to disable the new translation. Bounds: forward/down -16..16, retraction 0..8,
+ready yaw -120..120 and ready pitch -90..90 (all finite),
 grip gap greater than 0 and at most 10, heavy scale 0..5. Keyframe times must be finite, unique and in 0..1;
 part arrays must have 1..3 finite axes. Channels are body, torso, head, right/leftArm, right/leftLeg and
 right/leftArmBend. Bend channels remain accepted but PAL's current 1.21.1 backend still does not draw elbows.

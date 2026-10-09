@@ -44,6 +44,27 @@ class AnimationSetValidationTest {
     }
 
     @Test
+    void readyOrientationUsesPackValuesAndSurvivesClipFallback() {
+        AnimationSet set = parse("{\"first_person\":{\"ready_yaw\":20,\"ready_pitch\":-12}}");
+        AnimationSet inherited = set.withFallback(parse("{\"first_person\":{\"ready_yaw\":80,\"ready_pitch\":-60}}"));
+        assertEquals(20, inherited.firstPerson().readyYaw());
+        assertEquals(-12, inherited.firstPerson().readyPitch());
+        assertEquals(4, inherited.firstPerson().forward());
+        assertEquals(65, parse("{}").firstPerson().readyYaw());
+        assertEquals(-45, parse("{}").firstPerson().readyPitch());
+    }
+
+    @Test
+    void rejectsNonfiniteOrOutOfRangeReadyOrientation() {
+        for (String values : List.of("\"ready_yaw\":121", "\"ready_yaw\":-121", "\"ready_pitch\":91",
+                "\"ready_pitch\":-91", "\"ready_yaw\":\"NaN\"", "\"ready_pitch\":\"Infinity\"")) {
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> parse("{\"first_person\":{" + values + "}}"));
+            assertTrue(error.getMessage().contains("first_person.ready_"), error.getMessage());
+        }
+    }
+
+    @Test
     void rejectsInvalidMetadata() {
         for (String json : List.of("{\"format_version\":2}", "{\"format_version\":1.5}",
                 "{\"grip\":\"two_handed_typo\"}", "{\"grip_gap\":0}", "{\"grip_gap\":11}",

@@ -54,10 +54,7 @@ public final class Combat {
      * @param mirrored swing from the other side (left to right)
      */
     public static boolean start(LivingEntity entity, CombatData data, AttackType type, int variant, boolean mirrored) {
-        if (data.isDowned()) {
-            return false; // down on the ground: no fighting until revived
-        }
-        if (isHolstered(entity, data) && type != AttackType.KICK) {
+        if (!canUseAttack(entity, data, type)) {
             return false;
         }
         Optional<WeaponProfiles.Resolved> resolved = WeaponProfiles.resolveFor(entity);
@@ -65,9 +62,6 @@ public final class Combat {
         if (type == AttackType.KICK) {
             timings = Kicks.forEntity(entity).timings();
         } else if (type == AttackType.JAB) {
-            if (data.jabReadyAt > entity.level().getGameTime()) {
-                return false; // just disarmed
-            }
             timings = Jabs.spec().timings();
             if (Dodge.justDodged(entity, data)) {
                 timings = timings.withWindupUs(timings.windupUs()
@@ -151,7 +145,7 @@ public final class Combat {
      */
     public static boolean feintInto(LivingEntity entity, CombatData data, AttackType type) {
         if ((type != AttackType.KICK && type != AttackType.JAB) || data.machine.phase() != Phase.WINDUP
-                || !isWeaponAttack(data.machine.type()) || data.stamina.isExhausted()) {
+                || !isWeaponAttack(data.machine.type()) || data.stamina.isExhausted() || !canUseAttack(entity, data, type)) {
             return false;
         }
         data.machine.feint();
@@ -283,6 +277,8 @@ public final class Combat {
                 sync(entity, data, false);
             } else if ((type != machine.type() || mirrored != machine.isMirrored()) && morph(entity, data, type, variant, mirrored)) {
                 sync(entity, data, false);
+            } else if (type == AttackType.KICK || type == AttackType.JAB || type != machine.type() || mirrored != machine.isMirrored()) {
+                sync(entity, data, true); // rejected predicted replacement: restore the intact authoritative windup
             }
             return;
         }
@@ -555,6 +551,12 @@ public final class Combat {
     /** Heavy attacks of hyper-armored weapons can't be flinched. */
     public static boolean hasHyperArmor(LivingEntity entity, CombatData data) {
         return data.machine.isHeavy() && currentProfile(entity, data).map(WeaponProfile::hyperArmorOnHeavy).orElse(false);
+    }
+
+    /** Validate built-in replacement eligibility before cancelling a weapon windup or charging its feint. */
+    private static boolean canUseAttack(LivingEntity entity, CombatData data, AttackType type) {
+        return !data.isDowned() && (type == AttackType.KICK || !isHolstered(entity, data))
+                && (type != AttackType.JAB || data.jabReadyAt <= entity.level().getGameTime());
     }
 
     private static boolean isHolstered(LivingEntity entity, CombatData data) {

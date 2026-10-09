@@ -276,9 +276,9 @@ public final class CombatStateMachine {
         return true;
     }
 
-    /** The current swing landed a clean hit (a thwack ends the release early): attacking during recovery may skip it. */
+    /** A landed weapon swing may combo, including after a thwack. Built-in actions retain their recovery. */
     public void allowCombo() {
-        if (phase == Phase.RELEASE || phase == Phase.RECOVERY) {
+        if (type.isWeaponAttack() && (phase == Phase.RELEASE || phase == Phase.RECOVERY)) {
             comboAllowed = true;
         }
     }

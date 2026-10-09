@@ -5,6 +5,8 @@ Working name: **Steel Clash** (mod id `steelclash`). Pick your own name, but kee
 Target: Minecraft 1.21.1, NeoForge 21.1.x, Java 21 (already installed: 21.0.8).
 Integrations: [Spartan Weaponry Unofficial](https://github.com/Mai-xiyu/SpartanWeaponry-NeoForge) (`spartan_weaponry_unofficial`, API v15) and [Spartan Shields Unofficial](https://github.com/Mai-xiyu/SpartanShields-NeoForge) (`spartanshieldsunofficial`, the jar's real mod id; see docs/spikes.md). Both are Apache-2.0 and published on Modrinth and CurseForge.
 
+Current user-directed goal (2026-10-09): improve combat animations and fix bugs for Chivalry 2 fidelity, with distinct original fighting styles per weapon family. Scope, acceptance criteria and current evidence: [combat-animation-goal.md](combat-animation-goal.md).
+
 ### Decisions locked in
 - **Faithfulness:** the combat should be as close to Chivalry 2 as possible. When fidelity and Minecraft convenience conflict, fidelity wins, with a config option where reasonable.
 - **Focus: PvE.** Mobs fight with the same ruleset as players, like Chiv 2's bots. Multiplayer netcode work moves to the end.

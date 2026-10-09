@@ -133,6 +133,9 @@ They spawn at night, roam in **patrols** led by a knight, and guard **brigand ca
 
 ## The training dummy
 
+Its equipment is copied for practice. Disarming it removes the practice weapon without creating loot; real mobs
+and players still drop their actual weapons when disarmed.
+
 Craft it with a carved pumpkin on top, a hay bale in the middle with a stick on each side, and a stick below. Place it like a spawn egg. It can't die.
 
 - Sneak + use with an **item** to arm it (shields go in its offhand).
