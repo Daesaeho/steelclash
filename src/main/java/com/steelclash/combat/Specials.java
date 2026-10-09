@@ -19,7 +19,7 @@ public final class Specials {
     }
 
     /**
-     * Ground slam at the end of the release: everyone (except allies) within {@link #SLAM_RADIUS} of the impact point
+     * Ground slam at the end of the release: everyone (except allies and friendly pets) within {@link #SLAM_RADIUS} of the impact point
      * is knocked back, staggered and loses stamina, guarding or not. The impact itself already hit as an overhead.
      */
     public static void slam(LivingEntity attacker, WeaponProfile.AttackSpec spec) {
@@ -29,6 +29,7 @@ public final class Specials {
         List<LivingEntity> caught = attacker.level().getEntitiesOfClass(LivingEntity.class,
                 new AABB(impact, impact).inflate(SLAM_RADIUS, 1.5, SLAM_RADIUS),
                 e -> e != attacker && e.isAlive() && !e.isSpectator() && !Allies.areAllies(attacker, e)
+                        && !Allies.isFriendlyPet(attacker, e)
                         && e.position().distanceTo(impact) <= SLAM_RADIUS);
         for (LivingEntity target : caught) {
             CombatData data = target.getData(ModAttachments.COMBAT);

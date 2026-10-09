@@ -545,3 +545,17 @@ retains the no-swap-during-an-attack rule. Remaining real-client checks:
 Fresh verification: restored build/186 JUnit tests, 168 GameTests in each optional-mod variant, and all four
 targeted mutants caught by their intended tests. Pre-fix C02 and sidearm-order failures are retained with the
 final logs under `C:/dev/steelclash-beta-audit/20261010/special-grace`.
+
+## Ground slam pet protection (2026-10-10)
+
+Three full-mace-special GameTests cover the attacker's pet, a co-op ally's pet, and an enemy-owned pet with
+co-op disabled. A wild-wolf control receives the slam in every case. Protection includes health/stamina,
+stagger and velocity; enemy eligibility remains. Both friendly cases failed before the fix. Fresh restored
+build: 186 JUnit tests; 171 GameTests per optional-mod variant; 3/3 intended mutations caught.
+Evidence: `C:/dev/steelclash-beta-audit/20261010/pet-slam`.
+
+| Live check | Expected |
+|---|---|
+| Mace slam beside your tame wolf, without scoreboard teams. | No pet stamina drain, stagger or knockback; nearby enemies still receive the area effect. |
+| LAN co-op: slam beside your friend's tame wolf. | The friend's pet receives the same protection. |
+| With co-op disabled and no allied team, slam beside an opponent's tame wolf. | It remains an eligible enemy target. |

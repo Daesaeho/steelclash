@@ -738,3 +738,22 @@ Mutation check: 4/4 valid mutants caught by the intended tests (old delayed-hit 
 unguarded successful-hit consequences, original late sidearm order). The original skeleton timeout prompted
 the ordering investigation; the deterministic reproducer guards that specific cause rather than relying on
 another favorable random run. Live reaction/animation checks remain listed in `docs/testing.md`.
+
+## Friendly pets and ground slams (2026-10-10)
+
+C05 was reproduced with full mace specials: the ordinary arc already excluded friendly pets, but the secondary
+slam query checked only `Allies.areAllies`. Without scoreboard teams, pets of the attacker and a co-op ally both lost stamina;
+the scoreboard relationship did not identify them as allies. The area query now uses the same
+`Allies.isFriendlyPet` exclusion as blade contacts, before stamina, stagger, item-use cancellation or knockback.
+Its radius, damage pipeline and hostile-target effects retain their existing behavior.
+
+`PetProtectionGameTests` verifies own/allied protection and enemy-owned eligibility with co-op disabled, with
+an affected wild-wolf control in every test. It checks health/stamina, phase and velocity after the full slam.
+The ally/enemy owner is an in-level player and must resolve through the wolf's owner lookup. Mock scoreboard
+membership and co-op settings are changed/restored synchronously to prevent inherited teams from hiding the bug.
+Both protected-pet tests failed before the fix; the enemy-owned case passed.
+
+Restored build: all 186 JUnit tests and 171 GameTests in each optional-mod variant passed. Three valid mutants
+were caught by their intended tests: missing pet exclusion, excluding all ownable creatures, and protecting
+only the attacker's own UUID. Evidence: `C:/dev/steelclash-beta-audit/20261010/pet-slam`.
+This fixes pet eligibility; slam cover/impact geometry and stagger precedence remain separate audit work.

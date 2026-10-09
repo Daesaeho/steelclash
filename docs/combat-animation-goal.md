@@ -152,3 +152,13 @@ Restored build: 186 JUnit tests passed; 168 GameTests passed with and without th
 mutants were caught by their intended tests. The review expanded verified phase-curve coverage without changing
 the weapon timings or assets. Remaining family motion, live transitions, model/hand/renderer matrix and broader
 report-candidate audit stay open; this checkpoint does not establish release readiness.
+
+## Ground slam eligibility follow-up (2026-10-10)
+
+C05 was reproduced and fixed: the full mace slam's secondary area effect now shares the blade's friendly-pet
+exclusion. Own/allied pets retain health, stamina, phase and velocity; hostile and enemy-owned pets still receive
+the effect. The new tests include real owner lookup, no-team conditions and hostile controls. Restored build:
+186 JUnit tests, 171 GameTests in each optional-mod variant, and all three targeted mutations caught.
+Evidence and live co-op checks are in [spikes.md](spikes.md#friendly-pets-and-ground-slams-2026-10-10) and
+[testing.md](testing.md#ground-slam-pet-protection-2026-10-10). Cover/impact geometry and stagger precedence are
+separate unresolved audit candidates; the overall animation/bug goal remains in progress.

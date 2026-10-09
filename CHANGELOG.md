@@ -1,6 +1,7 @@
 # Unreleased
 
 **Fixes**
+- Ground slams spare the attacker's and allies' pets from secondary stamina drain, stagger and knockback. Hostile creatures and enemy-owned pets remain eligible targets.
 - Delayed special hits apply their on-hit stagger after parry grace, using the captured attack type even if the attacker has started another action. Fully blocked specials retain only their guard penalty.
 - Archer mobs draw or stow their sidearm before the combat brain chooses a new attack, preventing a fallback attack with the bow from repeatedly postponing the switch. Existing attacks and switch cooldowns still prevent equipment changes.
 - Combat rules now synchronize from the server before joining, so guard mode, turn caps and stamina costs agree with client prediction. Existing `config/steelclash-common.toml` settings are retained; controls and camera settings remain local.
