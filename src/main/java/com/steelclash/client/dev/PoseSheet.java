@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.TreeSet;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -32,7 +33,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.util.RandomSource;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -83,6 +84,13 @@ public final class PoseSheet {
     private static int index = -1;
     private static int wait;
     private static boolean stagedDowned;
+    @Nullable
+    private static CombatPose renderedPose;
+    private static int renderedIndex = -1;
+    @Nullable
+    private static CameraType renderedView;
+    @Nullable
+    private static ResourceLocation renderedItem;
 
     private PoseSheet() {
     }
@@ -99,6 +107,24 @@ public final class PoseSheet {
 
     public static boolean running() {
         return shots != null && index >= 0 && index < shots.size();
+    }
+
+    public static boolean photographingMob() {
+        return MOB != null && running();
+    }
+
+    /** The actual player-layer sample, retained until the frozen screenshot is read back. */
+    public static void recordRenderedPose(LivingEntity entity, @Nullable CombatPose pose) {
+        if (!running()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && entity == subject(mc.player, shots.get(index))) {
+            renderedPose = pose;
+            renderedIndex = index;
+            renderedView = mc.options.getCameraType();
+            renderedItem = BuiltInRegistries.ITEM.getKey(entity.getMainHandItem().getItem());
+        }
     }
 
     @SubscribeEvent
@@ -250,16 +276,14 @@ public final class PoseSheet {
     }
 
     private static void setUp(Minecraft mc, LocalPlayer player, Shot shot) {
-        ItemStack item = new ItemStack(BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(shot.item())).orElseGet(() -> {
-            SteelClash.LOGGER.warn("Pose sheet: unknown item {}, using an iron sword", shot.item());
-            return Items.IRON_SWORD;
-        }));
+        ItemStack item = new ItemStack(BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(shot.item()))
+                .orElseThrow(() -> new IllegalArgumentException("Pose sheet: unknown item " + shot.item())));
         LivingEntity subject = subject(player, shot);
         if (!ItemStack.isSameItem(subject.getMainHandItem(), item)) {
             subject.setItemSlot(EquipmentSlot.MAINHAND, item); // client-side only: just for the picture
         }
         // Hiding the GUI (F1) also hides vanilla's first-person hand, which is what an idle shot is for.
-        mc.options.hideGui = shot.phase() != Phase.IDLE || shot.name().contains("ready_");
+        mc.options.hideGui = MOB != null || shot.phase() != Phase.IDLE || shot.name().contains("ready_");
         mc.options.setCameraType(shot.view());
         int at = shot.name().indexOf("ready_"); // after the item prefix, if several items are shot
         String[] ready = at >= 0 ? shot.name().substring(at).split("_") : null;
@@ -344,16 +368,48 @@ public final class PoseSheet {
         }
     }
 
-    /** Who is being photographed: the player, or the nearest mob for mob shots (the player if it isn't there yet). */
+    /** The player or the requested nearby mob type. A missing mob must not produce a substitute player image. */
     private static LivingEntity subject(LocalPlayer player, Shot shot) {
         if (shot.mobYaw() == null) {
             return player;
         }
         List<Mob> mobs = player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(6));
-        return mobs.stream().min(java.util.Comparator.comparingDouble(player::distanceToSqr)).<LivingEntity>map(m -> m).orElse(player);
+        var requestedType = BuiltInRegistries.ENTITY_TYPE.getOptional(ResourceLocation.parse(MOB))
+                .orElseThrow(() -> new IllegalArgumentException("Pose sheet: unknown mob " + MOB));
+        return mobs.stream().filter(m -> m.getType() == requestedType)
+                .min(java.util.Comparator.comparingDouble(player::distanceToSqr)).<LivingEntity>map(m -> m)
+                .orElseThrow(() -> new IllegalStateException("Pose sheet: requested mob " + MOB + " is missing for " + shot.name()));
     }
 
     private static void capture(Minecraft mc, Shot shot) {
+        if (Boolean.getBoolean("steelclash.poseSheetInspectModel")) {
+            LivingEntity entity = subject(mc.player, shot);
+            ItemStack held = entity.getMainHandItem();
+            var model = mc.getItemRenderer().getModel(held, entity.level(), entity, entity.getId());
+            var sprites = new TreeSet<String>();
+            for (var pass : model.getRenderPasses(held, false)) {
+                for (var quad : pass.getQuads(null, null, RandomSource.create(0))) {
+                    sprites.add(quad.getSprite().contents().name().toString());
+                }
+            }
+            SteelClash.LOGGER.info("Pose sheet model: {} held={} model={} sprites={}", shot.name(),
+                    BuiltInRegistries.ITEM.getKey(held.getItem()), model.getClass().getName(), sprites);
+        }
+        if (shot.phase().isAttack()) {
+            double duration = subject(mc.player, shot).getData(ModAttachments.COMBAT).machine.phaseDurationUs();
+            double expected = Math.min(duration - 1, Math.round(shot.progress() * duration)) / duration;
+            double actual = renderedPose == null || renderedPose.swing() == null ? Double.NaN : renderedPose.swing().progress();
+            SteelClash.LOGGER.info("Pose sheet sample: {} requested={}:{} rendered={}:{} index={}/{} view={}/{} item={}/{}",
+                    shot.name(), shot.phase(), shot.progress(), renderedPose == null ? null : renderedPose.phase(),
+                    renderedPose == null || renderedPose.swing() == null ? null : renderedPose.swing().progress(),
+                    renderedIndex, index, renderedView, shot.view(), renderedItem, shot.item());
+            if (renderedIndex != index || renderedView != shot.view() || renderedPose == null
+                    || renderedPose.phase() != shot.phase() || !Double.isFinite(actual)
+                    || Math.abs(actual - expected) > 1.0 / Math.max(1, duration)
+                    || !ResourceLocation.parse(shot.item()).equals(renderedItem)) {
+                throw new IllegalStateException("Pose sheet: model sample does not match requested shot " + shot.name());
+            }
+        }
         Screenshot.grab(mc.gameDirectory, "pose_" + shot.name() + ".png", mc.getMainRenderTarget(), message -> {
         });
     }

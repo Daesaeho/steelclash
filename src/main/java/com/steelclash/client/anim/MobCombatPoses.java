@@ -3,6 +3,7 @@ package com.steelclash.client.anim;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.steelclash.Config;
+import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.core.WeaponRig;
 import java.util.HashSet;
 import java.util.Map;
@@ -65,6 +66,7 @@ public final class MobCombatPoses {
             return;
         }
         CombatPose pose = takePose(entity, partialTick);
+        PoseSheet.recordRenderedPose(entity, pose);
         if (pose == null) {
             return;
         }

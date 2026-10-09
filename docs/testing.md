@@ -486,3 +486,17 @@ owning player; it does not emulate round-trip latency or connection negotiation.
 Manual LAN check: disarm, equip a spare weapon after the stagger, start a slash while the jab cooldown remains,
 then press jab. The slash continues, the feint is not charged, and prediction returns to the authoritative slash.
 Repeat rejected morph/replacement inputs under latency and watch for stale animation or queued-input behavior.
+
+## Trustworthy pose-sheet captures (2026-10-09)
+
+Moving captures assert that the actual model sample matches the requested shot, camera, phase/progress and held
+item. Missing requested mobs and unknown items abort instead of producing mislabeled substitute images. Mob
+captures hide the local player's hands, including idle reference views. Preserve the console log with the images.
+
+Add `-PposeSheetInspectModel` to log the held item, resolved model class and render-pass sprite IDs. This is a
+read-only diagnostic for distinguishing asset selection from pose/rig issues. Two actual-client mutations
+(stale shot index and wrong recorded item) failed at the intended capture guard; temporary source was restored.
+
+Reviewed evidence includes 50 ms dagger sequences and a 10 ms release/recovery subwindow, plus nine-family husk
+release sheets with debug blades. Fine-window motion flags are not an isolated-snap verdict; hilt/tip calibration,
+other humanoid models, handedness/offhand, renderer combinations and live transitions still need acceptance work.

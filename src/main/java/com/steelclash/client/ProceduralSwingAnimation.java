@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.client.anim.CombatPose;
 import com.steelclash.client.anim.CombatPresentation;
+import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.combat.Downed;
 import com.steelclash.core.RotationBlend;
 import com.steelclash.core.AttackType;
@@ -89,6 +90,7 @@ public class ProceduralSwingAnimation implements IAnimation {
         if (ready != null) {
             readyRig = rigFor(ready);
         }
+        PoseSheet.recordRenderedPose(player, pose);
     }
 
     private static WeaponRig rigFor(CombatPose pose) {
@@ -102,7 +104,8 @@ public class ProceduralSwingAnimation implements IAnimation {
      */
     private boolean wantsReadyStance() {
         Minecraft mc = Minecraft.getInstance();
-        return Config.Client.FIRST_PERSON_READY_STANCE.get() && player == mc.player && mc.options.getCameraType().isFirstPerson()
+        return !PoseSheet.photographingMob() && Config.Client.FIRST_PERSON_READY_STANCE.get()
+                && player == mc.player && mc.options.getCameraType().isFirstPerson()
                 && player.isAlive() && !Downed.isDowned(player)
                 && player.getOffhandItem().isEmpty() && !player.isUsingItem() && !player.isSpectator()
                 && ClientInput.holdsWeapon(mc.player);

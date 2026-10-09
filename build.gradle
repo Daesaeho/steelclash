@@ -95,6 +95,9 @@ neoForge {
                 if (project.hasProperty('poseSheetDebug')) {
                     systemProperty 'steelclash.poseSheetDebug', 'true'
                 }
+                if (project.hasProperty('poseSheetInspectModel')) {
+                    systemProperty 'steelclash.poseSheetInspectModel', 'true'
+                }
                 if (project.hasProperty('poseSheetItem')) {
                     systemProperty 'steelclash.poseSheetItem', project.property('poseSheetItem').toString()
                 }

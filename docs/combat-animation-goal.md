@@ -99,3 +99,19 @@ Pre-existing local `AGENTS.md` and `tools/codex-skills` work is preserved separa
 
 Remaining next work is uniform before/after weapon-style motion and humanoid blade alignment, followed by the
 handedness/offhand/model/renderer and live transition checks above. This checkpoint is not a release-ready claim.
+
+## Capture-review follow-up
+
+The actual model sample is now checked against the requested shot/time/view/item before screenshot capture.
+Unknown items and missing requested mob types fail instead of silently substituting references. Two real-client
+mutations confirmed stale indices and incorrect item identities are rejected. Mob shots hide local hands, and
+optional model/sprite inspection is available with `-PposeSheetInspectModel`.
+
+Dagger original/authored motion has 32 frames per view at 50 ms and a 24-frame 10 ms boundary window. The
+fine-window flags form a broad speed peak; no isolated snap was established, so attack timings were preserved.
+Nine-family husk release sheets contain 162 time-verified poses; reviewed directions are broadly aligned, with
+hilt/length offsets still requiring calibration. The spear model lookup selects the correct spear sprite; an
+earlier visual suspicion of a halberd model was not supported by that diagnostic.
+
+Remaining: additional family motion, other humanoid models, handedness/occupied-offhand/default-slim/Sodium
+matrix, and real input/network transitions. These are open acceptance gates, not implied by static pose success.

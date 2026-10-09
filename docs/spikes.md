@@ -629,3 +629,35 @@ transport or latency. All 162 with-compat GameTests passed. Mutation check: 3/3 
 (late eligibility check, off-by-one cooldown, omitted correction). The restored build and no-compat results are
 kept under `C:/dev/steelclash-beta-audit/20261009/action-replacement`. The fresh build passed all 186 JUnit checks,
 and all 162 GameTests passed without the optional mods too. Mutation source was restored before the final build.
+
+## Capture integrity and dagger/mob review (2026-10-09)
+
+Recorded the actual PAL player-layer and mob-model samples before screenshot readback. Captures now reject
+stale shot indices, wrong camera/phase/progress, and different held-item IDs. Unknown items and missing requested
+mob types fail explicitly instead of substituting an iron sword or player. Mob reference shots hide the local
+player's hands. These guards apply only to the dev capture workflow; combat rules/timings remain unchanged.
+
+Dagger evidence: original/authored 32-frame sequences in three views at 50 ms, then a 24-frame 700–930 ms window
+at 10 ms. Whole-frame onion reports used identical thresholds before/after. The fine first-person maximum is
+part of a broad speed peak (neighboring steps increase too), not an established isolated snap. Recorded model
+samples matched requested 0.875/0.975 release and zero-progress recovery in all views. No gameplay timing change
+was justified by these measurements. They still do not prove live input/correction transitions.
+
+Husk evidence: 162 release-reference poses, nine item families, slash/overhead/stab at 0/0.35/0.7, front and side,
+with model-time assertions and debug blade lines. Direction alignment is broadly close in the reviewed side
+sheets; small hilt/length offsets remain and are not a full endpoint calibration. Separate polearm and single
+spear runs also passed requested-item checks. A spear-head resemblance initially suggested a wrong model;
+the actual model lookup/render passes resolve `spartan_weaponry_unofficial:item/iron_spear`. The visual suspicion
+was not supported by model data, so no speculative animation or optional-mod change was made for it.
+
+The development evidence is under `C:/dev/steelclash-beta-audit/20261009/weapon-styles`. The approval service briefly
+became unavailable due account usage limits; work resumed after the user's reset. Negative guard checks and the
+restored build are recorded with the next checkpoint. The full renderer/handedness/offhand/live matrix remains open.
+
+Capture validation mutation check: 2/2 caught in actual client runs (stale shot index, wrong item identity).
+Failure logs were checked for the requested-shot mismatch exception. Optional `-PposeSheetInspectModel` makes
+the model/sprite inspection reproducible through the normal dev command; the restored build is recorded below.
+
+Restored full build: all 186 unit tests passed. These changes are confined to client capture validation and its
+dev command; server combat behavior retains the previous successful 162-test verification. GitHub CI runs the
+full build and both GameTest variants on the pushed checkpoint.
