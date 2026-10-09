@@ -1,6 +1,7 @@
 # Unreleased
 
 **Fixes**
+- Combat rules now synchronize from the server before joining, so guard mode, turn caps and stamina costs agree with client prediction. Existing `config/steelclash-common.toml` settings are retained; controls and camera settings remain local.
 - A rejected jab/kick feint preserves the original windup and stamina. Eligibility is checked before cancellation, and rejected predicted windup replacements send the owning client an authoritative correction.
 - Downed and dead players no longer retain a standing first-person combat-ready pose or activate its animation layer.
 - Landed jabs, kicks, specials and throws retain their recovery instead of unlocking an unintended weapon combo. The timing HUD keeps showing recovery; normal cuts and thrusts still combo after a hit or miss.

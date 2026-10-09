@@ -190,7 +190,7 @@ Spawn eggs: **Brigand Footman / Knight / Archer** (Spawn Eggs tab). Survival, No
 | 7 | Kill soldiers | Small chance to drop their gear. |
 
 ## Manual in-game checklist (M7: multiplayer and latency)
-Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2` (Dev2) joins it. Add latency with [clumsy](https://jagt.github.io/clumsy/): filter `udp or tcp and (tcp.DstPort == <lan port> or tcp.SrcPort == <lan port>)`, **Lag** 75 ms both ways (≈150 ms ping). Turn on `/steelclash_debug` on Dev2: the top-left shows ping, rewind ticks and parry grace ticks (from Dev2's own config copy).
+Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2` (Dev2) joins it. Add latency with [clumsy](https://jagt.github.io/clumsy/): filter `udp or tcp and (tcp.DstPort == <lan port> or tcp.SrcPort == <lan port>)`, **Lag** 75 ms both ways (≈150 ms ping). Turn on `/steelclash_debug` on Dev2: the top-left shows ping, rewind ticks and parry grace ticks using the host's synchronized combat settings.
 
 | # | Check | Expected |
 |---|---|---|
@@ -500,3 +500,25 @@ read-only diagnostic for distinguishing asset selection from pose/rig issues. Tw
 Reviewed evidence includes 50 ms dagger sequences and a 10 ms release/recovery subwindow, plus nine-family husk
 release sheets with debug blades. Fine-window motion flags are not an isolated-snap verdict; hilt/tip calibration,
 other humanoid models, handedness/offhand, renderer combinations and live transitions still need acceptance work.
+
+## Combat config synchronization (2026-10-10)
+
+`ConfigSyncGameTests` verifies actual login-file selection, exclusion of the client-preferences file, received
+values replacing cached gameplay values, guard/stamina callers using them, and no local file overwrite.
+The tests call the framework serializer/receiver directly; a negotiated two-client session remains to check.
+An isolated GameTest world also verified per-world override loading with unchanged global/override file hashes.
+Use the same current build on the server and guests for the following manual checks:
+
+| Check | Expected |
+|---|---|
+| Before startup, give the host `defense.blockMode = "TIMED"`, `offense.turnCapDegreesPerSecond = 137.0` and `network.maxRewindMs = 123`; give the guest different local values. Join LAN/dedicated server and enable debug. | Guest guard duration, camera limit and rewind calculation follow the host. The guest's local combat TOML remains unchanged. |
+| Give host and guest different `steelclash-client.toml` controls, HUD and camera preferences. | Each retains their own preferences. The guest cannot edit server rules through the config screen. |
+| Add `serverconfig/steelclash-common.toml` to a disposable world, with different rules from its global file; restart and join. | That world's rules take priority and sync. A different world without that override uses the global file. |
+| Leave and join another server/world with different combat settings. | The next session uses its own authoritative settings, with no previous-session rule leakage. |
+
+Change combat rules between sessions. Login sync does not update already-connected guests after later file edits;
+restart the world/server and reconnect guests. Existing `config/steelclash-common.toml` settings still load.
+
+Recorded verification: build/186 JUnit tests, 164 GameTests in each optional-mod variant, 164 in a separate
+world-override fixture with unchanged file hashes, and 2/2 targeted mutations caught. Client startup plus
+three staged slash captures passed. Logs and fixture evidence: `C:/dev/steelclash-beta-audit/20261010/config-sync`.

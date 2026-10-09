@@ -172,6 +172,14 @@ Co-op works, with lag compensation. When you have a high ping, your swings hit w
 
 *Mods → Steel Clash → Config*:
 
+Combat rules use NeoForge's synchronized **server** config, retaining the filename `steelclash-common.toml`.
+Existing settings in `config/steelclash-common.toml` still load. A file with that same name in a world's
+`serverconfig` directory overrides the global file for that world. Remote players receive the server's rules
+before joining; their own combat file does not override them. Controls, HUD and camera preferences stay local
+in `steelclash-client.toml`. The config screen allows combat edits in your own world; remote guests cannot edit
+the server's rules. Change combat rules between sessions: restart the world/server and have guests reconnect.
+The login sync does not broadcast later file edits to players already connected.
+
 - Disarm mode (drop or holster)
 - Stamina costs
 - Parry and riposte windows

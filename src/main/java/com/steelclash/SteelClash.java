@@ -32,7 +32,8 @@ public class SteelClash {
         ModEntities.register(modEventBus);
         ModSounds.register(modEventBus);
 
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        // Combat prediction must use the server's rules; retain the existing global config file.
+        modContainer.registerConfig(ModConfig.Type.SERVER, Config.SPEC, "steelclash-common.toml");
         modContainer.registerConfig(ModConfig.Type.CLIENT, Config.Client.SPEC);
     }
 

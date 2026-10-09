@@ -661,3 +661,35 @@ the model/sprite inspection reproducible through the normal dev command; the res
 Restored full build: all 186 unit tests passed. These changes are confined to client capture validation and its
 dev command; server combat behavior retains the previous successful 162-test verification. GitHub CI runs the
 full build and both GameTest variants on the pushed checkpoint.
+
+## Synchronized combat rules (2026-10-10)
+
+N01 is confirmed: the gameplay spec was registered as `COMMON`, which NeoForge does not sync, while prediction,
+camera turn limits and the debug HUD read those values on the client. The spec now registers as `SERVER` with
+the explicit existing filename `steelclash-common.toml`. Client preferences retain their `CLIENT` registration.
+
+Verified against NeoForge 21.1.252 sources and FML 4.0.44 bytecode, consistent with the
+[1.21.1 configuration docs](https://docs.neoforged.net/docs/1.21.1/misc/config/): server configs load from the
+global config directory before world startup; an existing same-name file in `<world>/serverconfig` overrides
+it. No migration/copy of the user's global file is needed. NeoForge's configuration task sends the active file
+before entering play. This is join-time sync; it does not broadcast later config edits to connected players.
+Restart the world/server and reconnect guests when changing combat rules.
+
+`ConfigSyncGameTests` exercises the framework's actual outgoing config selection and file bytes, then its public
+in-memory receiver with different guard, stamina, cooldown, dodge-cost and turn-cap values. Cached values are
+replaced, the guard/stamina callers use them, and saving the received config leaves the backing file unchanged.
+The receiver test restores file-backed configs through FML before returning, without advancing a world tick.
+Its outgoing check uses NeoForge's internal `ConfigSync` API only in the test; production uses normal config
+registration. These tests do not negotiate a remote socket or validate latency.
+
+An isolated server fixture used different global/world turn caps (251/137 degrees per second). All 164 tests
+passed with the world override selected; both TOML files retained their SHA-256 hashes. The first override
+attempt exposed a test-only path comparison mistake (`world/serverconfig` versus `world/./serverconfig`),
+corrected with `Files.isSameFile`. Evidence is under `C:/dev/steelclash-beta-audit/20261010/config-sync`.
+
+Final verification: restored build passed all 186 JUnit tests; all 164 GameTests passed with and without the
+optional mods (including the separate with-compat override run). Both targeted mutants were caught after
+the fixture correction: the old `COMMON` scope and the default `SERVER` filename that loses the existing file.
+The actual client loaded the global combat file in the disposable singleplayer world and completed three
+time-verified slash screenshots (back/front/first person). This is startup/pose smoke coverage, not a new
+motion-smoothness or negotiated-network verdict.

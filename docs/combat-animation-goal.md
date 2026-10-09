@@ -115,3 +115,20 @@ earlier visual suspicion of a halberd model was not supported by that diagnostic
 
 Remaining: additional family motion, other humanoid models, handedness/occupied-offhand/default-slim/Sodium
 matrix, and real input/network transitions. These are open acceptance gates, not implied by static pose success.
+
+## Combat-rule sync checkpoint (2026-10-10)
+
+N01 was source-confirmed: client prediction read unsynchronized common settings. Combat rules now use NeoForge's
+server config sync while retaining the existing global filename and optional per-world overrides. Controls,
+HUD and camera preferences remain client-local. Regression tests exercise outgoing file selection, cached-value
+replacement and real guard/stamina callers, with no local file overwrite. A separate world-override fixture
+passed all 164 GameTests with unchanged hashes for both settings files.
+
+See [spikes.md](spikes.md#synchronized-combat-rules-2026-10-10) for framework evidence and
+[testing.md](testing.md#combat-config-synchronization-2026-10-10) for the remaining negotiated-session checks.
+Join-time rule agreement is covered by the serializer/receiver tests; live network/input acceptance remains open.
+
+Restored full build: 186 JUnit tests passed. GameTests: 164 passed in each dependency variant; the additional
+world-override fixture passed all 164 with unchanged files. The two config-registration mutants were caught
+by their intended tests. Client startup and three staged slash captures passed in the disposable world.
+Evidence is under `C:/dev/steelclash-beta-audit/20261010/config-sync`; existing animation acceptance gates remain.

@@ -36,7 +36,7 @@ Prefer choosing the side yourself? Set the client config `controlScheme` to `TWO
 
 - [Player guide](docs/guide.md): every mechanic, the mobs, the training dummy and the HUD.
 - Craft a **Training Dummy** (carved pumpkin over a hay bale, with sticks) to practise parries and ripostes.
-- Settings: *Mods → Steel Clash → Config*. Server rules are in `steelclash-common.toml`; the HUD, camera and controls feel are in `steelclash-client.toml`.
+- Settings: *Mods → Steel Clash → Config*. Server rules sync on join from `config/steelclash-common.toml` (existing filename retained), optionally overridden by a world's `serverconfig/steelclash-common.toml`. The HUD, camera and controls feel stay local in `steelclash-client.toml`.
 
 ## For pack makers
 
