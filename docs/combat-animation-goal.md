@@ -132,3 +132,23 @@ Restored full build: 186 JUnit tests passed. GameTests: 164 passed in each depen
 world-override fixture passed all 164 with unchanged files. The two config-registration mutants were caught
 by their intended tests. Client startup and three staged slash captures passed in the disposable world.
 Evidence is under `C:/dev/steelclash-beta-audit/20261010/config-sync`; existing animation acceptance gates remain.
+
+## Heavy motion and reaction follow-up (2026-10-10)
+
+Added original/authored greatsword and halberd heavy-overhead motion evidence: 53 samples per view at 50 ms,
+plus 11/19 samples in two 20 ms windows, across three views (996 rendered screenshots). Resource identities
+and actual rendered samples were checked. Focused inspection found gradual movement and multi-step peaks;
+an isolated snap was not established, so gameplay timing and style curves were preserved. These are frozen
+base-speed samples; additional families and live transition/model/offhand/renderer acceptance remain open.
+
+C02 was reproduced and fixed through shared successful-hit consequences: delayed specials retain their
+stagger from the captured hit, ordinary hits cannot inherit a newer special, and blocked hits retain their
+guard penalty. A deterministic tick-dispatch test also reproduced archer sidearm starvation; equipment is
+now selected before the brain starts a new action, preserving committed attacks and switch cooldowns.
+See [spikes.md](spikes.md#delayed-specials-and-archer-sidearm-ordering-2026-10-10) and
+[testing.md](testing.md#heavy-motion-and-delayed-reactions-2026-10-10) for evidence and remaining live checks.
+
+Restored build: 186 JUnit tests passed; 168 GameTests passed with and without the optional mods. All four valid
+mutants were caught by their intended tests. The review expanded verified phase-curve coverage without changing
+the weapon timings or assets. Remaining family motion, live transitions, model/hand/renderer matrix and broader
+report-candidate audit stay open; this checkpoint does not establish release readiness.

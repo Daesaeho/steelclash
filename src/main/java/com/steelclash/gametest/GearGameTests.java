@@ -28,6 +28,8 @@ import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -131,6 +133,31 @@ public final class GearGameTests {
         skeleton.setData(ModAttachments.SIDEARM, new ItemStack(Items.IRON_SWORD));
         skeleton.setTarget(dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X));
         helper.succeedWhen(() -> check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD), "should draw the sidearm"));
+    }
+
+    @GameTest(template = ARENA)
+    public static void sidearmDrawPrecedesTheBrainsAttackChoice(GameTestHelper helper) {
+        Skeleton skeleton = helper.spawnWithNoFreeWill(EntityType.SKELETON, 1, 2, 4);
+        TestSupport.face(skeleton, TestSupport.FACING_POSITIVE_X);
+        skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+        skeleton.setData(ModAttachments.SIDEARM, new ItemStack(Items.IRON_SWORD));
+        skeleton.setTarget(dummy(helper, 3, 4, TestSupport.FACING_NEGATIVE_X));
+        skeleton.getRandom().setSeed(1);
+        NeoForge.EVENT_BUS.post(new EntityTickEvent.Post(skeleton));
+        check(helper, skeleton.getMainHandItem().is(Items.IRON_SWORD),
+                "draw before choosing a fallback attack with the bow: " + TestSupport.data(skeleton).machine.phase());
+        check(helper, Sidearms.stowed(skeleton).is(Items.BOW), "the bow is stowed");
+
+        Skeleton busy = helper.spawnWithNoFreeWill(EntityType.SKELETON, 1, 2, 1);
+        TestSupport.face(busy, TestSupport.FACING_POSITIVE_X);
+        busy.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+        busy.setData(ModAttachments.SIDEARM, new ItemStack(Items.IRON_SWORD));
+        busy.setTarget(dummy(helper, 3, 1, TestSupport.FACING_NEGATIVE_X));
+        check(helper, Combat.start(busy, TestSupport.data(busy), AttackType.SLASH), "start an already-committed attack");
+        NeoForge.EVENT_BUS.post(new EntityTickEvent.Post(busy));
+        check(helper, busy.getMainHandItem().is(Items.BOW) && Sidearms.stowed(busy).is(Items.IRON_SWORD),
+                "a sidearm switch still waits for an existing attack to finish");
+        helper.succeed();
     }
 
     @GameTest(template = ARENA)

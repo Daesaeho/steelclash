@@ -522,3 +522,26 @@ restart the world/server and reconnect guests. Existing `config/steelclash-commo
 Recorded verification: build/186 JUnit tests, 164 GameTests in each optional-mod variant, 164 in a separate
 world-override fixture with unchanged file hashes, and 2/2 targeted mutations caught. Client startup plus
 three staged slash captures passed. Logs and fixture evidence: `C:/dev/steelclash-beta-audit/20261010/config-sync`.
+
+## Heavy motion and delayed reactions (2026-10-10)
+
+Original/authored heavy greatsword and halberd overheads now have 53 frames per view at 50 ms, plus 20 ms
+windup/recovery windows, in back/front/first-person views. Requested samples and runtime asset identity were
+verified. Selected flags spread across neighboring frames; no isolated snap was confirmed. These are frozen
+base-speed phase samples, not live transitions or a model/offhand/renderer acceptance pass. Evidence and sheets:
+`C:/dev/steelclash-beta-audit/20261010/heavy-motion` and `heavy-motion-fine`.
+
+`SpecialGraceGameTests` reproduces C02 and guards captured-type reactions, ordinary hits and grace-period
+guard arrival. `GearGameTests.sidearmDrawPrecedesTheBrainsAttackChoice` checks actual entity-tick dispatch and
+retains the no-swap-during-an-attack rule. Remaining real-client checks:
+
+| Check | Expected |
+|---|---|
+| On a lagged LAN client, take an unguarded sword/polearm special after its grace period. | Damage and special stagger arrive together; attacker's newer action does not change that reaction. |
+| Repeat with a normal slash, and with a guard raised during a special's grace period. | Ordinary hits do not gain special stagger; the blocked special retains its guard penalty. |
+| Close to a skeleton/stray/bogged with a bow and stowed sidearm, then retreat beyond nine blocks. | It draws melee gear before beginning a new close attack and later stows it, respecting current attacks/cooldown. |
+| Greatsword/halberd heavy overheads, live first/third person, empty/shield/torch offhand and both main arms. | Phase curves remain readable; actual entry/return and arm ownership need live acceptance. |
+
+Fresh verification: restored build/186 JUnit tests, 168 GameTests in each optional-mod variant, and all four
+targeted mutants caught by their intended tests. Pre-fix C02 and sidearm-order failures are retained with the
+final logs under `C:/dev/steelclash-beta-audit/20261010/special-grace`.

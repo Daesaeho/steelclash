@@ -396,11 +396,7 @@ public final class Combat {
                         }
                         landed = true;
                         if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
-                            Feedback.hit(entity, target, machine.isHeavy());
-                            if (machine.type() == AttackType.SPECIAL && target.hasData(ModAttachments.COMBAT)) {
-                                // Specials stagger what they hit (Chivalry 2), so the attacker keeps the initiative.
-                                stagger(target, target.getData(ModAttachments.COMBAT), Config.SPECIAL_HIT_STAGGER_TICKS.get(), true);
-                            }
+                            onDamagingHit(entity, target, hit);
                         }
                     }
                     if (stopsAt(entity, data, spec.get(), !held && target.isDeadOrDying())) {
@@ -640,6 +636,15 @@ public final class Combat {
         });
     }
 
+    /** Successful-hit consequences use the captured hit, even if the attacker starts another action during grace. */
+    private static void onDamagingHit(LivingEntity attacker, LivingEntity target, Hit hit) {
+        Feedback.hit(attacker, target, hit.heavy());
+        if (hit.type() == AttackType.SPECIAL && target.hasData(ModAttachments.COMBAT)) {
+            // Specials stagger what they hit (Chivalry 2), so the attacker keeps the initiative.
+            stagger(target, target.getData(ModAttachments.COMBAT), Config.SPECIAL_HIT_STAGGER_TICKS.get(), true);
+        }
+    }
+
     /** Lands a hit {@link LagCompensation} held for a lagged defender; it may now be parried, blocked or countered. */
     static void deliverHeld(LivingEntity attacker, LivingEntity target, Hit hit) {
         float healthBefore = target.getHealth();
@@ -649,7 +654,7 @@ public final class Combat {
             thwack(attacker, attackerData, hit.spec(), attackerData.machine.phaseProgress(0));
         }
         if (target.getHealth() < healthBefore) {
-            Feedback.hit(attacker, target, hit.heavy());
+            onDamagingHit(attacker, target, hit);
             CombatData data = attacker.getData(ModAttachments.COMBAT);
             if (data.machine.phase() == Phase.RECOVERY && !data.machine.isComboAllowed()) {
                 data.machine.allowCombo();

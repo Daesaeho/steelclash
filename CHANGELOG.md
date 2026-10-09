@@ -1,6 +1,8 @@
 # Unreleased
 
 **Fixes**
+- Delayed special hits apply their on-hit stagger after parry grace, using the captured attack type even if the attacker has started another action. Fully blocked specials retain only their guard penalty.
+- Archer mobs draw or stow their sidearm before the combat brain chooses a new attack, preventing a fallback attack with the bow from repeatedly postponing the switch. Existing attacks and switch cooldowns still prevent equipment changes.
 - Combat rules now synchronize from the server before joining, so guard mode, turn caps and stamina costs agree with client prediction. Existing `config/steelclash-common.toml` settings are retained; controls and camera settings remain local.
 - A rejected jab/kick feint preserves the original windup and stamina. Eligibility is checked before cancellation, and rejected predicted windup replacements send the owning client an authoritative correction.
 - Downed and dead players no longer retain a standing first-person combat-ready pose or activate its animation layer.

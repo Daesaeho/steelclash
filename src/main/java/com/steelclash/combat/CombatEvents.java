@@ -100,6 +100,8 @@ public final class CombatEvents {
             if (entity instanceof Mob mob && !(mob instanceof TrainingDummy)) {
                 if (MobCombat.isFighter(mob)) {
                     CombatData data = mob.getData(ModAttachments.COMBAT);
+                    // Draw/stow before a new brain action makes the fighter busy with the old weapon.
+                    Sidearms.tick(mob, data);
                     if (mob instanceof PathfinderMob pathfinder && ClashBrain.manages(pathfinder)) {
                         ClashBrain.tick(pathfinder, data);
                     } else {
@@ -109,7 +111,6 @@ public final class CombatEvents {
                         }
                     }
                     MobCombat.keepAggressive(mob, data);
-                    Sidearms.tick(mob, data);
                 } else if (mob.hasData(ModAttachments.COMBAT)) {
                     // A datapack can remove the fighter tag while the mob is loaded.
                     ClashBrain.stop(mob, mob.getData(ModAttachments.COMBAT));

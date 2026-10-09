@@ -693,3 +693,48 @@ the fixture correction: the old `COMMON` scope and the default `SERVER` filename
 The actual client loaded the global combat file in the disposable singleplayer world and completed three
 time-verified slash screenshots (back/front/first person). This is startup/pose smoke coverage, not a new
 motion-smoothness or negotiated-network verdict.
+
+## Heavy greatsword and polearm motion review (2026-10-10)
+
+Compared original/authored assets with the same renderer code at source checkpoint `2d50777`, in the disposable
+Dev1 world. The baseline Gradle override verified all nine original animation files byte-for-byte; authored
+runs verified the runtime resources against current source. Viewport: 1920×1200, stored FOV option 0.625,
+right-main-hand option, cameraMotion 0. The captured skin/equipment are visible in the sheets; model variant,
+armor and offhand were not separately forced, so this does not complete that acceptance matrix.
+
+Heavy overhead phase lengths at the pose-sheet's unscaled base speed were 925/525/1200 ms for the greatsword
+and 950/500/1200 ms for the halberd. Each original/authored run captured 53 samples per view at 50 ms in back,
+front and first person: 636 rendered screenshots. All requested phase/progress/index/view/item checks passed.
+Two further windows, 360–560 and 1880–2240 ms, captured 11 and 19 samples per view at 20 ms: 360 more screenshots.
+The same onion thresholds (30, flag ratio 2.5) were used before/after, with chronological manifests and fresh files.
+
+The coarse authored greatsword back view flagged 2000–2050 and 2100–2150 ms. Finer sampling showed a burst over
+several adjacent steps in both original and authored curves, with gradual head/torso/weapon movement in the
+focused sheets. The polearm's authored first-person 1920–1980 ms return also spans neighboring frames; the
+inspected sheet does not establish an isolated snap. No animation timing/asset change was justified by these
+flags. This verifies selected frozen phase curves; live blending, corrections, hit-stop and other model/hand
+conditions remain open. Evidence: `C:/dev/steelclash-beta-audit/20261010/heavy-motion` and `heavy-motion-fine`.
+All nine current runtime style resources were restored and verified after the captures.
+
+## Delayed specials and archer sidearm ordering (2026-10-10)
+
+C02 was reproduced: an immediate sword special damaged and staggered an idle defender, while a held special
+delivered the same damage after forced 150 ms grace without its hit stagger. `SpecialGraceGameTests` failed at
+the delayed reaction assertion before the fix. Both delivery paths now share successful-hit feedback/stagger
+using the captured `Hit` type and heavy flag, independently of the attacker's newer action. Ordinary delayed
+hits do not inherit a newer special's reaction, and a guard arriving during grace retains only the blocked
+special penalty. These checks exercise real contacts and vanilla damage on a server with forced latency;
+they do not negotiate a delayed network connection or cover all historical guard/attack-ID issues.
+
+An existing skeleton-switch test timed out during verification. A new deterministic entity-post-tick dispatch
+test then showed the archer entering WINDUP while still holding its bow: `ClashBrain` chose the natural claw
+fallback before `Sidearms.tick`, and the resulting busy state postponed the draw. Sidearm draw/stow now runs
+before a new brain action. The test also checks that an already-committed attack keeps its original weapon;
+the existing cooldown/switch and naturally ticking skeleton tests remain. The updated suite passed 168 tests
+with optional integrations. Pre-fix failures and subsequent checks: `C:/dev/steelclash-beta-audit/20261010/special-grace`.
+
+Final restored build passed all 186 JUnit tests; all 168 GameTests passed with and without optional mods.
+Mutation check: 4/4 valid mutants caught by the intended tests (old delayed-hit omission, newer attacker type,
+unguarded successful-hit consequences, original late sidearm order). The original skeleton timeout prompted
+the ordering investigation; the deterministic reproducer guards that specific cause rather than relying on
+another favorable random run. Live reaction/animation checks remain listed in `docs/testing.md`.
