@@ -34,6 +34,9 @@ or measurements. The table below records the exact scope; it does not claim that
 - In first-person idle, a carried non-shield hand has a small breathing rotation (about +/-0.86 degrees pitch and
   +/-0.34 degrees roll, roughly a 4.2-second cycle). Its weight fades with combat-pose ownership, using the same
   aim/body compensation and mirror rule. This does not alter the weapon-arm solve, grip, reach or hit timing.
+- The sword's first-person ready guard uses `ready_yaw: 45` and `ready_pitch: -75`. This is closer to upright than
+  the previous 65/-45 stance, while retaining a readable blade. Lower-yaw 20/-60 and 35/-65 trials looked too
+  edge-on. The angle mirrors with main arm and applies to the ready pose/transition; shield idle remains vanilla.
 - Thrust extension drives a small first-person arm translation. Third-person reach, blade length and rigid
   shoulder dimensions remain separate work. This is a presentation offset, not a change to traced reach.
 - Throw preparation completes its forward gesture before release, when the existing server code launches the

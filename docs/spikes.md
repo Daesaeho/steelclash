@@ -1002,3 +1002,19 @@ angles even when the desired camera-relative carry is smooth. The diagnostic now
 against the static carry solve while capturing. This isolates the added breathing motion. Final vanilla idle
 records about 0.03 rad pitch range, 0.00114 rad maximum step and no render-presence misses; the torch attack replay
 retains idle model/ready ownership. Normal play does not compute this diagnostic reference.
+
+## Upright sword ready guard (2026-10-10)
+
+The user identified the sideways sword idle and requested a more upright guard. The sword asset's 65-degree
+ready yaw and -45-degree pitch were intentional visual tuning, not required hit geometry. Static candidates
+20/-60, 35/-65 and 45/-75 showed the lower-yaw options too edge-on. The selected 45/-75 keeps the blade more
+upright and its silhouette readable. Only the sword's two ready-angle fields change; core rig, other families,
+offhand breathing, gameplay profiles, timing, reach and packet formats retain their previous behavior.
+Evidence: `C:/dev/steelclash-beta-audit/20261010/upright-sword`, including the original asset, candidate poses
+and normal-input idle/attack captures. This is a client asset change; server GameTests are not needed locally.
+
+Compile and seven existing asset/metadata tests pass. Seven final live scenes (971 frames) cover both main arms
+with empty/torch idle, the unchanged shield control and normal slash entry/return with empty/torch hands. All use
+active Sodium, SLIM Ari/iron helmet, 1920x1200 and actual FOV 95. Ready ownership remains present. The entry
+onion flags represent multi-frame chamber/release motion; no isolated hand-renderer replacement was identified.
+No test hardcodes this aesthetic tuning choice. The before/after sheet and source-hashed invocations are retained.

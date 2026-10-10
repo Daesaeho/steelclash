@@ -1808,7 +1808,7 @@
   ]
  },
  "first_person": {
-  "ready_yaw": 65,
-  "ready_pitch": -45
+  "ready_yaw": 45,
+  "ready_pitch": -75
  }
 }

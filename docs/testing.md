@@ -772,3 +772,17 @@ animation math or gameplay rules.
 The final camera-relative renderer assertion was mutation-checked again: moving baseline passed; reverting the
 renderer call to the static solve failed. The original four-rule report is retained as `all-rule-mutants.report.json`,
 with the final renderer rerun in `render-reference-mutation.log`. All temporary code was restored before compilation.
+
+## Upright sword guard (2026-10-10)
+
+The sword ready angle changes from 65 outward / 45 up to 45 outward / 75 up. Evidence and candidate comparisons:
+`C:/dev/steelclash-beta-audit/20261010/upright-sword`. Check first-person idle on both main arms, with empty/torch
+offhands, plus the shield's vanilla idle control. Check ordinary slash entry/return with empty and torch hands.
+The asset parser/validation checks and compile are relevant; this visual tuning changes no server combat rule.
+Other models, FOVs, movement, custom resource overrides and additional input transitions retain their broader gates.
+
+Verified: compile and seven existing animation-file/metadata tests pass. Seven final active-Sodium scenes contain
+971 actual frames: left/right idle with torch and empty hand, unchanged shield idle, and slash entry/return with
+torch and empty hands. Expected ready ownership is retained. The entry onion flags span neighboring chamber/release
+frames rather than an isolated renderer handover. The paired sheet shows the upright idle silhouette on both arms.
+This asset-only change does not require a new tuning-value test or local server suite.

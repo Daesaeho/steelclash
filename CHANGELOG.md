@@ -40,6 +40,7 @@
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Animation**
+- Hold swords in a more upright first-person ready guard: 45 degrees outward and 75 degrees upward, replacing the strongly sideways 65/45 stance. The change is visual tuning only.
 - Carried non-shield items breathe subtly in first-person idle, mirrored for both main arms and fading into the existing attack carry. Weapon/grip alignment, shields and third-person posing keep their existing behavior.
 - First person: a carried non-shield item keeps the weapon ready stance active between attacks, avoiding the abrupt vanilla/model hand swap. Item use still yields to vanilla.
 - Keep PAL's camera ownership stable through its animation tick so an expiring pose cannot expose the player's helmet inside the first-person camera.
