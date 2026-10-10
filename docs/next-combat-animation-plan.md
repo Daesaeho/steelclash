@@ -27,7 +27,11 @@ open at that checkpoint. See [testing.md](testing.md#incoming-interruption-and-f
 The following checkpoint replaces the offhand eating/drinking renderer handover with a continuous carried-hand
 pose while retaining the weapon ready stance. Both main arms, attack cancellation, returned bottles, Sodium/vanilla
 and a normal torch attack are captured; see [testing.md](testing.md#offhand-consumable-blend-2026-10-10).
-Next: item swaps and weapon-to-kick, followed by moving/crouching and the wider acceptance matrix before bending.
+The next checkpoint reproduces and fixes the local old-weapon pose after hotbar swaps and the abrupt player
+weapon-to-kick rig reset. First/third-person and left-arm/reverse controls accompany the reproductions; see
+[testing.md](testing.md#hotbar-swaps-and-player-kick-rig-handover-2026-10-10).
+Next: moving/crouching/turning and the wider acceptance matrix before bending. First-person foot rendering,
+mob rig handovers and tracking/reload/LAN acceptance remain separate gates.
 
 **Deliverable:** a reliable renderer comparison and reproducible opponent-driven acceptance scenes.
 
@@ -72,7 +76,7 @@ reference confidence and test evidence; unresolved questions remain explicit.
 
 - Pin the reviewed 1.21.1 release and matching PAL/Bendable Cuboids dependencies in an isolated dev variant.
   Keep the normal build usable with the addon absent; do not turn the experiment into a mandatory dependency.
-- Add one guarded item-axis convention adapter. Steel Clash currently compensates for PAL's swapped Y/Z item
+- Add one guarded item-axis convention adapter shared by the player layer and `RigPoseBlend`. Both compensate for PAL's swapped Y/Z item
   axes; More Rotation changes that transform. Cover both conventions with deterministic orientation checks.
 - Start visible bends on torso and the non-weapon arm. Any weapon/support-arm deformation must preserve the
   solved grip and traced blade; prove hilt/tip alignment before extending it to two-handed styles.

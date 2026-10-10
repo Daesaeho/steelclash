@@ -1058,3 +1058,24 @@ The installed PAL AnimationStack invokes tick on every layer without checking ac
 envelope there as well as during setup, since setup can be skipped while dead/downed or after camera/ready
 eligibility loss. Compile, 22 focused tests and five hand-picked mutations pass; a final left cancellation replay
 confirms the eligible path after this cleanup. Broader lifecycle/input combinations remain manual acceptance.
+
+## Stale local weapons and player rig handovers (2026-10-10)
+
+Vanilla hotbar input can replace the local item before Steel Clash's server cancellation arrives. Clearing only
+the cached pose on item change is insufficient: the live old state can immediately repopulate it and later create
+a cancellation tail on the new item. Known local attack-time item identity now gates active weapon/guard poses;
+remote snapshots lack that identity and are not subjected to the local check. Stagger recoil and natural empty-hand
+throw release/recovery remain valid. No combat cancellation, damage or packet rule changes here.
+
+A weapon-to-kick switch was intentionally excluded from CombatPose blending because it changes arm/leg rig
+ownership. The player PAL layer now snapshots displayed bone rotation/position/bend and interpolates at that
+boundary, separately for first-person/world passes. Item bones require conversion from PAL {-x,-z,-y} channels
+to the physical hand frame before quaternion interpolation. Release bypass also applies if an exact release
+sample arrives later within the same render frame. Identity/generation/render-gap resets prevent stale history.
+
+The recorded first-person entry previously jumped 1.984 radians and 4.72 pixels; it now starts at the last displayed
+bone and settles over 200 ms. Actual player-mesh events distinguish third-person vanilla idle from PAL activation.
+Left/third-person and reverse kick-to-slash controls pass; the latter has no rig blend during weapon release.
+Evidence is in `20261010/swaps-kick`. First-person kick feet, mob rig conversion and wider acceptance remain open.
+Compile and 19 fresh focused tests pass; seven valid mutations are caught. Eight accepted cases contain 1,109
+actual frames, including a vanilla-renderer kick handover and the preceding eating-animation regression check.

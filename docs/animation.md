@@ -19,9 +19,15 @@ or measurements. The table below records the exact scope; it does not claim that
   preparation and end at the shared release entry. Missing heavy clips use a scaled light pose that also settles.
 - Heavy upgrades, ordinary weapon morphs, combos and non-release corrections blend from the displayed pose over
   0.2 s. Feints have a 0.2 s visual tail. Release motion follows the live arc directly. Downed poses take effect
-  immediately. Changes between leg-only and weapon actions do not yet have a shared transition rig.
+  immediately. Player PAL weapon/leg rig changes additionally blend displayed bone rotation/position/bend over
+  0.2 s, with separate first-person/world histories. Weapon release and frozen sheets bypass that rig blend.
 - Weapon, item and grip rotations blend with shortest-path quaternion interpolation. Authored additive clip
   channels retain their existing interpolation and ownership rules.
+  PAL item-bone channels are converted to their physical hand frame before the additional rig interpolation.
+  Item/main-arm changes, animation generation changes or a gap in rendered frames discard rig history.
+- A known local attack-time item mismatch suppresses the stale attack/guard pose before server cancellation.
+  Unknown/remote item snapshots keep their existing path; disarm recoil and empty-hand throw release/recovery
+  remain valid. This does not cancel simulation or change packets. Item swaps use the new item's current pose.
 - Preferred main arm selects the player/mob weapon arm and player item bone. The rig and limb channels reflect
   for left-handed fighters. An occupied off hand stays visible and does not get assigned a two-handed grip.
 - During first-person weapon attacks, a carried non-shield item uses a separate holding arm that counters the
@@ -110,7 +116,7 @@ the remaining part of the recommendation. “Deferred” means it is outside thi
 | 4 | Included | Light/heavy windup aims meet the exact release start. |
 | 5 | Included | Repaired all 33 shipped heavy body-clip seams. |
 | 6 | Included | Heavy upgrade starts from the displayed pose instead of snapping to rewound progress. |
-| 7 | Partial | Feints, weapon morphs and non-release interrupts blend; weapon-to-kick rig transitions remain. |
+| 7 | Partial | Player PAL weapon/kick rig handovers now blend; mob retargeting and wider live acceptance remain. |
 | 8 | Included | Recovery-to-windup combo entry starts from the displayed pose. |
 | 9 | Partial | Guard raise/hold uses three ticks independent of hold duration; lowering still uses existing clips/envelopes. |
 | 10 | Included | Quaternion interpolation for solved arm, off-arm and item rotations. |
@@ -190,7 +196,7 @@ and Sodium enabled/disabled. These checks are required before calling the render
 | Scene | Expected |
 |---|---|
 | Fractional 370 ms windup at low/high FPS | Pose and countdown enter release at the fractional boundary. |
-| Upgrade halfway into a light windup; feint, morph, counter-feint and combo | No single-frame rewind/drop; release stays on the arc. Check weapon-to-kick separately as remaining work. |
+| Upgrade halfway into a light windup; feint, morph, counter-feint and combo | No single-frame rewind/drop; release stays on the arc. Player weapon-to-kick handover has focused live evidence; wider variants remain. |
 | Long held guard and quick release | Body finishes its raise in three ticks, holds steady, then lowers without a long-duration raise. |
 | Mace thwack spanning a tick, then authoritative stagger/disarm | Pose and camera sway pause together; an interrupt replaces the pause and items do not retain an old grip. |
 | Sweep aim across +/-180 degrees at partial layer weight | No full-turn solved-arm/item interpolation. |
@@ -225,7 +231,8 @@ Use a disposable world with cheats and a fresh output directory:
 ```
 
 Scenes are `idle`, `attack`, `combo`, `heavy`, `feint`, `morph`, `parry`, `riposte`, `counter`, `hitstop`,
-`interrupt-windup`, `interrupt-release`, `itemuse`, `use-attack` and `drinkuse`.
+`interrupt-windup`, `interrupt-release`, `itemuse`, `use-attack`, `drinkuse`, `weapon-kick`, `kick-attack`,
+`swap-weapon` and `swap-empty`.
 Optional `liveCaptureItem` selects the main item (default iron sword, or mace for `hitstop`),
 `liveCaptureOffhand` selects the carried item (default air, bread for food-use scenes, potion for `drinkuse`), and `liveCaptureView`
 uses a `CameraType` name such as `FIRST_PERSON` or `THIRD_PERSON_BACK`.
@@ -269,12 +276,20 @@ stagger and a rendered opponent; a windup interrupt must prevent release. Schedu
 iron-sword fixture: changing weapon timings can invalidate the scene and must not be counted as a pass.
 
 `itemuse` and `use-attack` switch the disposable player to survival, stage 64 offhand bread and set hunger to
-14 with zero saturation. Vanilla item use is temporarily bound to numpad 5. `itemuse` holds it long enough to
+14 with zero saturation. Vanilla item use is temporarily bound to numpad 6. `itemuse` holds it long enough to
 consume food, then lowers the hand; `use-attack` sends an ordinary attack before consumption. Both require
 client/server use to start and stop. Frames record use hand, hunger and stack count; the first scene requires
 consumption and the second requires the stack to remain intact. Hunger/equipment changes persist in this world.
 `drinkuse` stages one potion and requires a returned glass bottle on both sides. Consuming-hand blend weight and
 rendered arm rotations support continuity checks; item IDs are recorded as strings, without loader-added fields.
+
+`weapon-kick` replaces a normal slash windup through the kick binding. `kick-attack` starts a kick, buffers a slash
+in recovery and requires its subsequent weapon release on both sides. `swap-weapon`/`swap-empty` stage an axe/air
+in the next hotbar slot and press its normal vanilla hotbar key (temporarily numpad 7). These swaps must cancel
+the old windup before release and finish with the expected equipment/idle state. Staged inventory/selection persist
+in the disposable world; key bindings restore. Captures include main/attack item IDs, actual bone rotations/positions,
+rig blending and native player-mesh presence. PAL combat-layer presence may be false during third-person idle
+while the vanilla player mesh remains rendered. The first-person kick foot renderer remains separate work.
 
 `counter` holds ordinary guard, observes the server opponent near the end of windup, then sends the matching slash
 through ClientInput. Both sides must observe a successful counter, return damage and no player health loss.

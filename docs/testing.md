@@ -857,3 +857,40 @@ body compensation, restored vanilla/model swapping and omitted rendered-hand app
 are restored. PAL's installed AnimationStack ticks inactive layers too; clearing the consuming envelope there
 prevents an old pose returning after downing/death/camera eligibility loss. The final left-main-arm cancellation
 replay passes after this lifecycle cleanup. Other lifecycle combinations retain their manual gate.
+
+## Hotbar swaps and player kick rig handover (2026-10-10)
+
+Reproduced two client issues under ordinary input: the swapped axe/empty hand displayed the old slash during
+pending cancellation and its later visual tail; replacing a slash windup with a kick reset the main arm immediately.
+Client/server cancellation and kick simulation were already correct. The fix suppresses known local stale weapon
+poses and blends displayed player bones across weapon/leg rig changes over 200 ms. Weapon release and frozen
+pose sheets bypass the blend. Item/main-arm/generation changes and render gaps clear its history. Stagger recoil,
+unknown/remote weapon snapshots and a released throw's empty-hand follow-through preserve their existing path.
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/swaps-kick`. Baselines and fixed scenes use the disposable QA
+world, iron sword, torch, SLIM Ari/iron helmet, 1920x1200/FOV 95, active Sodium and camera motion disabled.
+Before/after snapshots and matching onion windows show the kick-entry arm step falling from 1.984 radians
+(about 114 degrees) / 4.72 model pixels to zero at handover, followed by gradual movement over 200 ms.
+Neighboring onion flags cover the original chambering and the multi-frame return rather than a new isolated
+handover. Swaps to axe/air immediately lose the old displayed attack pose while normal server cancellation
+catches up. The new axe uses its current ready pose; an empty main hand returns to vanilla ownership.
+
+Left-main-arm and third-person kick controls pass. Third-person idle uses the vanilla player mesh with the PAL
+combat layer inactive; a separate RenderPlayer.Post observer verifies mesh presence instead of falsely requiring
+PAL throughout idle. A buffered kick-to-slash control releases on both sides with no rig blend in weapon release.
+The first physical item midpoint test used maximum matrix-entry difference; the corrected test measures rotation
+angle. Keep those initial diagnostic/test failures separate from accepted evidence.
+
+This covers the player rig, not the existing mob pose hook or a first-person foot renderer. Moving/crouching,
+other models/FOV/FPS/camera effects, shield bashes, packet ordering, tracking, resource reload and LAN variants
+remain broader acceptance. The client presentation change requires focused unit/live checks, not a local server
+GameTest suite. Check that swapping during windup never delivers an old strike and that natural throws still
+finish their empty-hand gesture; existing server rules and event dispatch are unchanged.
+
+Verification: compile and 19 fresh focused tests pass (rig blend, weapon-pose policy, quaternion blend and existing
+pose/visual-frame checks). All 7 valid mutants are caught, including restored stale local posing and per-bone
+renderer-history loss. Temporary mutations are restored. Eight accepted cases total 1,109 actual frames:
+right/left/third-person/vanilla-renderer kick handover, swaps to axe/air, reverse kick-to-slash and the prior
+offhand-food regression control. The two mutation baseline captures count as ordinary accepted replays;
+fault-injected captures and the earlier observer/test failures are excluded. Source-hashed commands, native mesh
+presence, matrices, contact sheets and final acceptance counts are retained outside the repository.

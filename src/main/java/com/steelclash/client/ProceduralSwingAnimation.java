@@ -9,6 +9,7 @@ import com.steelclash.client.dev.LiveCapture;
 import com.steelclash.combat.Downed;
 import com.steelclash.core.RotationBlend;
 import com.steelclash.core.UsePoseBlend;
+import com.steelclash.core.RigPoseBlend;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Vec;
 import com.steelclash.core.WeaponRig;
@@ -69,6 +70,8 @@ public class ProceduralSwingAnimation implements IAnimation {
     private final UsePoseBlend consumableBlend = new UsePoseBlend();
     private double consumableWeight;
     private Object consumableWeapon, consumableMainArm;
+    private final RigPoseBlend firstPersonRig = new RigPoseBlend(), worldRig = new RigPoseBlend();
+    private record RigIdentity(Object weapon, Object offhand, Object mainArm, long animationGeneration) {}
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -177,7 +180,7 @@ public class ProceduralSwingAnimation implements IAnimation {
             applyReady(bone);
         }
         if (pose == null) {
-            return bone;
+            return finishBone(bone);
         }
         float w = (float) pose.weight();
         WeaponRig rig = viewRig != null && FirstPersonMode.isFirstPersonPass() ? viewRig : this.rig;
@@ -193,7 +196,6 @@ public class ProceduralSwingAnimation implements IAnimation {
                     // carry a torch below the camera. Shields, bash/kick and guard keep their own choreography.
                     // Keep carrying the item as the weapon recovers; PAL handles the vanilla/model hand transition.
                     blendRotation(bone, carriedArm, 1);
-                    LiveCapture.recordCarriedRotation(player, bone.getRotX(), bone.getRotY(), bone.getRotZ(), carriedReference);
                     break;
                 }
                 firstPersonOffset(bone, pose, readyBase ? 0 : w, w); // over the ready stance, it already moved them
@@ -240,6 +242,27 @@ public class ProceduralSwingAnimation implements IAnimation {
             default -> {
             }
         }
+        return finishBone(bone);
+    }
+
+    /** Blend the actually displayed bone transforms when leg choreography replaces the weapon rig, and vice versa. */
+    private PlayerAnimBone finishBone(PlayerAnimBone bone) {
+        RigPoseBlend blend = FirstPersonMode.isFirstPersonPass() ? firstPersonRig : worldRig;
+        boolean legRig = pose != null && pose.kick();
+        boolean exact = PoseSheet.running() || (pose != null && pose.phase() == com.steelclash.core.Phase.RELEASE && !legRig);
+        blend.begin(CombatPresentation.frameNumber(), CombatPresentation.frameTimeNanos(), legRig, exact,
+                new RigIdentity(player.getMainHandItem().getItem(), player.getOffhandItem().getItem(), player.getMainArm(),
+                        com.steelclash.client.anim.AnimationLibrary.INSTANCE.generation()));
+        RigPoseBlend.Bone result = blend.apply(bone.getName(), new RigPoseBlend.Bone(bone.getRotX(), bone.getRotY(), bone.getRotZ(),
+                bone.getPosX(), bone.getPosY(), bone.getPosZ(), bone.getBend()));
+        bone.updateRotation((float)result.rx(), (float)result.ry(), (float)result.rz());
+        bone.setPosX((float)result.x()); bone.setPosY((float)result.y()); bone.setPosZ((float)result.z());
+        bone.setBend((float)result.bend());
+        if (FirstPersonMode.isFirstPersonPass() && (pose != null || ready != null) && !player.getOffhandItem().isEmpty()
+                && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)
+                && bone.getName().equals(player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT ? "right_arm" : "left_arm"))
+            LiveCapture.recordCarriedRotation(player, bone.getRotX(), bone.getRotY(), bone.getRotZ(), carriedReference);
+        LiveCapture.recordBone(player, bone, blend.blending());
         return bone;
     }
 
@@ -275,7 +298,6 @@ public class ProceduralSwingAnimation implements IAnimation {
         }
         if (name.equals("left_arm") != ready.leftHanded() && !player.getOffhandItem().isEmpty()) {
             blendRotation(bone, carriedArm, 1);
-            LiveCapture.recordCarriedRotation(player, bone.getRotX(), bone.getRotY(), bone.getRotZ(), carriedReference);
             return;
         }
         firstPersonOffset(bone, ready, 1, 1);

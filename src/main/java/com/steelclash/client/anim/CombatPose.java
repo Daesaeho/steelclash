@@ -53,7 +53,16 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
             return false;
         }
         CombatData data = entity.getData(ModAttachments.COMBAT);
-        return !data.isDowned() && data.machine.phase() != Phase.IDLE && Combat.currentSpec(entity, data).isPresent();
+        return !data.isDowned() && data.machine.phase() != Phase.IDLE && !staleLocalWeapon(entity) && Combat.currentSpec(entity, data).isPresent();
+    }
+
+    /** Local prediction has an attack-time weapon snapshot. Remote snapshots do not carry this item identity. */
+    static boolean staleLocalWeapon(LivingEntity entity) {
+        if (entity != net.minecraft.client.Minecraft.getInstance().player || PoseSheet.running()) return false;
+        var data = entity.getData(ModAttachments.COMBAT);
+        var weapon = data.weapon;
+        return com.steelclash.core.WeaponPosePolicy.stale(data.machine.phase(), data.machine.type(), !weapon.isEmpty(),
+                net.minecraft.world.item.ItemStack.isSameItem(weapon, entity.getMainHandItem()), entity.getMainHandItem().isEmpty());
     }
 
     /**
@@ -86,6 +95,7 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
             return Optional.empty();
         }
         CombatData data = entity.getData(ModAttachments.COMBAT);
+        if (staleLocalWeapon(entity)) return Optional.empty();
         Optional<SwingPose> swing = SwingPose.of(entity, data, partialTick);
         if (swing.isEmpty()) {
             return Optional.empty();

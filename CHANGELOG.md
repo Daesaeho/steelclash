@@ -1,6 +1,7 @@
 # Unreleased
 
 **Fixes**
+- Hotbar swaps discard the local old-weapon attack/guard pose immediately, before the server cancellation arrives. Disarm recoil and the empty-hand follow-through of a released throw remain visible.
 - Ground-slam secondary effects stop at solid collision shapes along the ground-level path, protecting targets behind walls and beneath floors.
 - A softer hit cannot relax, shorten or extend an existing hard guard-break stagger. Repeated effects of the same strength preserve the longer remaining duration and avoid restarting the visual clock when nothing changes.
 - Ground slams spare the attacker's and allies' pets from secondary stamina drain, stagger and knockback. Hostile creatures and enemy-owned pets remain eligible targets.
@@ -14,6 +15,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add live hotbar swaps, weapon-to-kick and buffered kick-to-attack controls, with rendered bone transforms, rig-blend state and a separate third-person player-mesh observer.
 - Add a live drink/bottle-return capture and record consuming-hand blend weight and stable item IDs alongside rendered rotations.
 - Add live incoming windup/release interruption and offhand food-use/cancel scenes. Record the real damaging contact phase, use hand, hunger and stack count; require matching client/server outcomes.
 - Isolate each live opponent with a unique launch tag and retain the final server sample during diagnostic shutdown, avoiding stale actor binding and false acceptance failures.
@@ -43,6 +45,7 @@
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Animation**
+- Player weapon/kick rig changes blend from the last displayed bone transforms over 200 ms. Item rotations use PAL's physical hand axes; weapon release and frozen pose sheets remain exact.
 - Keep the first-person weapon ready pose during offhand eating/drinking. The consuming hand raises and lowers over 250 ms, including attack cancellation and returned bottles, avoiding the vanilla/model renderer snap.
 - Hold swords in a more upright first-person ready guard: 45 degrees outward and 75 degrees upward, replacing the strongly sideways 65/45 stance. The change is visual tuning only.
 - Carried non-shield items breathe subtly in first-person idle, mirrored for both main arms and fading into the existing attack carry. Weapon/grip alignment, shields and third-person posing keep their existing behavior.

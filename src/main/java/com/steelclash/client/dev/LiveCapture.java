@@ -47,7 +47,7 @@ public final class LiveCapture {
     private static final boolean ITEM_USE = FOOD_USE || "drinkuse".equals(SCENE);
     private static final String DEFAULT_ITEM = "hitstop".equals(SCENE) ? "minecraft:mace" : "minecraft:iron_sword";
     private static final String DEFAULT_OFFHAND = "drinkuse".equals(SCENE) ? "minecraft:potion" : FOOD_USE ? "minecraft:bread" : "minecraft:air";
-    private static final KeyMapping[] KEYS = {ClientInput.SLASH_RIGHT_TO_LEFT, ClientInput.STAB, ClientInput.FEINT, ClientInput.PARRY};
+    private static final KeyMapping[] KEYS = {ClientInput.SLASH_RIGHT_TO_LEFT, ClientInput.STAB, ClientInput.FEINT, ClientInput.PARRY, ClientInput.KICK};
     private static final InputConstants.Key[] OLD_KEYS = new InputConstants.Key[KEYS.length];
     private static final List<Map<String, Object>> FRAMES = new ArrayList<>();
     private static final List<Map<String, Object>> INPUTS = new ArrayList<>();
@@ -72,6 +72,8 @@ public final class LiveCapture {
     @Nullable private static KeyMapping useKey;
     @Nullable private static InputConstants.Key previousUseKey;
     private static boolean foodStaged;
+    @Nullable private static KeyMapping swapKey;
+    @Nullable private static InputConstants.Key previousSwapKey;
     private static long startNanos;
     private static Path out;
     private static volatile UUID playerId;
@@ -79,9 +81,13 @@ public final class LiveCapture {
     @Nullable private static float[] carriedRotation;
     @Nullable private static double[] carriedIdleDelta;
     @Nullable private static Double carriedUseWeight;
+    private static final Map<String, double[]> renderedBones = new LinkedHashMap<>();
+    private static boolean rigBlendSeen;
+    private static boolean playerBodySeen;
     private record ServerSample(long tick, Phase phase, int serial, boolean heavy, boolean morphed,
                                 int parriedHits, boolean activeParry, boolean countered, boolean thwacked,
                                 float health, HumanoidArm arm, boolean usingItem, int food, int offhandCount, String offhandItem,
+                                String mainItem, com.steelclash.core.AttackType type,
                                 @Nullable LiveOpponent.Sample opponent) {}
     private static volatile ServerSample server;
 
@@ -97,6 +103,14 @@ public final class LiveCapture {
     }
 
     public static boolean recording() { return active; }
+
+    public static void recordBone(AbstractClientPlayer player, com.zigythebird.playeranimcore.bones.PlayerAnimBone bone, boolean rigBlend) {
+        if (active && player == Minecraft.getInstance().player && (com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode.isFirstPersonPass()
+                || !Minecraft.getInstance().options.getCameraType().isFirstPerson())) {
+            renderedBones.put(bone.getName(), new double[]{bone.getRotX(), bone.getRotY(), bone.getRotZ(), bone.getPosX(), bone.getPosY(), bone.getPosZ()});
+            rigBlendSeen |= rigBlend;
+        }
+    }
 
     public static void recordCarriedRotation(AbstractClientPlayer player, float x, float y, float z, double[] reference) {
         if (active && player == Minecraft.getInstance().player) {
@@ -130,7 +144,7 @@ public final class LiveCapture {
         if (!initialized) {
             if (PoseSheet.running()) throw new IllegalStateException("Live capture cannot run with frozen pose sheets");
             if (!List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "hitstop",
-                    "interrupt-windup", "interrupt-release", "itemuse", "use-attack", "drinkuse").contains(SCENE))
+                    "interrupt-windup", "interrupt-release", "itemuse", "use-attack", "drinkuse", "weapon-kick", "kick-attack", "swap-weapon", "swap-empty").contains(SCENE))
                 throw new IllegalArgumentException("Unknown live capture scene: " + SCENE);
             String item = item("steelclash.liveCaptureItem", DEFAULT_ITEM);
             String offhand = item("steelclash.liveCaptureOffhand", DEFAULT_OFFHAND);
@@ -165,7 +179,14 @@ public final class LiveCapture {
             if (ITEM_USE) {
                 useKey = mc.options.keyUse;
                 previousUseKey = useKey.getKey();
-                useKey.setKey(InputConstants.Type.KEYSYM.getOrCreate(325)); // numpad 5, vanilla item use
+                useKey.setKey(InputConstants.Type.KEYSYM.getOrCreate(326)); // numpad 6, vanilla item use
+            }
+            if (SCENE.startsWith("swap-")) {
+                int slot = (player.getInventory().selected + 1) % 9;
+                swapKey = mc.options.keyHotbarSlots[slot]; previousSwapKey = swapKey.getKey();
+                swapKey.setKey(InputConstants.Type.KEYSYM.getOrCreate(327)); // numpad 7
+                player.connection.sendCommand("item replace entity @s hotbar." + slot + " with "
+                        + (SCENE.equals("swap-empty") ? "minecraft:air" : "minecraft:iron_axe"));
             }
             KeyMapping.resetMapping();
             playerId = player.getUUID();
@@ -238,7 +259,7 @@ public final class LiveCapture {
                 releaseAt = captureTick + 35;
             } else {
                 boolean guard = SCENE.equals("parry") || SCENE.equals("riposte") || SCENE.equals("counter");
-                press(guard ? 3 : 0);
+                press(SCENE.equals("kick-attack") ? 4 : guard ? 3 : 0);
                 releaseAt = captureTick + (SCENE.equals("heavy") ? 9 : guard ? 40 : 1);
             }
         }
@@ -257,6 +278,13 @@ public final class LiveCapture {
             } else if ((SCENE.equals("feint") || SCENE.equals("morph"))
                     && machine.phase() == Phase.WINDUP && machine.phaseTick() >= 3) {
                 press(SCENE.equals("feint") ? 2 : 1); followup = true; releaseAt = captureTick + 1;
+            } else if (SCENE.equals("weapon-kick") && machine.phase() == Phase.WINDUP && machine.phaseTick() >= 3) {
+                press(4); followup = true; releaseAt = captureTick + 1;
+            } else if (SCENE.equals("kick-attack") && machine.type() == com.steelclash.core.AttackType.KICK && machine.phase() == Phase.RECOVERY && machine.phaseTick() >= 2) {
+                press(0); followup = true; releaseAt = captureTick + 1;
+            } else if (SCENE.startsWith("swap-") && machine.phase() == Phase.WINDUP && machine.phaseTick() >= 3) {
+                swapKey.setDown(true); KeyMapping.click(swapKey.getKey()); followup = true; releaseAt = captureTick + 1;
+                INPUTS.add(Map.of("tick", captureTick, "time_ns", System.nanoTime() - startNanos, "key", swapKey.getName()));
             }
         }
         clientAttack |= machine.phase().isAttack();
@@ -299,6 +327,7 @@ public final class LiveCapture {
     private static void release() {
         for (var key : KEYS) key.setDown(false);
         if (useKey != null) useKey.setDown(false);
+        if (swapKey != null) swapKey.setDown(false);
     }
 
     @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGHEST)
@@ -321,12 +350,13 @@ public final class LiveCapture {
                 machine.isMorphed(), machine.parriedHits(), machine.isActiveParry(), machine.predictionState().countered(),
                 machine.isThwacked(), player.getHealth(), player.getMainArm(), player.isUsingItem(),
                 player.getFoodData().getFoodLevel(), player.getOffhandItem().getCount(),
-                BuiltInRegistries.ITEM.getKey(player.getOffhandItem().getItem()).toString(), LiveOpponent.tick(player, active));
+                BuiltInRegistries.ITEM.getKey(player.getOffhandItem().getItem()).toString(),
+                BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString(), machine.type(), LiveOpponent.tick(player, active));
     }
 
     @SubscribeEvent
     static void beforeFrame(RenderFrameEvent.Pre event) {
-        if (active) { renderedPose = null; carriedRotation = null; carriedIdleDelta = null; carriedUseWeight = null; modelSeen = readySeen = opponentSeen = false; }
+        if (active) { renderedPose = null; carriedRotation = null; carriedIdleDelta = null; carriedUseWeight = null; renderedBones.clear(); rigBlendSeen = playerBodySeen = false; modelSeen = readySeen = opponentSeen = false; }
     }
 
     @SubscribeEvent
@@ -334,6 +364,11 @@ public final class LiveCapture {
         ServerSample sample = server;
         if (active && sample != null && sample.opponent != null && event.getEntity().getId() == sample.opponent.id())
             opponentSeen = true;
+    }
+
+    @SubscribeEvent
+    static void playerRendered(net.neoforged.neoforge.client.event.RenderPlayerEvent.Post event) {
+        if (active && event.getEntity() == Minecraft.getInstance().player) playerBodySeen = true;
     }
 
     @SubscribeEvent
@@ -355,6 +390,9 @@ public final class LiveCapture {
         row.put("carried_rotation", carriedRotation);
         row.put("carried_idle_delta", carriedIdleDelta);
         row.put("carried_use_weight", carriedUseWeight);
+        row.put("rendered_bones", new LinkedHashMap<>(renderedBones));
+        row.put("rig_blend_applied", rigBlendSeen);
+        row.put("player_body_seen", playerBodySeen);
         row.put("opponent_seen", opponentSeen);
         if (opponentSeen) opponentRenderFrames++;
         row.put("parried_hits", machine.parriedHits()); row.put("active_parry", machine.isActiveParry());
@@ -368,6 +406,8 @@ public final class LiveCapture {
         row.put("rendered_progress", renderedPose == null || renderedPose.swing() == null ? null : renderedPose.swing().progress());
         row.put("rendered_weight", renderedPose == null ? null : renderedPose.weight());
         row.put("arm", player.getMainArm()); row.put("offhand", BuiltInRegistries.ITEM.getKey(player.getOffhandItem().getItem()).toString());
+        row.put("main_item", BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString());
+        row.put("attack_item", BuiltInRegistries.ITEM.getKey(player.getData(ModAttachments.COMBAT).weapon.getItem()).toString());
         ServerSample sample = server;
         row.put("server", sample);
         if (sample != null) {
@@ -393,6 +433,7 @@ public final class LiveCapture {
         release();
         for (int i = 0; i < KEYS.length; i++) KEYS[i].setKey(OLD_KEYS[i]);
         if (useKey != null) useKey.setKey(previousUseKey);
+        if (swapKey != null) swapKey.setKey(previousSwapKey);
         KeyMapping.resetMapping();
         active = false; draining = true;
         mc.options.framerateLimit().set(previousFps);
@@ -442,6 +483,20 @@ public final class LiveCapture {
         if (SCENE.equals("hitstop") && (!clientThwack || !serverThwack || opponentRenderFrames == 0
                 || !(minOpponentHealth > 0 && minOpponentHealth < initialOpponentHealth)))
             throw new IllegalStateException("Live light blunt strike did not stop in the surviving opponent");
+        if (SCENE.equals("weapon-kick") && (!followup || FRAMES.stream().noneMatch(f -> f.get("type") == com.steelclash.core.AttackType.KICK && f.get("phase") == Phase.RELEASE)
+                || FRAMES.stream().noneMatch(f -> f.get("server") instanceof ServerSample s && s.type == com.steelclash.core.AttackType.KICK && s.phase == Phase.RELEASE)))
+            throw new IllegalStateException("Windup replacement did not become a released kick on both sides");
+        if (SCENE.equals("kick-attack") && (!followup || maxClientSerial-firstSerial < 2 || maxServerSerial-firstServerSerial < 2
+                || FRAMES.stream().noneMatch(f -> f.get("type") == com.steelclash.core.AttackType.SLASH && f.get("phase") == Phase.RELEASE)
+                || FRAMES.stream().noneMatch(f -> f.get("server") instanceof ServerSample s && s.type == com.steelclash.core.AttackType.SLASH && s.phase == Phase.RELEASE)))
+            throw new IllegalStateException("Buffered attack did not follow the kick on both sides");
+        if (SCENE.startsWith("swap-")) {
+            String expected = SCENE.equals("swap-empty") ? "minecraft:air" : "minecraft:iron_axe";
+            if (!followup || finalServer == null || !finalServer.mainItem.equals(expected) || finalServer.phase != Phase.IDLE
+                    || FRAMES.subList(Math.max(0, FRAMES.size()-20), FRAMES.size()).stream().anyMatch(f -> !f.get("main_item").equals(expected) || f.get("phase") != Phase.IDLE)
+                    || clientRelease || serverRelease)
+                throw new IllegalStateException("Hotbar swap did not cancel the windup before release");
+        }
         if (SCENE.startsWith("interrupt-")) {
             Phase expected = SCENE.equals("interrupt-windup") ? Phase.WINDUP : Phase.RELEASE;
             if (finalServer == null || finalServer.opponent == null || finalServer.opponent.hitPhase() != expected

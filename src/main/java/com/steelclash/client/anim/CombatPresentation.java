@@ -28,6 +28,8 @@ public final class CombatPresentation {
     }
 
     public static void reset() { ENTRIES.clear(); }
+    public static long frameNumber() { return frame; }
+    public static long frameTimeNanos() { return frameNanos; }
 
     public static void hitStop(long now, int millis) {
         LivingEntity player = Minecraft.getInstance().player;
@@ -60,6 +62,10 @@ public final class CombatPresentation {
         var data = entity.getData(ModAttachments.COMBAT);
         if (data.isDowned()) {
             ENTRIES.remove(entity); // the forced crawl pose must take effect immediately
+            return Optional.empty();
+        }
+        if (data.machine.phase() != Phase.IDLE && CombatPose.staleLocalWeapon(entity)) {
+            ENTRIES.remove(entity);
             return Optional.empty();
         }
         Entry entry = ENTRIES.computeIfAbsent(entity, ignored -> new Entry());
