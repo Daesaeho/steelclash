@@ -183,6 +183,13 @@ For built-in pose sheets, use `-PposeSheet=kick,jab,throw` with a compatible hel
 profile's special spec. Unsupported actions now fail with the shot/item context rather than capturing a stale pose.
 Review the shared bash/special motion in the actual client before refining it per weapon family.
 
+Use `-PposeSheetArm=left|right` and `-PposeSheetOffhand=minecraft:air|minecraft:shield|minecraft:torch` to
+select rig conditions (pass one item id, not the literal alternatives). Omitted settings preserve existing conditions.
+The tool checks actual rendered handedness/offhand ownership and logs entity type, skin model/texture and armor;
+an occupied offhand must not enter the two-handed grip. Overrides are client-local and restored when capture finishes.
+Staging changes world gamerules, including disabling mob loot, so use a disposable world copy. Fire overlays are
+cleared on the captured subject. These controls verify frozen poses; they do not exercise live input transitions.
+
 For profiling, record 1/20/50/150 visible fighters, close-ups with armor/two-handed weapons, and first/third-person
 views. Compare camera effects on/off and the same rendering stack. Capture p95/p99 frame time and allocation;
 server GameTest timings do not measure client rendering.

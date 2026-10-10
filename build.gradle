@@ -104,6 +104,12 @@ neoForge {
                 if (project.hasProperty('poseSheetPoints')) {
                     systemProperty 'steelclash.poseSheetPoints', project.property('poseSheetPoints').toString()
                 }
+                if (project.hasProperty('poseSheetArm')) {
+                    systemProperty 'steelclash.poseSheetArm', project.property('poseSheetArm').toString()
+                }
+                if (project.hasProperty('poseSheetOffhand')) {
+                    systemProperty 'steelclash.poseSheetOffhand', project.property('poseSheetOffhand').toString()
+                }
             }
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id

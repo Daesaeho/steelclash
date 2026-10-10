@@ -12,6 +12,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Pose sheets can select the main arm and offhand item, validate the rendered hand ownership, and log the actual skin/model and armor. Capture staging suppresses mob loot and fire overlays for clearer rig comparisons.
 - Record the combat/animation goal and original weapon-family style directions in `docs/combat-animation-goal.md`. Pose-sheet staging clears player effects so potion particles do not pollute motion captures.
 - Add three focused Codex skills for project context, change verification, and animation review, with helpers for current source routes, fresh test-result summaries, and chronologically ordered pose captures.
 

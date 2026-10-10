@@ -174,3 +174,15 @@ Focused inspection did not establish new isolated snaps; gameplay timing and sty
 Current runtime resources were restored and byte-verified after the baseline overrides. This closes the missing
 representative-family capture gap, while live transition/hit-stop/correction, additional actions/variants,
 explicit handedness/offhand/model/renderer matrix and humanoid alignment calibration remain open.
+
+## Controlled hand/model checkpoint (2026-10-10)
+
+Capture controls and rendered-condition guards now reproduce left/right main arm and explicit empty/shield/torch
+hands. The matrix includes SLIM/WIDE Ari player samples and four humanoid mob types; logs record actual equipment.
+Two actual-client setter mutations failed at the intended guard, with crash diagnostics checked separately because
+the mutation helper does not extract client test names. Capture-stage fire/loot cleanup produced clear skeleton
+references. Commands, sample counts and scope are in [testing.md](testing.md#controlled-rig-captures-2026-10-10).
+
+Occupied hands remain outside the weapon grip, but the torch sits largely below the first-person attack view.
+That visibility issue, live transition/correction/hit-stop acceptance, additional model/renderer combinations and
+blade/hilt calibration remain open. This checkpoint improves evidence reliability; the beta goal stays active.

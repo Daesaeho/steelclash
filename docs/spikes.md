@@ -774,3 +774,23 @@ weapon-timing edit was justified by these flags. This adds representative motion
 families, alongside the earlier dagger/greatsword/polearm runs. It does not cover every action/variant or live
 blend, hit-stop, correction, model/offhand/renderer case. Captures use the same stored Dev1 world/skin/options,
 1920×1200 viewport, stored FOV 0.625, cameraMotion 0 and base speed scale 1; model/equipment variants were not forced.
+
+## Capture rig conditions and clean mob references (2026-10-10)
+
+PoseSheet now applies optional `poseSheetArm`/`poseSheetOffhand` properties to the actual client subject before
+rendering, records rendered arm/offhand along with phase/index/view/item, and rejects mismatched ownership or a
+two-handed grip with an occupied hand. New-shot metadata is cleared so an idle shot cannot inherit the previous
+attack sample. Logs identify the actual player skin model/texture and equipped armor rather than guessing from images.
+Local player overrides restore on normal completion. No server inventory/hand preference synchronization is added.
+
+The disposable-world evidence includes 312 initial rig samples, 36 additional WIDE Ari left/shield samples and
+15 idle/guard/attack torch comparisons. Dev1 uses SLIM Ari; both player runs log an iron helmet only. The model
+matrix includes husk, skeleton, vindicator and piglin. These frozen samples verify requested conditions but cannot
+establish live transition or complete renderer/model acceptance. Torch ownership is correct, while its first-person
+attack composition largely falls below the view; investigate rendering rather than treating ownership as visibility.
+
+Two client mutations that omitted the setters both failed with the intended requested-rig IllegalStateException.
+The runner reported MISSED-EXPECT because it extracts test names, not arbitrary client crash messages; the saved
+crash stack diagnostics were manually checked and recorded separately. Restored build passed all 186 JUnit tests.
+The stage now disables mob loot and clears the subject's fire overlay; a fresh 24-shot skeleton run completed and
+its release sheet is unobscured. Evidence is under `C:/dev/steelclash-beta-audit/20261010/rig-matrix`.

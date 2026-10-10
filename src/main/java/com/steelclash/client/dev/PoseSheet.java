@@ -25,13 +25,16 @@ import java.util.TreeSet;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.RandomSource;
 import net.neoforged.api.distmarker.Dist;
@@ -56,6 +59,9 @@ import org.jetbrains.annotations.Nullable;
  *     <li>{@code steelclash.poseSheetMob}: photograph a mob of this type instead (e.g. {@code minecraft:zombie}),
  *     summoned without AI three blocks in front of the player holding the item, from the front and the side in first
  *     person (file names {@code ..._mobfront}, {@code ..._mobside});</li>
+ *     <li>{@code steelclash.poseSheetArm}: main arm, {@code left} or {@code right};</li>
+ *     <li>{@code steelclash.poseSheetOffhand}: offhand item id, including {@code minecraft:air} for empty;
+ *     omitted arm/offhand settings preserve the subject's existing conditions;</li>
  *     <li>{@code steelclash.poseSheetQuit}: close the game when done.</li>
  * </ul>
  * Each pose is frozen on the local player (client-side only) at fixed points of the attack and photographed from
@@ -91,6 +97,16 @@ public final class PoseSheet {
     private static CameraType renderedView;
     @Nullable
     private static ResourceLocation renderedItem;
+    @Nullable
+    private static HumanoidArm renderedMainArm;
+    @Nullable
+    private static ResourceLocation renderedOffhand;
+    @Nullable
+    private static HumanoidArm requestedMainArm;
+    @Nullable
+    private static ItemStack requestedOffhand;
+    private static HumanoidArm previousPlayerArm;
+    private static ItemStack previousPlayerOffhand;
 
     private PoseSheet() {
     }
@@ -124,6 +140,8 @@ public final class PoseSheet {
             renderedIndex = index;
             renderedView = mc.options.getCameraType();
             renderedItem = BuiltInRegistries.ITEM.getKey(entity.getMainHandItem().getItem());
+            renderedMainArm = entity.getMainArm();
+            renderedOffhand = BuiltInRegistries.ITEM.getKey(entity.getOffhandItem().getItem());
         }
     }
 
@@ -139,6 +157,18 @@ public final class PoseSheet {
         }
         if (shots == null) {
             shots = plan();
+            String arm = System.getProperty("steelclash.poseSheetArm");
+            requestedMainArm = arm == null ? null : switch (arm.toLowerCase(Locale.ROOT)) {
+                case "left" -> HumanoidArm.LEFT;
+                case "right" -> HumanoidArm.RIGHT;
+                default -> throw new IllegalArgumentException("Pose sheet: unknown main arm " + arm);
+            };
+            String offhand = System.getProperty("steelclash.poseSheetOffhand");
+            requestedOffhand = offhand == null ? null : new ItemStack(BuiltInRegistries.ITEM
+                    .getOptional(ResourceLocation.parse(offhand))
+                    .orElseThrow(() -> new IllegalArgumentException("Pose sheet: unknown offhand item " + offhand)));
+            previousPlayerArm = player.getMainArm();
+            previousPlayerOffhand = player.getOffhandItem().copy();
             wait = SETTLE_TICKS;
             mc.options.pauseOnLostFocus = false;
             CombatDebugRenderer.setEnabled(System.getProperty("steelclash.poseSheetDebug") != null);
@@ -162,6 +192,12 @@ public final class PoseSheet {
             finish(mc, player);
             return;
         }
+        renderedPose = null;
+        renderedIndex = -1;
+        renderedView = null;
+        renderedItem = null;
+        renderedMainArm = null;
+        renderedOffhand = null;
         setUp(mc, player, shots.get(index));
         hold(player, shots.get(index));
         wait = SHOT_TICKS;
@@ -174,7 +210,8 @@ public final class PoseSheet {
     private static void buildStage(LocalPlayer player) {
         String item = items().get(0);
         for (String command : new String[]{
-                "gamerule doDaylightCycle false", "gamerule doWeatherCycle false", "time set noon", "weather clear",
+                "gamerule doDaylightCycle false", "gamerule doWeatherCycle false", "gamerule doMobLoot false",
+                "time set noon", "weather clear",
                 "effect clear @s",
                 "fill ~-3 300 ~-3 ~3 300 ~3 minecraft:polished_andesite", "tp @s ~ 301 ~ 0 0",
                 "item replace entity @s weapon.mainhand with " + item}) {
@@ -301,6 +338,15 @@ public final class PoseSheet {
         player.yBodyRot = 0;
         player.yBodyRotO = 0;
         LivingEntity subject = subject(player, shot);
+        subject.clearFire();
+        subject.setSharedFlagOnFire(false); // sunburn/fire overlays must not obscure the captured rig
+        if (requestedMainArm != null) {
+            if (subject instanceof Player p) p.setMainArm(requestedMainArm);
+            else if (subject instanceof Mob mob) mob.setLeftHanded(requestedMainArm == HumanoidArm.LEFT);
+        }
+        if (requestedOffhand != null && !ItemStack.isSameItem(subject.getOffhandItem(), requestedOffhand)) {
+            subject.setItemSlot(EquipmentSlot.OFFHAND, requestedOffhand.copy()); // capture-only client state
+        }
         if (shot.mobYaw() != null) {
             if (subject instanceof Mob mob) {
                 mob.setAggressive(true); // as a fighter is in game: illagers only show their arms and weapon then
@@ -382,8 +428,21 @@ public final class PoseSheet {
     }
 
     private static void capture(Minecraft mc, Shot shot) {
+        LivingEntity entity = subject(mc.player, shot);
+        HumanoidArm expectedArm = requestedMainArm == null ? entity.getMainArm() : requestedMainArm;
+        ResourceLocation expectedOffhand = BuiltInRegistries.ITEM.getKey(
+                (requestedOffhand == null ? entity.getOffhandItem() : requestedOffhand).getItem());
+        if (entity.getMainArm() != expectedArm
+                || !BuiltInRegistries.ITEM.getKey(entity.getOffhandItem().getItem()).equals(expectedOffhand)) {
+            throw new IllegalStateException("Pose sheet: requested rig conditions were not applied for " + shot.name());
+        }
+        List<ResourceLocation> armor = new ArrayList<>();
+        entity.getArmorSlots().forEach(stack -> armor.add(BuiltInRegistries.ITEM.getKey(stack.getItem())));
+        String skin = entity instanceof AbstractClientPlayer p ? p.getSkin().model() + ":" + p.getSkin().texture() : "mob";
+        SteelClash.LOGGER.info("Pose sheet conditions: {} entity={} arm={} offhand={} skin={} armor={} poseLeft={} twoHanded={}",
+                shot.name(), BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()), expectedArm, expectedOffhand, skin,
+                armor, renderedPose == null ? null : renderedPose.leftHanded(), renderedPose == null ? null : renderedPose.twoHanded());
         if (Boolean.getBoolean("steelclash.poseSheetInspectModel")) {
-            LivingEntity entity = subject(mc.player, shot);
             ItemStack held = entity.getMainHandItem();
             var model = mc.getItemRenderer().getModel(held, entity.level(), entity, entity.getId());
             var sprites = new TreeSet<String>();
@@ -406,7 +465,10 @@ public final class PoseSheet {
             if (renderedIndex != index || renderedView != shot.view() || renderedPose == null
                     || renderedPose.phase() != shot.phase() || !Double.isFinite(actual)
                     || Math.abs(actual - expected) > 1.0 / Math.max(1, duration)
-                    || !ResourceLocation.parse(shot.item()).equals(renderedItem)) {
+                    || !ResourceLocation.parse(shot.item()).equals(renderedItem)
+                    || renderedMainArm != expectedArm || !expectedOffhand.equals(renderedOffhand)
+                    || renderedPose.leftHanded() != (expectedArm == HumanoidArm.LEFT)
+                    || (!entity.getOffhandItem().isEmpty() && renderedPose.twoHanded())) {
                 throw new IllegalStateException("Pose sheet: model sample does not match requested shot " + shot.name());
             }
         }
@@ -415,6 +477,8 @@ public final class PoseSheet {
     }
 
     private static void finish(Minecraft mc, LocalPlayer player) {
+        if (requestedMainArm != null) player.setMainArm(previousPlayerArm);
+        if (requestedOffhand != null) player.setItemSlot(EquipmentSlot.OFFHAND, previousPlayerOffhand);
         if (stagedDowned) {
             player.getData(ModAttachments.COMBAT).downedTicksLeft = -1;
             player.setForcedPose(null);

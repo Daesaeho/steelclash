@@ -582,3 +582,28 @@ inspected newly flagged intervals without establishing an isolated snap, so curv
 The original-resource override and final current-resource restoration were byte-verified. Additional 10 ms dagger
 and 20 ms greatsword/polearm windows are documented above. Remaining: live blends/corrections/hit-stop, other
 actions/variants, explicit main-arm/offhand/model control, humanoid alignment calibration and renderer combinations.
+
+## Controlled rig captures (2026-10-10)
+
+`-PposeSheetArm=left|right` and `-PposeSheetOffhand=<item-id>` select main-arm and offhand conditions.
+Use `minecraft:air` for an empty hand. Omitted properties preserve existing conditions. The capture guard checks
+actual rendered arm/item ownership and rejects assigning an occupied offhand to the two-handed grip. Each shot
+logs entity type, main arm, offhand, actual skin model/texture, armor, pose handedness and grip mode.
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/rig-matrix`. The initial matrix has 312 verified frozen samples:
+left/right sword with empty/shield hands; left polearm with empty/torch hand; husk, skeleton, vindicator and piglin.
+Four actions (slash, mirrored slash, heavy overhead, stab) use windup 0.6, release 0.35 and recovery 0.4.
+Dev1 is SLIM Ari, with an iron helmet and no other armor. A separate SteelQA1 run logs WIDE Ari and adds 36
+left-main-arm/shield samples. These are partial combinations, not an exhaustive skin/entity/renderer matrix.
+
+Two actual-client mutations (omitting the main-arm setter or offhand setter) failed at the requested-rig guard.
+The mutation runner could not extract test names from client crashes; exact diagnostic/stack checks were audited
+separately in `mutation-diagnostic-audit.json`. Baseline client capture and restored full build passed (186 JUnit
+tests). After suppressing capture-subject fire and stage mob loot, a fresh 24-shot skeleton run passed; inspected
+release sheets are clear of flames. This cleanup affects the disposable capture stage, not combat behavior.
+
+A 15-shot idle/guard/attack comparison shows the torch largely below the first-person view during attacks,
+although the occupied-hand ownership checks pass. Torch visibility needs a rendering fix/review. Shield poses
+and slim/wide hand ownership look reasonable at the sampled points; exact blade/hilt calibration, live blends,
+Sodium combinations, movement/armor/custom models and further actions remain open. Server tests were not rerun
+for this client development-tool change; the last gameplay checkpoint passed 171 GameTests per dependency variant.
