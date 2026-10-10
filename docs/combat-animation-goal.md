@@ -162,3 +162,15 @@ the effect. The new tests include real owner lookup, no-team conditions and host
 Evidence and live co-op checks are in [spikes.md](spikes.md#friendly-pets-and-ground-slams-2026-10-10) and
 [testing.md](testing.md#ground-slam-pet-protection-2026-10-10). Cover/impact geometry and stagger precedence are
 separate unresolved audit candidates; the overall animation/bug goal remains in progress.
+
+## Nine-family representative motion coverage (2026-10-10)
+
+The remaining six-family batch added 1,350 time-verified original/authored screenshots: sword slash, axe/blunt heavy
+overheads, spear/rapier stabs and staff slash, across three views at 50 ms. Together with dagger and heavy
+greatsword/polearm evidence, all nine families now have a representative phase-motion comparison. The table in
+[testing.md](testing.md#representative-motion-coverage-by-family-2026-10-10) records the actual actions/counts.
+Focused inspection did not establish new isolated snaps; gameplay timing and style curves were preserved.
+
+Current runtime resources were restored and byte-verified after the baseline overrides. This closes the missing
+representative-family capture gap, while live transition/hit-stop/correction, additional actions/variants,
+explicit handedness/offhand/model/renderer matrix and humanoid alignment calibration remain open.

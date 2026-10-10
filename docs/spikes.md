@@ -757,3 +757,20 @@ Restored build: all 186 JUnit tests and 171 GameTests in each optional-mod varia
 were caught by their intended tests: missing pet exclusion, excluding all ownable creatures, and protecting
 only the attacker's own UUID. Evidence: `C:/dev/steelclash-beta-audit/20261010/pet-slam`.
 This fixes pet eligibility; slam cover/impact geometry and stagger precedence remain separate audit work.
+
+## Remaining-family phase motion review (2026-10-10)
+
+At source `8ac9f04`, captured matched original/authored sword slash, axe/blunt heavy overhead, spear/rapier stab
+and staff slash in back/front/first-person views at 50 ms. Samples per view were 34, 45, 43, 39, 32 and 32:
+1,350 rendered screenshots. All model phase/progress/index/view/item checks passed. Original runs verified all
+nine original resource files, authored runs verified current source bytes, and final cleanup restored/verified
+the current runtime resources. Chronological frame manifests and the same onion thresholds (30, ratio 2.5)
+were used in both versions. Evidence: `C:/dev/steelclash-beta-audit/20261010/family-motion`.
+
+Focused sheets inspected sword release/return, axe first-person downstroke, blunt release/settle, spear extension,
+rapier late thrust/return and staff recovery. Flags coincide with motion over neighboring samples, turning/occlusion,
+or similar original-version peaks; the inspected intervals do not establish a new isolated snap. No style-asset or
+weapon-timing edit was justified by these flags. This adds representative motion evidence for the remaining six
+families, alongside the earlier dagger/greatsword/polearm runs. It does not cover every action/variant or live
+blend, hit-stop, correction, model/offhand/renderer case. Captures use the same stored Dev1 world/skin/options,
+1920×1200 viewport, stored FOV 0.625, cameraMotion 0 and base speed scale 1; model/equipment variants were not forced.

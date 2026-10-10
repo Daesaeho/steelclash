@@ -559,3 +559,26 @@ Evidence: `C:/dev/steelclash-beta-audit/20261010/pet-slam`.
 | Mace slam beside your tame wolf, without scoreboard teams. | No pet stamina drain, stagger or knockback; nearby enemies still receive the area effect. |
 | LAN co-op: slam beside your friend's tame wolf. | The friend's pet receives the same protection. |
 | With co-op disabled and no allied team, slam beside an opponent's tame wolf. | It remains an eligible enemy target. |
+
+## Representative motion coverage by family (2026-10-10)
+
+Matched original/authored back/front/first-person sequences are available at 50 ms for one representative action
+per family. This table describes sampled phase curves; it does not mark live transition or renderer acceptance done.
+
+| Family | Representative action | Samples per view/version | Evidence folder under `C:/dev/steelclash-beta-audit` |
+|---|---|---:|---|
+| Dagger | Slash | 32 | `20261009/weapon-styles/motion/dagger-*` |
+| Sword | Slash | 34 | `20261010/family-motion/sword-*` |
+| Two-handed | Heavy overhead | 53 | `20261010/heavy-motion/two_handed-*` |
+| Axe | Heavy overhead | 45 | `20261010/family-motion/axe-*` |
+| Blunt | Heavy overhead | 43 | `20261010/family-motion/blunt-*` |
+| Polearm | Heavy overhead | 53 | `20261010/heavy-motion/polearm-*` |
+| Spear | Stab | 39 | `20261010/family-motion/spear-*` |
+| Rapier | Stab | 32 | `20261010/family-motion/rapier-*` |
+| Staff | Slash | 32 | `20261010/family-motion/staff-*` |
+
+The new six-family batch produced 1,350 requested-sample-verified screenshots and 36 onion reports. Focused sheets
+inspected newly flagged intervals without establishing an isolated snap, so curves/timings were preserved.
+The original-resource override and final current-resource restoration were byte-verified. Additional 10 ms dagger
+and 20 ms greatsword/polearm windows are documented above. Remaining: live blends/corrections/hit-stop, other
+actions/variants, explicit main-arm/offhand/model control, humanoid alignment calibration and renderer combinations.
