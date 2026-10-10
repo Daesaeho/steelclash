@@ -5,6 +5,7 @@ import com.steelclash.SteelClash;
 import com.steelclash.client.anim.CombatPose;
 import com.steelclash.client.anim.CombatPresentation;
 import com.steelclash.client.dev.PoseSheet;
+import com.steelclash.client.dev.LiveCapture;
 import com.steelclash.combat.Downed;
 import com.steelclash.core.RotationBlend;
 import com.steelclash.core.AttackType;
@@ -61,6 +62,8 @@ public class ProceduralSwingAnimation implements IAnimation {
     private WeaponRig viewRig;
     /** Occupied non-shield hand, countering the body turn rather than following the weapon. */
     private double[] carriedArm = NO_TURN;
+    /** PAL chooses its camera pass before setupAnim; keep ownership stable until its next tick. */
+    private boolean firstPersonOwned;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -74,8 +77,14 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public boolean isActive() {
-        return pose != null || ready != null || CombatPresentation.hasTail(player) || CombatPose.isAvailable(player)
-                || wantsReadyStance();
+        return player.isAlive() && !Downed.isDowned(player) && (firstPersonOwned || CombatPresentation.hasTail(player)
+                || CombatPose.isAvailable(player) || wantsReadyStance());
+    }
+
+    @Override
+    public void tick(AnimationData state) {
+        firstPersonOwned = player.isAlive() && !Downed.isDowned(player) && (CombatPose.isAvailable(player)
+                || CombatPresentation.get(player, 0).isPresent() || wantsReadyStance());
     }
 
     @Override
@@ -85,11 +94,6 @@ public class ProceduralSwingAnimation implements IAnimation {
             rig = rigFor(pose);
         }
         Minecraft mc = Minecraft.getInstance();
-        if (pose != null && pose.phase().isAttack() && !pose.kick() && mc.options.getCameraType().isFirstPerson()
-                && !player.getOffhandItem().isEmpty() && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)) {
-            carriedArm = WeaponRig.carryArm(pose.aimYaw() - pose.relativeYaw(), player.getViewXRot(state.getPartialTick()),
-                    pose.bodyDegrees(), !pose.leftHanded());
-        }
         viewRig = pose != null && !pose.kick() && player == mc.player && mc.options.getCameraType().isFirstPerson()
                 ? rigFor(pose.spreadForView(Config.Client.FIRST_PERSON_SWING_WIDTH.get(), Config.Client.FIRST_PERSON_SWING_LIFT.get(),
                         player.getViewXRot(state.getPartialTick())))
@@ -98,7 +102,14 @@ public class ProceduralSwingAnimation implements IAnimation {
         if (ready != null) {
             readyRig = rigFor(ready);
         }
+        CombatPose carried = pose != null ? pose : ready;
+        if (carried != null && mc.options.getCameraType().isFirstPerson()
+                && !player.getOffhandItem().isEmpty() && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)) {
+            carriedArm = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(), player.getViewXRot(state.getPartialTick()),
+                    carried.bodyDegrees(), !carried.leftHanded());
+        }
         PoseSheet.recordRenderedPose(player, pose);
+        LiveCapture.recordRenderedPose(player, pose, ready != null);
     }
 
     private static WeaponRig rigFor(CombatPose pose) {
@@ -107,15 +118,16 @@ public class ProceduralSwingAnimation implements IAnimation {
     }
 
     /**
-     * The local player in first person, holding a weapon, with nothing in the offhand (vanilla keeps drawing a shield or
-     * food) and no item in use: show the arms in a ready stance rather than vanilla's hand, so attacks don't cut.
+     * The local player in first person holding a weapon, with no shield or item in use: show a ready stance so
+     * attacks do not switch hand renderers. A carried non-shield item uses its own holding arm.
      */
     private boolean wantsReadyStance() {
         Minecraft mc = Minecraft.getInstance();
         return !PoseSheet.photographingMob() && Config.Client.FIRST_PERSON_READY_STANCE.get()
                 && player == mc.player && mc.options.getCameraType().isFirstPerson()
                 && player.isAlive() && !Downed.isDowned(player)
-                && player.getOffhandItem().isEmpty() && !player.isUsingItem() && !player.isSpectator()
+                && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)
+                && !player.isUsingItem() && !player.isSpectator()
                 && ClientInput.holdsWeapon(mc.player);
     }
 
@@ -222,6 +234,10 @@ public class ProceduralSwingAnimation implements IAnimation {
             }
             return;
         }
+        if (name.equals("left_arm") != ready.leftHanded() && !player.getOffhandItem().isEmpty()) {
+            blendRotation(bone, carriedArm, 1);
+            return;
+        }
         firstPersonOffset(bone, ready, 1, 1);
         if (name.equals("left_arm") == ready.leftHanded()) {
             bone.updateRotation((float) readyRig.arm()[0], (float) readyRig.arm()[1], (float) readyRig.arm()[2]);
@@ -276,7 +292,8 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public @NotNull FirstPersonMode getFirstPersonMode() {
-        return pose != null || ready != null ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
+        return firstPersonOwned && player.isAlive() && !Downed.isDowned(player)
+                ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
     }
 
     @Override

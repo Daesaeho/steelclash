@@ -200,3 +200,17 @@ clients and the disposable QA client. Fresh startup, selected rendering and comp
 Sodium enabled and disabled. Jars remain local/ignored and are not release dependencies. No controlled loading
 benchmark is claimed. The staged torch-composition gap is addressed; live vanilla/model handover, input/network
 transitions, additional model/locomotion/FOV combinations and wider report-candidate audit remain active work.
+
+## Live transition checkpoint (2026-10-10)
+
+Live input/render capture now goes through ordinary keyboard bindings, local prediction and integrated-server
+packets. It records actual frame times and outcome evidence rather than freezing the state machine. Seven
+final-source scenes cover empty/shield attack controls and torch combo, heavy upgrade, feint, morph and held
+guard. Counts/outcomes and remaining acceptance cases are in
+[testing.md](testing.md#live-keyboard-transition-review-2026-10-10).
+
+This exposed and fixed two runtime gaps that frozen sheets missed: an occupied non-shield hand excluded the
+weapon ready stance, producing a vanilla/model hand swap, and pose cleanup could change PAL camera ownership
+mid-pass and expose the helmet in first person. Both real-client reversions fail the intended assertion.
+The verified scenes are concrete progress toward transition acceptance. Opponent-driven reactions, live
+correction/hit-stop, other input/model/FPS/locomotion cases and the broader report-candidate audit remain open.

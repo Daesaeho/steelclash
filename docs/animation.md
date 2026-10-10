@@ -28,6 +28,9 @@ or measurements. The table below records the exact scope; it does not claim that
   weighted body rotation and follows view yaw/pitch. It stays raised as the weapon recovers. Shield-capable items,
   guards and kicks/bashes keep their existing choreography. Third-person posing and the solved weapon arm retain
   their existing behavior. Live vanilla/model hand transitions still require acceptance review.
+- Carried non-shield items now retain the weapon's ready stance between attacks. PAL camera ownership is sampled
+  on its animation tick rather than recalculated from pose fields being refreshed during the same render pass.
+  This keeps armor visibility consistent as a pose expires. Alive/downed checks still take effect immediately.
 - Thrust extension drives a small first-person arm translation. Third-person reach, blade length and rigid
   shoulder dimensions remain separate work. This is a presentation offset, not a change to traced reach.
 - Throw preparation completes its forward gesture before release, when the existing server code launches the
@@ -197,3 +200,28 @@ cleared on the captured subject. These controls verify frozen poses; they do not
 For profiling, record 1/20/50/150 visible fighters, close-ups with armor/two-handed weapons, and first/third-person
 views. Compare camera effects on/off and the same rendering stack. Capture p95/p99 frame time and allocation;
 server GameTest timings do not measure client rendering.
+
+## Live capture diagnostic
+
+Use a disposable world with cheats and a fresh output directory:
+
+```powershell
+.\gradlew.bat runClient '-PquickPlay=Steelclash Animation QA' '-PliveCapture=combo' '-PliveCaptureOffhand=minecraft:torch' '-PliveCaptureOut=C:/dev/steelclash-live/combo'
+```
+
+Scenes are `attack`, `combo`, `heavy`, `feint`, `morph` and `parry`. Optional `liveCaptureItem` selects the main
+item (default iron sword), `liveCaptureOffhand` selects the carried item (default air), and `liveCaptureView`
+uses a `CameraType` name such as `FIRST_PERSON` or `THIRD_PERSON_BACK`.
+
+The tool stages a sky platform, equips the real server player, temporarily maps numpad keys, then drives the
+normal ClientInput keyboard path. Prediction, packets and simulation continue normally; no combat pose is
+applied/frozen. The camera is held stationary and the capture caps rendering at 20 FPS. HUD layers are hidden
+separately so vanilla first-person hands remain visible. It requires an active game window for normal input.
+Bindings, view, frame cap and GUI preferences restore at completion; staging/world equipment changes persist
+in the disposable world. Do not run this with PoseSheet.
+
+`capture.json` records actual frame timestamps, rendered pose/ready presence, client state, a read-only server-tick
+snapshot, input times, model/equipment/FOV and loaded mods. PNGs are chronologically numbered under `screenshots`.
+Scene guards require the requested outcomes on client and server and complete screenshot files before quitting.
+Use the recorded intervals when reviewing motion: the cap targets about 50 ms, not an exact fixed-step replay.
+These scripted keyboard cases do not establish mouse gestures, real LAN latency, hit-stop, item use or every model.

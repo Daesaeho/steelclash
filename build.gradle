@@ -86,6 +86,11 @@ neoForge {
             if (project.hasProperty('quickPlay')) {
                 programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay').toString()
             }
+            if (project.hasProperty('liveCapture')) {
+                ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut'].each { name ->
+                    if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
+                }
+            }
             if (project.hasProperty('poseSheet')) {
                 systemProperty 'steelclash.poseSheet', project.property('poseSheet').toString()
                 systemProperty 'steelclash.poseSheetQuit', 'true'

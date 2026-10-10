@@ -650,3 +650,43 @@ scene in both renderer variants; it does not complete the full model/action/rend
 | Turn through +/-180 degrees and look up/down while attacking; try different FOVs. | The carried arm follows the view without a full-turn rewind or excessive central occlusion. |
 | Swap/use the offhand item during an attack; switch empty/torch/shield. | Ownership changes cleanly, and shields keep their guard/bash choreography. |
 | Repeat with wide/armored/custom models while crouching, moving or mounted. | Check clipping and hand attachment; these combinations are not established by the frozen matrix. |
+
+## Live keyboard transition review (2026-10-10)
+
+The new `-PliveCapture=<scene>` diagnostic records actual input-driven rendering, including normal prediction
+and integrated-server packets. Commands and side effects are in [animation.md](animation.md#live-capture-diagnostic).
+Successful captures require actual client/server outcomes and complete PNG files before shutdown. Fresh output
+directories prevent stale frames. Evidence: `C:/dev/steelclash-beta-audit/20261010/live-transitions`.
+
+Final-source first-person scenes use an iron sword, right main arm, SLIM Ari, iron helmet, 1920x1200 viewport,
+actual FOV 95, cameraMotion 0, the seven local loading/dependency jars and the standard dev classpath. Sodium's outer jar was discovered, but the runtime renderer probe reports it absent; active Sodium compatibility remains
+open. Rendering caps at 20 FPS;
+actual median intervals are about 50 ms (observed range across these runs approximately 39-63 ms). Keep the
+recorded timestamps; do not label these as exact 50 ms frozen samples or treat every onion flag as a snap.
+
+| Scene | Actual frames | Confirmed client/server outcome |
+|---|---:|---|
+| Attack, empty offhand | 139 | One attack serial; release reached. |
+| Attack, shield | 138 | One attack; final idle returns to vanilla without the reproduced helmet flash. |
+| Combo, torch | 139 | Two attack serials, with a stab buffered during the slash release. |
+| Heavy upgrade, torch | 139 | Heavy flag and release observed on both sides. |
+| Feint, torch | 138 | Windup then idle; neither side entered release. |
+| Morph, torch | 139 | Morph flag observed on both sides after slash-to-stab input. |
+| Held guard, torch | 138 | Guard observed on both sides, followed by lowering and idle. |
+
+The torch ready stance removes the vanilla/model replacement at attack entry and the large return-to-idle
+jump. The shield control identified the independent camera-mode/armor visibility inconsistency; stable PAL
+ownership removes its one-frame helmet occlusion. Before/after sheets, actual timestamps, onion reports and
+reversion diagnostics are saved. Selected combo/heavy/feint/morph neighbors show continuous pose handover;
+this is scoped visual evidence, not completion of every transition acceptance case.
+
+Two valid actual-client mutations were caught by their intended named assertions (audited separately because
+the helper does not extract unittest names). Remaining live work includes hit-stop and authoritative interrupts,
+counters/ripostes against an opponent, weapon-to-kick, item use/swap, reload/tracking, left main arm, wide/custom
+models, movement/mounting, low/high FPS and real LAN latency/correction. Frozen family/blade evidence does not
+close these gates, and the overall beta goal remains active.
+
+Final restored build passed all 187 JUnit tests (25 fresh XML reports, no skipped/stale tests). The three-shot
+downed ready-stance/layer-activation guard passed after the ownership change. A fresh `-PnoSodium` torch live
+attack captured 138 model/ready frames and completed normally. Its success does not prove Sodium-on rendering;
+the explicit runtime probe found Sodium's renderer class absent in the standard dev run.

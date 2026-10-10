@@ -12,6 +12,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add an opt-in live animation capture tool that drives normal keyboard inputs and records actual rendered frames, frame times and integrated-server outcomes for attacks, combos, heavy upgrades, feints, morphs and held guard.
 - Pose sheets can select the main arm and offhand item, validate the rendered hand ownership, and log the actual skin/model and armor. Capture staging suppresses mob loot and fire overlays for clearer rig comparisons.
 - Record the combat/animation goal and original weapon-family style directions in `docs/combat-animation-goal.md`. Pose-sheet staging clears player effects so potion particles do not pollute motion captures.
 - Add three focused Codex skills for project context, change verification, and animation review, with helpers for current source routes, fresh test-result summaries, and chronologically ordered pose captures.
@@ -32,6 +33,8 @@
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Animation**
+- First person: a carried non-shield item keeps the weapon ready stance active between attacks, avoiding the abrupt vanilla/model hand swap. Item use still yields to vanilla.
+- Keep PAL's camera ownership stable through its animation tick so an expiring pose cannot expose the player's helmet inside the first-person camera.
 - First person: carried non-shield offhand items hold a camera-relative pose during weapon attacks, rather than following the weapon's translation and torso sweep below the view. Shields retain their existing choreography.
 - Original weapon-family style draft: distinct first-person ready positions, body preparation and follow-through rhythm for daggers, swords, greatswords, axes, blunt weapons, polearms, spears, rapiers and staves. Pack authors can set `first_person.ready_yaw` and `ready_pitch`; omitted values preserve the old stance. Gameplay timing and hit arcs retain their existing behavior.
 - First person: a ready stance while holding a weapon (off hand empty), so attacks start from it and return to it instead of cutting from vanilla's hand (`firstPersonReadyStance`).

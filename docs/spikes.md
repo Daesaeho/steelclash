@@ -839,3 +839,46 @@ Sodium and once with `-PnoSodium`; both visibility checks report 978 pixels. Res
 tests passed, no skipped/stale reports. Server GameTests were not rerun for this presentation-only change.
 Evidence: `C:/dev/steelclash-beta-audit/20261010/torch-visibility` and `20261010/loading-mods`.
 Live handover, used/swapped offhand items, wide/custom models, locomotion and broader renderer/FOV cases remain open.
+
+## Live handover and camera ownership (2026-10-10)
+
+Frozen phase sheets did not reveal the occupied-hand renderer handover. A live keyboard attack with a torch
+showed vanilla hands for the first two windup frames, followed by an abrupt replacement. The old ready predicate
+excluded every occupied offhand. A non-shield carried item now keeps the weapon's ready stance active between
+attacks and uses the carried-arm solve while idle too; actual item use still yields to vanilla. In the matched
+20 FPS live scene, all 139 frames retain model/ready presence, versus 32 of 138 model frames before the fix.
+The return window's largest changed-image share fell from 47.33% to 3.60%. Entry motion remains a deliberate
+chamber over several frames; this is not a claim that the weapon stays unoccluded at every windup angle.
+
+The shield control reproduced a separate helmet flash at recovery expiry: gray helmet geometry filled 86.59%
+of the upper half of the image in one frame. PAL 1.1.6's LevelRenderer selects its camera pass before model setup;
+its armor visibility hook then checks manager activity/mode again. Recomputing mode from pose fields that become
+null during setup made those decisions disagree within the same pass. Camera ownership now stays consistent
+until PAL's next animation tick. Alive/downed checks remain immediate. The replay's maximum upper-half gray
+share is 0.425%, and model ownership is released before the final idle frames. No PAL mixin or dependency change
+was needed. The pinned jar bytecode and before/after sheets are saved in the evidence directory.
+
+LiveCapture drives the regular ClientInput keyboard mappings: local prediction, packets and real simulation
+advance normally. It does not apply frozen combat state. Client-frame records include actual elapsed time,
+rendered pose/ready presence and a volatile, read-only integrated-server tick snapshot. Outcome guards cover
+client/server attack delivery, combo serial increments, heavy/morph flags, feint abort and held guard. Capture
+waits for asynchronous screenshot writes and verifies complete files; the first prototype exited while two
+writes were pending and is excluded from successful runs. World staging is explicitly disposable-only.
+
+Both actual-client reversion tests were caught: restoring the occupied-hand ready exclusion fails idle model
+continuity; restoring pose-based camera mode fails the iron-helmet image assertion. The mutation helper cannot
+parse unittest names, so the saved frames were rerun through the named assertions: two untouched passes, two
+intended assertion failures, no fixture errors. Metadata and diagnostics are in `mutation-diagnostic-audit.json`.
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/live-transitions`. Final-source keyboard scenes cover empty/shield
+attack controls and torch combo, heavy upgrade, feint, morph and held guard (970 actual frames). Their server
+outcomes agree with the requested inputs. The render cap is 20 FPS; median spacing is about 50 ms, with measured
+jitter, rather than an exact simulated-time grid. Onion reports flag motion to inspect; they do not establish
+all actions/models/FPS or real LAN correction behavior. Gameplay timing, hit sweeps and packets are unchanged.
+
+Renderer verification note (2026-10-10): the live capture runtime mod list omits Sodium despite its outer
+distribution being discovered on the dev classpath. An explicit `SodiumWorldRenderer.instanceNullable` probe
+reports the class absent. Therefore these live comparisons establish the standard dev/vanilla renderer path,
+not active Sodium compatibility. The `-PnoSodium` replay also passes, but does not close the Sodium-on gate.
+Earlier discovery-only Sodium-enabled wording must be treated as unverified until the dev dependency/service
+loading is repaired and the active renderer is confirmed.
