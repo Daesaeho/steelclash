@@ -209,7 +209,7 @@ Use a disposable world with cheats and a fresh output directory:
 .\gradlew.bat runClient '-PquickPlay=Steelclash Animation QA' '-PliveCapture=combo' '-PliveCaptureOffhand=minecraft:torch' '-PliveCaptureOut=C:/dev/steelclash-live/combo'
 ```
 
-Scenes are `attack`, `combo`, `heavy`, `feint`, `morph` and `parry`. Optional `liveCaptureItem` selects the main
+Scenes are `attack`, `combo`, `heavy`, `feint`, `morph`, `parry` and `riposte`. Optional `liveCaptureItem` selects the main
 item (default iron sword), `liveCaptureOffhand` selects the carried item (default air), and `liveCaptureView`
 uses a `CameraType` name such as `FIRST_PERSON` or `THIRD_PERSON_BACK`.
 
@@ -225,3 +225,16 @@ snapshot, input times, model/equipment/FOV and loaded mods. PNGs are chronologic
 Scene guards require the requested outcomes on client and server and complete screenshot files before quitting.
 Use the recorded intervals when reviewing motion: the cap targets about 50 ms, not an exact fixed-step replay.
 These scripted keyboard cases do not establish mouse gestures, real LAN latency, hit-stop, item use or every model.
+
+`-PliveCaptureRenderer=sodium` requires an initialized `SodiumWorldRenderer`; `vanilla` requires its class to be
+absent. The default `any` only records the result. Renderer discovery and the loaded-mod list are not substitutes
+for this probe. `-PnoSodium` removes both the actual mod and its boot/FFA runtime dependencies from dev runs.
+
+The `riposte` scene additionally switches the disposable player to survival, heals them during staging, and summons
+one tagged, adult, NoAI husk with an iron sword. These world/game-mode changes persist in the disposable copy.
+The integrated-server actor starts an ordinary deterministic slash after the player's real guard reaches the server.
+After the client's caught-parry state arrives, normal attack input starts the riposte. No frozen state or synthetic
+damage is applied. The capture requires caught-parry and active-parry attack outcomes on both sides, an actually
+rendered opponent, reduced opponent health and no player health loss. This tests the specific integrated-server
+exchange, not autonomous bot decision-making or real LAN correction. Contact effects/telegraph labels remain
+visible and can pollute whole-image onion measurements.

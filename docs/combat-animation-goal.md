@@ -218,3 +218,12 @@ weapon ready stance, producing a vanilla/model hand swap, and pose cleanup could
 mid-pass and expose the helmet in first person. Both real-client reversions fail the intended assertion.
 The verified scenes are concrete progress toward transition acceptance. Opponent-driven reactions, live
 correction/hit-stop, other input/model/FPS/locomotion cases and the broader report-candidate audit remain open.
+
+## Active renderer and opponent checkpoint (2026-10-10)
+
+The dev Sodium setup now loads its actual renderer, confirmed by the instance probe. Torch/shield regressions
+and the first ordinary-input block/riposte opponent exchange pass with Sodium active and absent. The latter
+records a real server swing/catch/return, rendered-opponent presence and unchanged player health. Counts,
+conditions, evidence and limits are in [testing.md](testing.md#verified-renderer-and-live-opponent-checkpoint-2026-10-10).
+Counter/hit-stop/correction and broader acceptance remain open; this is progress on step 1 of the next-work plan.
+BodyHealth and LSO remain deferred.

@@ -14,7 +14,7 @@ Steel Clash 0.3.2-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **bo
 | Other weapon mods | Works, unmapped | Items without a weapon profile keep vanilla combat. Add a profile through the item data map (below). |
 | Other shield mods | Usually works | Anything that performs `ItemAbilities.SHIELD_BLOCK` gets the basic shield cone and stamina rules. |
 | Mob AI mods | Case by case | Mobs in `#steelclash:fighters` get a spacing goal and the bot brain on top of their goals. Mods that replace a mob's melee goal may fight it; take the mob out of the tag. |
-| Sodium 0.8.13 (NeoForge) | Active renderer verification pending | The dev classpath discovers the distribution jar, but the current live runtime probe reports the actual Sodium renderer class absent. Earlier discovery-only on/off checks do not certify Sodium rendering; see the 2026-10-10 note in `spikes.md`. |
+| Sodium 0.8.13 (NeoForge) | Verified live controls | The corrected dev setup initializes the actual Sodium renderer. Torch continuity, shield/helmet return and an opponent-driven block/riposte pass with Sodium active and with `-PnoSodium`. This certifies those scenes; earlier discovery-only checks and broader model/FPS/shader cases retain their limits. |
 | Shaders / other renderers | Expected to work | Steel Clash renders through Player Animation Library and vanilla model hooks. One mixin, on `LivingEntityRenderer`, poses mob models: after `setupAnim` (arms, legs, head) and at the end of `setupRotations` (whole-body lean and twist). |
 
 ### Candidates under review

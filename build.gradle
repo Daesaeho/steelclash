@@ -51,6 +51,30 @@ repositories {
             includeGroupByRegex 'com\\.zigythebird.*'
         }
     }
+    // Sodium's unwrapped mod is the supported dev artifact; its distribution is a service-loader wrapper.
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "CaffeineMC"
+                url = "https://maven.caffeinemc.net/releases"
+            }
+        }
+        filter {
+            includeModule "net.caffeinemc", "sodium-neoforge-mod"
+            includeModule "net.caffeinemc", "sodium-neoforge"
+        }
+    }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "ForgifiedFabricAPI"
+                url = "https://maven.su5ed.dev/releases"
+            }
+        }
+        filter {
+            includeGroup "org.sinytra.forgified-fabric-api"
+        }
+    }
 }
 
 base {
@@ -87,7 +111,7 @@ neoForge {
                 programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay').toString()
             }
             if (project.hasProperty('liveCapture')) {
-                ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut'].each { name ->
+                ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut', 'liveCaptureRenderer'].each { name ->
                     if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
                 }
             }
@@ -207,9 +231,17 @@ dependencies {
         localRuntime "maven.modrinth:spartan-weaponry-unofficial:${spartan_weaponry_version}"
         localRuntime "maven.modrinth:spartan-shields-unofficial:${spartan_shields_version}"
     }
-    // Sodium, dev runs only: the renderer most players use, so we see the swings the way they will
+    // Use the actual mod, not the distribution wrapper whose nested same-id jar is lost on the dev classpath.
+    // The unwrapped POM omits the four FFA modules bundled in the matching distribution, so include them explicitly.
     if (!project.hasProperty('noSodium')) {
-        localRuntime "maven.modrinth:sodium:${sodium_version}"
+        localRuntime "net.caffeinemc:sodium-neoforge-mod:${sodium_version}"
+        // Boot-layer workarounds still live in the service jar. Its graphics bootstrap must stay client-only.
+        clientAdditionalRuntimeClasspath("net.caffeinemc:sodium-neoforge:${sodium_version}") { transitive = false }
+        client2AdditionalRuntimeClasspath("net.caffeinemc:sodium-neoforge:${sodium_version}") { transitive = false }
+        localRuntime "org.sinytra.forgified-fabric-api:fabric-api-base:0.4.42+d1308ded19"
+        localRuntime "org.sinytra.forgified-fabric-api:fabric-renderer-api-v1:3.4.1+9125b6dc19"
+        localRuntime "org.sinytra.forgified-fabric-api:fabric-rendering-data-attachment-v1:0.3.48+73761d2e19"
+        localRuntime "org.sinytra.forgified-fabric-api:fabric-block-view-api-v2:1.0.10+9afaaf8c19"
     }
 
     // Plain JUnit for the Minecraft-free combat core

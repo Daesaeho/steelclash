@@ -899,3 +899,51 @@ and class passives. The expanded report marks counter refunds/exact active-parry
 Fight Knight notes changed ordinary projectile headshots to 1.25x; the PDF's blanket 1.5x is not the right default.
 Historical fixed-jab/hyperarmor claims do not match the current source and must not be treated as current test
 coverage. This research adds no gameplay rules or candidate dependencies and claims no runtime certification.
+
+## Active Sodium and opponent-driven block/riposte (2026-10-10)
+
+The distribution jar is a `LIBRARY` service wrapper containing another same-id Sodium mod. On the old dev
+dependency path, JarJar selected the outer source and the runtime renderer class was absent. CaffeineMC publishes
+the actual mod separately as `net.caffeinemc:sodium-neoforge-mod:0.8.13+mc1.21.1`; its empty POM does not include
+the four Forgified Fabric API modules bundled by the distribution. Those matching modules are now explicit dev
+dependencies. The wrapper still supplies boot-layer `Workarounds` classes: the first mod-only client attempt
+failed with a missing `Workarounds$Reference`. Putting the wrapper on ModDevGradle's client-specific additional
+runtime classpaths while keeping the actual mod on `localRuntime` initializes Sodium correctly. A global boot
+classpath attempt made headless startup fail on `org.lwjgl.Version`; the wrapper is now restricted to `client`
+and `client2`. Both artifacts are removed by `-PnoSodium`;
+they remain dev dependencies, not bundled/release requirements. Repositories are scoped to their intended modules.
+References: [CaffeineMC development artifacts](https://github.com/CaffeineMC/sodium/wiki/CaffeineMC-Maven-%26-Config-API),
+[ModDevGradle runtime classpath](https://github.com/neoforged/ModDevGradle#external-dependencies-runs).
+
+LiveCapture now accepts an expected renderer and rejects a mismatch. The actual instance probe reports `active`
+with Sodium and `absent` with the switch. Torch and shield-return controls pass in both stacks. The helmet metric
+stays below 0.43% of the upper half in both shield replays, versus the existing 8% regression threshold. This closes
+the previously missing active-renderer gate for these controls; it does not retrospectively certify old frozen runs.
+
+The new `riposte` diagnostic stages a survival player and a single passive NoAI husk. The server actor uses
+`Combat.requestAttack` with a fixed slash variant after the ordinary player's guard arrives. Player blocking and
+return offense use normal keyboard input, prediction and packets. Immutable frame/server records include caught
+parries, active-parry attacks, both health values and the rendered opponent. Both renderer variants catch the
+incoming strike and return damage: player health remains 20, opponent health falls from 20 to 12.915199. The husk
+is visible for all captured frames and reaches WINDUP, RELEASE and the genuine parried STAGGER.
+
+The four torch/shield acceptance runs contain 139 frames each. The opponent replays contain 138 vanilla and 139
+Sodium frames: 833 frames in these six scenes. They use right main arm, SLIM Ari, iron helmet, 1920x1200, FOV 95,
+camera motion 0 and a 20 FPS cap. Actual intervals/conditions are retained. Onion review shows multi-frame guard
+and riposte motion, but contact sparks, hurt tint and telegraph text produce additional flags; whole-image flags
+are not proof of a pose discontinuity. No new animation-smoothness fix or speed benchmark is claimed.
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/renderer-baseline`. This advances the first planned checkpoint.
+Matching counters, blunt hit-stop, incoming release interruption, tracking/reload, item-use/swap, left-arm and
+broader model/FPS/LAN acceptance, plus C04/C09 reproductions, remain work. BodyHealth and LSO remain deferred.
+
+Two valid actual-client mutations were caught: restoring the wrapped-only dependency produces a completed
+capture with renderer `absent`, failing the external active-renderer assertion; omitting `parrySucceeded` still
+blocks damage but removes caught-parry/riposte state, and the live outcome guard fails. The helper cannot extract
+unittest names, so `mutation-diagnostic-audit.json` explicitly records two baseline assertion passes and the two
+intended failures against saved snapshots, rather than attributing them to unrelated compile/startup errors.
+
+The renderer mutation was repeated against the final client-only bootstrap scope: baseline passed and the old
+wrapped dependency was caught again. Restored build: 187 fresh JUnit passes, 25 reports with no failed/skipped/stale
+tests. Final GameTest runs: all 171 required tests passed with Spartan integrations and all 171 without them.
+No permanent change was made to defense, damage, timing or hit detection.

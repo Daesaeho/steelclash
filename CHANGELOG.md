@@ -12,6 +12,8 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Load Sodium's actual renderer in dev runs using the official mod artifact and its boot-layer workarounds. Live captures can require an active Sodium or absent vanilla renderer, instead of treating jar discovery as proof.
+- Add an opponent-driven live block/riposte capture: a controlled husk attacks through normal server combat, while regular player inputs catch the hit and deliver the return attack. Record rendered-opponent presence, health and caught-parry/active-parry outcomes.
 - Record the ordered combat/animation plan, deferring BodyHealth and Legendary Survival Overhaul while prioritizing live acceptance, confirmed blockers, PAL bending, Blockbench authoring and authoritative collision.
 - Document the kinematics-specification comparison and optional hitbox, injury and animation integration candidates. Correct the Sodium status to require verification of an initialized renderer rather than distribution-jar discovery.
 - Add an opt-in live animation capture tool that drives normal keyboard inputs and records actual rendered frames, frame times and integrated-server outcomes for attacks, combos, heavy upgrades, feints, morphs and held guard.

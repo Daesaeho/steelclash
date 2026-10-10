@@ -699,3 +699,29 @@ Research/source inspection is complete for the stated scope; installation, dedic
 injuries, double damage/headshot reduction, death/downed/revive and custom-model alignment remain unverified.
 Run these checks only once an adapter is implemented; the current 187 unit tests do not establish candidate
 compatibility. Verify active renderer identity when comparing Sodium runs.
+
+## Verified renderer and live opponent checkpoint (2026-10-10)
+
+The corrected default dev dependencies load the actual Sodium renderer and its boot workarounds. Use
+`-PliveCaptureRenderer=sodium`, or `-PnoSodium -PliveCaptureRenderer=vanilla`, to make renderer identity a required
+condition. The official unwrapped mod, service wrapper and matching FFA modules remain dev-only dependencies.
+
+Fresh first-person torch and shield controls pass with both verified renderer stacks (139 frames per scene).
+Torch idle retains model/ready presence. Shield return releases model ownership and stays below 0.43% upper-half
+gray pixels in the helmet assertion. This establishes actual Sodium use, not merely a discovered jar.
+
+The ordinary-input `riposte` scene passes with vanilla (138 frames) and Sodium (139). Both sides observe the raised
+guard, caught parry and active-parry return attack. The rendered NoAI husk swings once, is staggered by the block,
+and loses health from 20 to 12.915199; the survival player retains 20 health. Command/world side effects and the
+capture boundary are documented in [animation.md](animation.md#live-capture-diagnostic). This is an integrated-server
+scripted exchange, not autonomous AI, real LAN or all defensive transitions.
+
+Evidence and reproducible assertion runner: `C:/dev/steelclash-beta-audit/20261010/renderer-baseline`.
+Keep actual timestamps when reviewing the motion. Contact sparks, hurt tint and telegraph labels affect onion
+flags; inspect neighboring poses rather than calling all flagged image changes animation snaps.
+
+Verification: fresh restored build, 187 JUnit tests (25 fresh reports, zero failed/skipped/stale), and all 171
+required GameTests in each Spartan dependency variant. The initial global graphics-bootstrap startup failure
+was repaired by client-only scope; both final headless runs completed. Two valid live mutations were caught;
+the wrapped-dependency mutation was repeated after the final client-only scoping change and was caught again.
+Saved diagnostics distinguish the intended renderer/outcome failures from compile or unrelated startup errors.

@@ -11,6 +11,10 @@ Sodium rendering. Preserve the existing local `AGENTS.md` and `tools/` work.
 
 ## 1. Close the important baseline gaps
 
+Checkpoint progress, 2026-10-10: actual Sodium loading is repaired; torch/shield controls and the first live
+block/riposte opponent scene pass with verified Sodium and vanilla renderers. Evidence and remaining cases are
+in [testing.md](testing.md#verified-renderer-and-live-opponent-checkpoint-2026-10-10). The rest of this step is open.
+
 **Deliverable:** a reliable renderer comparison and reproducible opponent-driven acceptance scenes.
 
 - Repair the dev Sodium dependency/service loading and require the runtime renderer probe to report `active`.
