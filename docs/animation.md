@@ -24,6 +24,10 @@ or measurements. The table below records the exact scope; it does not claim that
   channels retain their existing interpolation and ownership rules.
 - Preferred main arm selects the player/mob weapon arm and player item bone. The rig and limb channels reflect
   for left-handed fighters. An occupied off hand stays visible and does not get assigned a two-handed grip.
+- During first-person weapon attacks, a carried non-shield item uses a separate holding arm that counters the
+  weighted body rotation and follows view yaw/pitch. It stays raised as the weapon recovers. Shield-capable items,
+  guards and kicks/bashes keep their existing choreography. Third-person posing and the solved weapon arm retain
+  their existing behavior. Live vanilla/model hand transitions still require acceptance review.
 - Thrust extension drives a small first-person arm translation. Third-person reach, blade length and rigid
   shoulder dimensions remain separate work. This is a presentation offset, not a change to traced reach.
 - Throw preparation completes its forward gesture before release, when the existing server code launches the

@@ -32,6 +32,7 @@
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Animation**
+- First person: carried non-shield offhand items hold a camera-relative pose during weapon attacks, rather than following the weapon's translation and torso sweep below the view. Shields retain their existing choreography.
 - Original weapon-family style draft: distinct first-person ready positions, body preparation and follow-through rhythm for daggers, swords, greatswords, axes, blunt weapons, polearms, spears, rapiers and staves. Pack authors can set `first_person.ready_yaw` and `ready_pitch`; omitted values preserve the old stance. Gameplay timing and hit arcs retain their existing behavior.
 - First person: a ready stance while holding a weapon (off hand empty), so attacks start from it and return to it instead of cutting from vanilla's hand (`firstPersonReadyStance`).
 - Combos, ripostes, morphs, feints, staggers and guards blend from the arm's last pose over 0.2 s instead of snapping back to rest first; a combo goes straight from the end of one swing into the next windup. Heavy upgrades and weapon morphs blend too.

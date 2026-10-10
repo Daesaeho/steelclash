@@ -186,3 +186,17 @@ references. Commands, sample counts and scope are in [testing.md](testing.md#con
 Occupied hands remain outside the weapon grip, but the torch sits largely below the first-person attack view.
 That visibility issue, live transition/correction/hit-stop acceptance, additional model/renderer combinations and
 blade/hilt calibration remain open. This checkpoint improves evidence reliability; the beta goal stays active.
+
+## Carried-hand and local loading-mod checkpoint (2026-10-10)
+
+The offhand torch now has a camera-relative holding arm during first-person attacks, countering body turns and
+remaining raised through recovery. Shield choreography and weapon/third-person posing retain their existing
+paths. Matched static/motion comparisons and the actual-client original-behavior reversion are recorded in
+[testing.md](testing.md#carried-offhand-visibility-2026-10-10): 144 static samples per version, 47 polearm-slash
+samples per view/version at 50 ms, two valid mutations caught and a restored build with 187 passing JUnit tests.
+
+The six requested local loading/memory mods and FastQuit's Cloth Config dependency are installed in both dev
+clients and the disposable QA client. Fresh startup, selected rendering and completed-save checks passed with
+Sodium enabled and disabled. Jars remain local/ignored and are not release dependencies. No controlled loading
+benchmark is claimed. The staged torch-composition gap is addressed; live vanilla/model handover, input/network
+transitions, additional model/locomotion/FOV combinations and wider report-candidate audit remain active work.

@@ -21,6 +21,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.ItemAbilities;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -58,6 +59,8 @@ public class ProceduralSwingAnimation implements IAnimation {
     /** First person only: the swing spread across the screen ({@link CombatPose#spreadForView}); null otherwise. */
     @Nullable
     private WeaponRig viewRig;
+    /** Occupied non-shield hand, countering the body turn rather than following the weapon. */
+    private double[] carriedArm = NO_TURN;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -82,6 +85,11 @@ public class ProceduralSwingAnimation implements IAnimation {
             rig = rigFor(pose);
         }
         Minecraft mc = Minecraft.getInstance();
+        if (pose != null && pose.phase().isAttack() && !pose.kick() && mc.options.getCameraType().isFirstPerson()
+                && !player.getOffhandItem().isEmpty() && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)) {
+            carriedArm = WeaponRig.carryArm(pose.aimYaw() - pose.relativeYaw(), player.getViewXRot(state.getPartialTick()),
+                    pose.bodyDegrees(), !pose.leftHanded());
+        }
         viewRig = pose != null && !pose.kick() && player == mc.player && mc.options.getCameraType().isFirstPerson()
                 ? rigFor(pose.spreadForView(Config.Client.FIRST_PERSON_SWING_WIDTH.get(), Config.Client.FIRST_PERSON_SWING_LIFT.get(),
                         player.getViewXRot(state.getPartialTick())))
@@ -128,6 +136,15 @@ public class ProceduralSwingAnimation implements IAnimation {
                 boolean left = bone.getName().equals("left_arm");
                 boolean main = left == pose.leftHanded();
                 String channel = left ? "leftArm" : "rightArm";
+                if (FirstPersonMode.isFirstPersonPass() && !main && !player.getOffhandItem().isEmpty()
+                        && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)
+                        && pose.phase().isAttack() && !pose.kick()) {
+                    // PAL replaces both vanilla hands. The free-arm clip and weapon translation can otherwise
+                    // carry a torch below the camera. Shields, bash/kick and guard keep their own choreography.
+                    // Keep carrying the item as the weapon recovers; PAL handles the vanilla/model hand transition.
+                    blendRotation(bone, carriedArm, 1);
+                    break;
+                }
                 firstPersonOffset(bone, pose, readyBase ? 0 : w, w); // over the ready stance, it already moved them
                 if (viewRig != null && FirstPersonMode.isFirstPersonPass()) {
                     viewSweep(bone, w);

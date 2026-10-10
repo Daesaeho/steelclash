@@ -45,6 +45,13 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
         return new double[]{angles[0], -angles[1], -angles[2]};
     }
 
+    /** First-person carried item: keep the hand forward of the camera as the fighter's body twists beneath it. */
+    public static double[] carryArm(double viewYaw, double viewPitch, double[] body, boolean left) {
+        Mat3 camera = Mat3.rotY(Math.toRadians(viewYaw)).mul(Mat3.rotX(Math.toRadians(viewPitch)));
+        Mat3 holding = Mat3.zyx(-1.1, 0, left ? -0.1 : 0.1);
+        return WeaponRig.bodyRotation(body).transpose().mul(camera).mul(holding).toZyx();
+    }
+
     /**
      * @param bladeYaw   blade direction yaw relative to the body, degrees (positive = the body's right)
      * @param bladePitch blade direction pitch, degrees (positive = down)

@@ -11,7 +11,7 @@ Run `./gradlew runClient`, create a **creative** flat world, and type `/steelcla
 |---|---|---|
 | 1 | Hold an iron sword and left-click | Slash: windup, then a right-to-left cut. No vanilla arm swing. |
 | 2 | Scroll up / scroll down with the sword | Overhead / stab. The hotbar does **not** change slot. |
-| 3 | Mouse 5 / Mouse 4 | Overhead / stab (rebindable under Controls → Steel Clash). |
+| 3 | Mouse 5 / Mouse 4 | Overhead / stab (rebindable under Controls â†’ Steel Clash). |
 | 4 | Number keys while holding the sword | Still switch hotbar slots. |
 | 5 | Hold left-click on a block with the sword | Nothing breaks (no vanilla mining). |
 | 6 | Sneak + left-click on a block | Mines normally. |
@@ -39,8 +39,8 @@ Use **survival** for stamina (creative works too). Get a **Training Dummy Spawn 
 | 4 | Parry too early, or stand beside/behind the dummy's swing | You get hit. |
 | 5 | Hit the dummy in **Parry** mode repeatedly | It parries and you get staggered each time. Its stamina drains; eventually it loses its copied practice sword. The dummy creates no weapon loot. |
 | 6 | Disarm an armed zombie, then walk over its dropped sword | You can pick up the real weapon; other zombies standing on it can't. Its former owner may retrieve it first. |
-| 7 | Parry several attackers in quick succession (2–3 Spar dummies, or a group of zombies) until your stamina runs out | You get disarmed (your weapon drops). One dummy alone won't do it: stamina regenerates between its swings. `disarmMode = HOLSTER` in the common config locks the weapon for 3 s instead. |
-| 8 | Shield in offhand + sword: hold right-click | Vanilla shield guard. Hits from the front cost stamina; from behind they go through. Run out → shield break sound, shield on cooldown, staggered. |
+| 7 | Parry several attackers in quick succession (2â€“3 Spar dummies, or a group of zombies) until your stamina runs out | You get disarmed (your weapon drops). One dummy alone won't do it: stamina regenerates between its swings. `disarmMode = HOLSTER` in the common config locks the weapon for 3 s instead. |
+| 8 | Shield in offhand + sword: hold right-click | Vanilla shield guard. Hits from the front cost stamina; from behind they go through. Run out â†’ shield break sound, shield on cooldown, staggered. |
 | 9 | Spartan tower shield vs a skeleton | Arrows from the front are stopped, arrows from behind are not. |
 | 10 | Greatsword/halberd/spear + shield in offhand: right-click | Shield does **not** raise (two-handed). |
 | 11 | Zombie / husk / spider / vindicator attacks you | Rustle sound, visible windup (debug: yellow), *then* the hit. Parrying it works. |
@@ -49,7 +49,7 @@ Use **survival** for stamina (creative works too). Get a **Training Dummy Spawn 
 | 14 | Trident / bow / Spartan javelin: right-click | Vanilla behavior (throw key comes later). |
 
 ## Manual in-game checklist (M3)
-New keys (Controls → Steel Clash): **Feint = X**, **Kick / Shield Bash = Z**. Use the training dummy (Parry / Attack / Spar modes) and `/steelclash_debug`.
+New keys (Controls â†’ Steel Clash): **Feint = X**, **Kick / Shield Bash = Z**. Use the training dummy (Parry / Attack / Spar modes) and `/steelclash_debug`.
 
 | # | Check | Expected |
 |---|---|---|
@@ -114,11 +114,11 @@ The last one stands still, which is useful for looking at poses. It won't fight 
 | # | Check | Expected |
 |---|---|---|
 | 1 | Hold left-click | A grey bar under the stamina bar fills toward a white tick (the heavy point), then turns orange (heavy windup). Tap instead: yellow windup. |
-| 2 | Watch one attack through | Yellow/orange windup → **red** release (blade live) → grey recovery draining. After a landed hit, recovery is **green** (combo available). |
+| 2 | Watch one attack through | Yellow/orange windup â†’ **red** release (blade live) â†’ grey recovery draining. After a landed hit, recovery is **green** (combo available). |
 | 3 | Parry | A **blue** bar drains for how long the parry stays up, then dim blue for the guard recovery. After a successful parry, a **white** bar shows the riposte window. |
 | 4 | Get staggered (parried, kicked, clanked) | A **magenta** bar drains for the stagger. |
 | 5 | `timingHud = false` (client config) | Bar hidden. |
-| 6 | `enemyTelegraphs = true` (client config) | Enemies winding up show e.g. `HEAVY OVERHEAD ▮▮▮▯▯▯` above their heads, counting down. |
+| 6 | `enemyTelegraphs = true` (client config) | Enemies winding up show e.g. `HEAVY OVERHEAD â–®â–®â–®â–¯â–¯â–¯` above their heads, counting down. |
 | 7 | Natural zombies on Normal/Hard | About half (Normal) / most (Hard) carry weapons: vanilla swords/axes, or Spartan weapons when installed, better materials on Hard. Some have shields and helmets. Spawn eggs too; `/summon` with NBT is untouched. |
 | 8 | Zombie with a shield | Raises it when you attack and its reaction allows; keeps it up through your swing; kick it (Z) to break the guard. |
 | 9 | Fight a group | Zombies shuffle in relentlessly; vindicators rush and lunge in from outside reach; spiders dart in and back off; skeletons with swords keep their distance. Waiting mobs spread around you instead of bunching up, and each moves a little differently. |
@@ -132,45 +132,45 @@ Use `/steelclash_debug` to see the arcs.
 | # | Check | Expected |
 |---|---|---|
 | 1 | Slash repeatedly without turning | Some slashes are flat, some come down diagonally, some rise. Overheads sometimes come in at an angle; stabs sometimes go low or rise toward the head. |
-| 2 | Turn the mouse **right** while pressing attack, then **left** | Turning right swings left→right; turning left swings right→left. Aim a slash at someone beside you by turning into them. |
+| 2 | Turn the mouse **right** while pressing attack, then **left** | Turning right swings leftâ†’right; turning left swings rightâ†’left. Aim a slash at someone beside you by turning into them. |
 | 3 | Land a hit, then combo | The follow-up comes from the other side (alternating, like Chivalry 2). |
 | 4 | Watch your body during a mirrored swing (F5) | The torso twists and leans the other way too. |
 | 5 | Hold for a heavy | A distinct heavy windup: leans back, elbow up, back foot planted (not just a bigger light windup). |
-| 6 | Sword with an empty offhand | Held in both hands. Put anything in the offhand → one-handed. `twoHandedSwords = false` in the client config turns this off. |
+| 6 | Sword with an empty offhand | Held in both hands. Put anything in the offhand â†’ one-handed. `twoHandedSwords = false` in the client config turns this off. |
 | 7 | Mobs | They also use all variants and both sides (random), and alternate sides on combos. |
 | 8 | Spam right-click | After each parry ends (caught a hit, released, or timed out) there's a short pause (5 ticks, `parryCooldownTicks` in the common config) before you can parry again. No parrying while lowering the guard. |
-| 9 | Fight 2–3 zombies (or two Attack-mode dummies) and hold a parry as they swing together | One parry catches several hits while it's up (each costs stamina). After the first catch, the timing bar turns white (riposte window) and attacking ripostes straight out of the guard. A parry that caught something drops without the guard-recovery delay. |
+| 9 | Fight 2â€“3 zombies (or two Attack-mode dummies) and hold a parry as they swing together | One parry catches several hits while it's up (each costs stamina). After the first catch, the timing bar turns white (riposte window) and attacking ripostes straight out of the guard. A parry that caught something drops without the guard-recovery delay. |
 
 ## Manual in-game checklist (M6c-1: specials, throwing, damage types, lance)
-New keys: **R = weapon special**, **G = throw weapon** (Controls → Steel Clash). Hover a weapon to see its tooltip.
+New keys: **R = weapon special**, **G = throw weapon** (Controls â†’ Steel Clash). Hover a weapon to see its tooltip.
 
 | # | Check | Expected |
 |---|---|---|
-| 1 | Hover any weapon | A gold line like `Sword · Cut · Special: Lunge (R)`. |
+| 1 | Hover any weapon | A gold line like `Sword Â· Cut Â· Special: Lunge (R)`. |
 | 2 | R with a sword, dagger, rapier or spear | **Lunge:** you dash forward with a long stab that out-reaches a normal stab. |
 | 3 | R with a mace, hammer or axe | **Slam:** a big overhead; on impact everyone within ~2.5 blocks of the impact point is knocked back, staggered and drained (guarding or not). Dust and a heavy thud. |
 | 4 | R with a greatsword, halberd/glaive or quarterstaff | **Sweep:** a very wide slash that can hit up to 5 enemies. |
-| 5 | R again immediately | Nothing happens: specials have a cooldown (4–7 s depending on the weapon). |
-| 6 | G with any weapon | A short overarm windup, then the weapon flies, hits for about 1.2× its melee damage, and drops where it lands so you can pick it up. Creative mode keeps the weapon in hand. |
+| 5 | R again immediately | Nothing happens: specials have a cooldown (4â€“7 s depending on the weapon). |
+| 6 | G with any weapon | A short overarm windup, then the weapon flies, hits for about 1.2Ã— its melee damage, and drops where it lands so you can pick it up. Creative mode keeps the weapon in hand. |
 | 7 | Sword vs a zombie in full diamond, then a mace vs the same | The mace does relatively much better: blunt beats plate, cuts glance off it. Stabs count as pierce (good against armour gaps). `damageTypes = false` in the common config turns it off. |
-| 8 | Ride a horse with a spear or lance (Spartan) and stab while galloping | Much harder hits, scaling with the horse's speed (up to 2.5×). |
+| 8 | Ride a horse with a spear or lance (Spartan) and stab while galloping | Much harder hits, scaling with the horse's speed (up to 2.5Ã—). |
 | 9 | Armed mobs (Normal/Hard) | Now and then they open with their weapon's special. |
 
 ## Parry key (added 2026-10-06)
 | # | Check | Expected |
 |---|---|---|
-| 1 | Controls → Steel Clash | A **Parry (weapon guard)** binding, default right click, not shown as conflicting with vanilla "Use Item". |
+| 1 | Controls â†’ Steel Clash | A **Parry (weapon guard)** binding, default right click, not shown as conflicting with vanilla "Use Item". |
 | 2 | Leave it on right click | Exactly as before: right click parries with a weapon; doors, chests, villagers, sneaking and shields still use vanilla right click. |
 | 3 | Rebind Parry to Left Alt (keyboard) | Hold Left Alt to parry (release to lower). Right click goes back to vanilla "use" (eat, place, interact) even while holding a sword. |
 | 4 | Rebind Parry to a side mouse button | That button parries; right click is vanilla again. |
 
 ## Slash keys (added 2026-10-06)
 *Now the `TWO_SLASH_KEYS` control scheme; the default is `CHIVALRY` (see "Control schemes and gesture attacks" below).*
-Default controls are now: **left click = slash right→left, right click = slash left→right** (both hold for a heavy), **middle click = parry / raise shield**, Mouse 5 / scroll up = overhead, Mouse 4 / scroll down = stab, X feint, Z kick, R special, G throw. All are rebindable under Controls → Steel Clash. A parry you already rebound (e.g. to Left Alt) keeps your binding.
+Default controls are now: **left click = slash rightâ†’left, right click = slash leftâ†’right** (both hold for a heavy), **middle click = parry / raise shield**, Mouse 5 / scroll up = overhead, Mouse 4 / scroll down = stab, X feint, Z kick, R special, G throw. All are rebindable under Controls â†’ Steel Clash. A parry you already rebound (e.g. to Left Alt) keeps your binding.
 
 | # | Check | Expected |
 |---|---|---|
-| 1 | Left click / right click with a sword (`/steelclash_debug` on) | Left click swings right→left, right click swings left→right. Holding either makes a heavy. |
+| 1 | Left click / right click with a sword (`/steelclash_debug` on) | Left click swings rightâ†’left, right click swings leftâ†’right. Holding either makes a heavy. |
 | 2 | Right click on a door, chest, villager or horse, or while sneaking, or holding a bow/trident | Vanilla behaviour, no slash. |
 | 3 | Parry key with a sword | Weapon parry while held. |
 | 4 | Parry key with a shield in the offhand | Raises the shield while held (right click no longer does, since it slashes). |
@@ -184,13 +184,13 @@ Spawn eggs: **Brigand Footman / Knight / Archer** (Spawn Eggs tab). Survival, No
 | 1 | Spawn one of each | Footman: red tabard, mail, helmet, a sword/axe/Spartan weapon, sometimes a shield. Knight: blue tabard with a gold cross, full iron (some diamond on Hard), a heavier weapon, often a shield. Archer: green hood, leather, a bow. |
 | 2 | Fight a footman and a knight | They fight like the other bots (spacing, telegraphed swings, parries, shields, feints, specials). Knights rush and lunge in. |
 | 3 | Stand back from an archer | It draws its bow (arm raised) and shoots; it keeps its distance. |
-| 4 | Play a few in-game days in the overworld (or set `soldierPatrolIntervalTicks` low and `soldierPatrolChance = 1.0` in the common config) | A **patrol** appears 24–48 blocks away: a knight leading footmen and archers, walking toward you. Never inside villages. `doPatrolSpawning false` or `soldierPatrols = false` stops them. |
+| 4 | Play a few in-game days in the overworld (or set `soldierPatrolIntervalTicks` low and `soldierPatrolChance = 1.0` in the common config) | A **patrol** appears 24â€“48 blocks away: a knight leading footmen and archers, walking toward you. Never inside villages. `doPatrolSpawning false` or `soldierPatrols = false` stops them. |
 | 5 | Night time in plains/forest/taiga | Soldiers occasionally spawn among the zombies and skeletons (rarer). |
 | 6 | `/locate structure steelclash:brigand_camp` in a new world, then go there | A camp: two tents, a campfire with log seats, hay, a barrel, a red banner, and a loot chest (food, arrows, iron, emeralds, sometimes a weapon), guarded by a knight, two footmen and an archer. More soldiers spawn there at night. |
 | 7 | Kill soldiers | Small chance to drop their gear. |
 
 ## Manual in-game checklist (M7: multiplayer and latency)
-Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2` (Dev2) joins it. Add latency with [clumsy](https://jagt.github.io/clumsy/): filter `udp or tcp and (tcp.DstPort == <lan port> or tcp.SrcPort == <lan port>)`, **Lag** 75 ms both ways (≈150 ms ping). Turn on `/steelclash_debug` on Dev2: the top-left shows ping, rewind ticks and parry grace ticks using the host's synchronized combat settings.
+Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2` (Dev2) joins it. Add latency with [clumsy](https://jagt.github.io/clumsy/): filter `udp or tcp and (tcp.DstPort == <lan port> or tcp.SrcPort == <lan port>)`, **Lag** 75 ms both ways (â‰ˆ150 ms ping). Turn on `/steelclash_debug` on Dev2: the top-left shows ping, rewind ticks and parry grace ticks using the host's synchronized combat settings.
 
 | # | Check | Expected |
 |---|---|---|
@@ -207,12 +207,12 @@ Setup: `./gradlew runClient` (Dev1) opens a world to LAN; `./gradlew runClient2`
 | 1 | Join a world, leave, join again | Both times the full controls help (your actual key bindings) appears in chat, ending with how to turn it off. `helpOnJoin = false` in the client config stops it. |
 | 2 | `/steelclash_help` | Nine lines; the key names match your bindings (rebind one and run it again). |
 | 3 | Pick up a hay bale in survival, open the recipe book | Training Dummy recipe unlocked; crafting it gives the dummy, which places like a spawn egg. |
-| 4 | Mods → Steel Clash → Config | Readable names for every option and section, with descriptions on hover; changing one takes effect. |
+| 4 | Mods â†’ Steel Clash â†’ Config | Readable names for every option and section, with descriptions on hover; changing one takes effect. |
 | 5 | `./gradlew runClient -PnoCompat` | Boots and plays without Spartan Weaponry/Shields; vanilla swords, axes, the mace and the trident all have movesets. |
 | 6 | Drop `build/libs/steelclash-0.3.2-beta.jar` and Player Animation Library 1.1.6 into a normal NeoForge 21.1 instance | Loads outside the dev environment; the mod list shows the Steel Clash License, 0.3.2-beta, the author and the credits. |
 
 ## Control schemes and gesture attacks (added 2026-10-06)
-Client config (Mods → Steel Clash → Config → client).
+Client config (Mods â†’ Steel Clash â†’ Config â†’ client).
 
 | # | Check | Expected |
 |---|---|---|
@@ -246,7 +246,7 @@ Sword, dummy in Parry mode, then Attack mode; `/steelclash_debug` on.
 |---|---|---|
 | 1 | Slash and whip the mouse the way the blade travels (accel) | The debug blade connects early in the release. Against a parrying dummy, a late parry misses it. |
 | 2 | Slash and turn against the blade (drag) | It connects late, or carries past. |
-| 3 | During a windup or release, flick the mouse hard | The camera turns at most about 360°/s and then catches up when the swing ends. No 180° hits behind you. Turning outside attacks is unaffected. |
+| 3 | During a windup or release, flick the mouse hard | The camera turns at most about 360Â°/s and then catches up when the swing ends. No 180Â° hits behind you. Turning outside attacks is unaffected. |
 | 4 | `turnCapDegreesPerSecond = 0` | No limit (the old feel). |
 | 5 | Hard difficulty, fight a footman or a sword zombie for a while | Some of their slashes visibly turn their head mid-swing and land early or late. Parries timed purely to the windup sometimes fail. |
 | 6 | `sideFromMovement = FROM_STRAFE_SIDE`, hold A and slash (CHIVALRY scheme) | Swings from the left every time; D swings from the right; no strafe = alternating again. `TOWARD_STRAFE` is the reverse. |
@@ -267,13 +267,13 @@ The swing animations now run on Player Animation Library instead of playerAnimat
 | # | Check | Expected |
 |---|---|---|
 | 1 | Third person (F5): slash both ways, overhead, stab, heavy, kick | Same arm paths and body lean as before; no twisted torso, no backwards lean (whole-body sign). |
-| 2 | Sword grip and blade twist | The blade lies along the arm as before (grip −80), and the edge leads slashes. If the weapon now points the wrong way, report it (the item-axis conversion is the suspect). |
+| 2 | Sword grip and blade twist | The blade lies along the arm as before (grip âˆ’80), and the edge leads slashes. If the weapon now points the wrong way, report it (the item-axis conversion is the suspect). |
 | 3 | First person, one-handed and two-handed sword | Arms and weapon visible during attacks, a single weapon, no left-hand duplicate. |
 | 4 | Second player (runClient2) watching you | Your swings animate for them too. |
 | 5 | F3+T | Pose clips still reload. |
 | 6 | Mobs swinging | Unchanged (they don't use PAL). |
 
-## Animation steps C–E: weapon rig, first person, archetype clips (added 2026-10-07)
+## Animation steps Câ€“E: weapon rig, first person, archetype clips (added 2026-10-07)
 Checked on pose sheets already (docs/spikes.md); these cover motion and what the pose sheet can't photograph.
 
 | # | Check | Expected |
@@ -334,7 +334,7 @@ Checked on pose sheets already (docs/spikes.md); these cover motion and what the
 |---|---|---|
 | 1 | Spawn-egg a skeleton, let it shoot, then walk up to it | Within ~4 blocks it swaps the bow for a dagger and fights with the bot brain (parries, feints). |
 | 2 | Back off past ~9 blocks | It swaps back to the bow and shoots again. |
-| 3 | Stand right at ~5–8 blocks | No back-and-forth swapping. |
+| 3 | Stand right at ~5â€“8 blocks | No back-and-forth swapping. |
 | 4 | Save and reload with a skeleton that has its dagger out | After the reload it still has the dagger in hand and goes back to its bow once you leave. |
 | 5 | Without Spartan Weaponry | Skeletons only have their bow; nothing breaks. |
 
@@ -607,3 +607,46 @@ although the occupied-hand ownership checks pass. Torch visibility needs a rende
 and slim/wide hand ownership look reasonable at the sampled points; exact blade/hilt calibration, live blends,
 Sodium combinations, movement/armor/custom models and further actions remain open. Server tests were not rerun
 for this client development-tool change; the last gameplay checkpoint passed 171 GameTests per dependency variant.
+
+## Optional local loading mods (2026-10-10)
+
+The user-supplied Ksyxis 1.4.6, FastQuit 3.0.1, Lightspeed 1.21.1-2.0.2hotx2 and ModernFix
+5.27.26+mc1.21.1, Smooth Boot 1.0.0 and FerriteCore 7.0.3 are installed in `run/mods`, `run-client2/mods` and the isolated animation QA client's
+`mods` folder. FastQuit requires Cloth Config; the matching NeoForge 15.0.140 jar is also installed.
+Jars stay local/ignored rather than becoming Steelclash release dependencies. Startup/world loading,
+three requested pose captures and completed world saving passed with all mod ids present in the loader log.
+Evidence and file hashes: `C:/dev/steelclash-beta-audit/20261010/loading-mods`.
+
+When comparing future captures, match this addon stack in both versions and record the actual mod list.
+The normal dev runtime also includes Sodium unless `-PnoSodium` is passed; earlier visual success must not be
+interpreted as a Sodium-disabled check. These additions do not change the isolated GameTest runtime.
+
+## Carried offhand visibility (2026-10-10)
+
+The torch composition issue found in the controlled-rig checkpoint is addressed by a camera-relative carried
+arm for occupied non-shield hands during first-person attacks. It counters body turns and stays raised through
+recovery. Shields and the weapon arm retain their existing paths. Fixed/reverted runs match the initial loading
+addons, Sodium 0.8.13, SLIM Ari with an iron helmet, 1920x1200 viewport, stored FOV 0.625 and cameraMotion 0.
+Evidence is in `C:/dev/steelclash-beta-audit/20261010/torch-visibility`, with run IDs in `matching-stack.json`.
+
+The matched runs contain 144 static samples each and 47 polearm-slash frames per view/version at 50 ms.
+No meaningful change was found in 96 third-person pairs or the 36 shield-control pairs. Torch windup/release/
+recovery composition improves in both sword main-arm preferences and the occupied-hand halberd. The selected
+new onion flags have gradual neighboring motion; full live transition acceptance is still required.
+
+Restored build: 187 fresh JUnit tests passed. Two valid mutations were caught: missing inverse body rotation
+by `carriedHandStaysForwardDespiteBodyTurnAndViewAim`, and disabling the holding branch by the actual-client
+fixed-scene image assertion. Its declared region contains 978 torch-head pixels when fixed and zero when
+reverted. This is a specific camera/model/pose test, not a general detector for every item or FOV. The helper's
+unittest-name limitation and the separate named diagnostic audit are recorded in `spikes.md`.
+
+After adding Smooth Boot and FerriteCore, three fresh heavy-overhead views plus startup/completed saving passed
+with the final seven local mods/dependency jars, both with Sodium and without it. This establishes that selected
+scene in both renderer variants; it does not complete the full model/action/renderer matrix.
+
+| Live follow-up | Expected |
+|---|---|
+| Torch plus sword/polearm, both main-arm preferences: attack from idle and return; feint/combo. | The carried item remains readable without a single-frame handover pop. |
+| Turn through +/-180 degrees and look up/down while attacking; try different FOVs. | The carried arm follows the view without a full-turn rewind or excessive central occlusion. |
+| Swap/use the offhand item during an attack; switch empty/torch/shield. | Ownership changes cleanly, and shields keep their guard/bash choreography. |
+| Repeat with wide/armored/custom models while crouching, moving or mounted. | Check clipping and hand attachment; these combinations are not established by the frozen matrix. |

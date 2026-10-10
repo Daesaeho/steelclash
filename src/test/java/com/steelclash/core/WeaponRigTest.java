@@ -11,6 +11,28 @@ class WeaponRigTest {
     private static final double[] NO_BODY = {0, 0, 0};
 
     @Test
+    void carriedHandStaysForwardDespiteBodyTurnAndViewAim() {
+        Random random = new Random(61);
+        for (int i = 0; i < 800; i++) {
+            double yaw = random.nextDouble() * 240 - 120;
+            double pitch = random.nextDouble() * 160 - 80;
+            double[] body = {random.nextDouble() * 40 - 20, random.nextDouble() * 180 - 90,
+                    random.nextDouble() * 40 - 20};
+            Mat3 camera = Mat3.rotY(Math.toRadians(yaw)).mul(Mat3.rotX(Math.toRadians(pitch)));
+            for (boolean left : new boolean[]{false, true}) {
+                double[] arm = WeaponRig.carryArm(yaw, pitch, body, left);
+                Vec worldDirection = WeaponRig.bodyRotation(body).mul(Mat3.zyx(arm[0], arm[1], arm[2]))
+                        .apply(new Vec(0, 1, 0));
+                Vec inView = camera.transpose().apply(worldDirection);
+                assertEquals(left ? 0.04528405057966491 : -0.04528405057966491, inView.x(), 1e-9);
+                assertEquals(0.45133003017240666, inView.y(), 1e-9);
+                assertEquals(-0.8912073600614354, inView.z(), 1e-9);
+                assertEquals(1, worldDirection.length(), 1e-9);
+            }
+        }
+    }
+
+    @Test
     void leftHandedRigReflectsArmItemGripAndShoulderWithoutChangingTheirLengths() {
         Random random = new Random(43);
         for (int i = 0; i < 300; i++) {
