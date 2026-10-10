@@ -3,6 +3,10 @@
 User direction, 2026-10-09: improve combat animations and fix bugs so Steel Clash feels very similar to Chivalry 2,
 while giving different weapon families their own original fighting styles.
 
+Next-work scope, 2026-10-10: BodyHealth and Legendary Survival Overhaul are deferred. The ordered implementation
+plan is [next-combat-animation-plan.md](next-combat-animation-plan.md): live acceptance and confirmed blockers,
+PAL bending/axis compatibility, Blockbench authoring, authoritative contact/anatomical collision, then a CPM pilot.
+
 ## Acceptance criteria
 
 - Preserve readable, committed windup → release → recovery, directional swings, guard/counter/riposte reactions,

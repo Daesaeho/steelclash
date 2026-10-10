@@ -7,6 +7,9 @@ Integrations: [Spartan Weaponry Unofficial](https://github.com/Mai-xiyu/SpartanW
 
 Current user-directed goal (2026-10-09): improve combat animations and fix bugs for Chivalry 2 fidelity, with distinct original fighting styles per weapon family. Scope, acceptance criteria and current evidence: [combat-animation-goal.md](combat-animation-goal.md).
 
+Next implementation sequence (2026-10-10): [combat and animation next steps](next-combat-animation-plan.md).
+BodyHealth and Legendary Survival Overhaul are deferred by user direction.
+
 ### Decisions locked in
 - **Faithfulness:** the combat should be as close to Chivalry 2 as possible. When fidelity and Minecraft convenience conflict, fidelity wins, with a config option where reasonable.
 - **Focus: PvE.** Mobs fight with the same ruleset as players, like Chiv 2's bots. Multiplayer netcode work moves to the end.

@@ -6,6 +6,9 @@ The primary comparison is the supplied three-page **Chivalry 2 Melee Kinematics 
 
 ## Recommendation
 
+Planning update, 2026-10-10: the user deferred BodyHealth and LSO. Their findings below remain reference material;
+the active next-work sequence is [next-combat-animation-plan.md](next-combat-animation-plan.md).
+
 1. Add server-authoritative contact location and anatomical collision to Steel Clash before connecting a limb-health backend. Countered's inspected implementation cannot supply this on a dedicated server.
 2. Trial PAL More Rotation for visible elbow/body bending, with an explicit item-axis adapter and blade-alignment checks. It is the closest fit to the current animation stack.
 3. Treat BodyHealth and Legendary Survival Overhaul (LSO) as alternative, optional injury modes. Choose one health owner per player. Their injuries and survival rules extend the combat design; they are not necessary to reproduce Chivalry's melee rules.
