@@ -14,6 +14,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add a live drink/bottle-return capture and record consuming-hand blend weight and stable item IDs alongside rendered rotations.
 - Add live incoming windup/release interruption and offhand food-use/cancel scenes. Record the real damaging contact phase, use hand, hunger and stack count; require matching client/server outcomes.
 - Isolate each live opponent with a unique launch tag and retain the final server sample during diagnostic shutdown, avoiding stale actor binding and false acceptance failures.
 - Add idle, matching-counter and light-blunt hit-stop capture scenes, real main-arm selection and rendered carried-arm measurements. Bind the controlled opponent after staging, preventing a stale actor from the previous scene.
@@ -42,9 +43,10 @@
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Animation**
+- Keep the first-person weapon ready pose during offhand eating/drinking. The consuming hand raises and lowers over 250 ms, including attack cancellation and returned bottles, avoiding the vanilla/model renderer snap.
 - Hold swords in a more upright first-person ready guard: 45 degrees outward and 75 degrees upward, replacing the strongly sideways 65/45 stance. The change is visual tuning only.
 - Carried non-shield items breathe subtly in first-person idle, mirrored for both main arms and fading into the existing attack carry. Weapon/grip alignment, shields and third-person posing keep their existing behavior.
-- First person: a carried non-shield item keeps the weapon ready stance active between attacks, avoiding the abrupt vanilla/model hand swap. Item use still yields to vanilla.
+- First person: a carried non-shield item keeps the weapon ready stance active between attacks, avoiding the abrupt vanilla/model hand swap. Unsupported item-use animations yield to vanilla.
 - Keep PAL's camera ownership stable through its animation tick so an expiring pose cannot expose the player's helmet inside the first-person camera.
 - First person: carried non-shield offhand items hold a camera-relative pose during weapon attacks, rather than following the weapon's translation and torso sweep below the view. Shields retain their existing choreography.
 - Original weapon-family style draft: distinct first-person ready positions, body preparation and follow-through rhythm for daggers, swords, greatswords, axes, blunt weapons, polearms, spears, rapiers and staves. Pack authors can set `first_person.ready_yaw` and `ready_pitch`; omitted values preserve the old stance. Gameplay timing and hit arcs retain their existing behavior.

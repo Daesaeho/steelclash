@@ -1036,3 +1036,25 @@ Vanilla offhand bread use works alongside a sword: one consumed bread raises hun
 input cancels use before consumption. The custom first-person ready model yields to vanilla while eating and
 returns afterward. Captures show a visible pose change at that renderer handover; retain it as presentation work,
 not proof of a smooth transition. Evidence is in `20261010/live-transitions` under the external beta-audit root.
+
+## Continuous offhand consumption (2026-10-10)
+
+Keeping the first-person model active for offhand EAT/DRINK avoids the ready/vanilla hand swap. A presentation-only
+250 ms envelope blends the camera/body-compensated carry arm toward a raised item pose; the arc-solved weapon
+stays ready. Reversals sample the current envelope weight, and actual rotations use shortest-path quaternion blending.
+The envelope contains no item snapshot: a finished potion's glass bottle can lower smoothly in the current hand.
+Weapon/main-arm/eligibility changes reset it. Other use animations still yield through the prior path.
+
+PAL's model-space grip must stay lower than an anatomical mouth target to keep the item above the grip visible in
+first person. The first prototype clipped the bread at the top; the lowered/farther grip passes the captured FOV 95
+view on both main arms. This is presentation tuning, not a new gameplay reach or item-use duration.
+
+Vanilla still controls consumption and input cancellation. Seven accepted live scenes (973 frames) cover right/left
+food use and food-to-attack, drink/container return, vanilla rendering and a normal torch attack. At the first use-entry
+step, speck-filtered changed pixels fall from roughly 18% to below 0.1%; subsequent frames show the gradual raise.
+Evidence and remaining acceptance are in `20261010/consume-blend` and [testing.md](testing.md#offhand-consumable-blend-2026-10-10).
+
+The installed PAL AnimationStack invokes tick on every layer without checking activation. Reset the consuming
+envelope there as well as during setup, since setup can be skipped while dead/downed or after camera/ready
+eligibility loss. Compile, 22 focused tests and five hand-picked mutations pass; a final left cancellation replay
+confirms the eligible path after this cleanup. Broader lifecycle/input combinations remain manual acceptance.

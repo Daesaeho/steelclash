@@ -22,8 +22,12 @@ wall/floor cover and C09 stagger downgrade were reproduced and fixed under expli
 Next progress: ordinary opponent jabs now exercise incoming windup and release interruption, and vanilla offhand
 food use exercises consumption and attack cancellation. The first four successful scenes contain 555 actual frames.
 The vanilla eating/ready renderer handover visibly changes the hand/weapon pose; its presentation polish remains
-open. See [testing.md](testing.md#incoming-interruption-and-food-use-2026-10-10). Item swap, weapon-to-kick,
-moving/crouching and the broader acceptance matrix still remain. Review the food-use handover before the bending trial.
+open at that checkpoint. See [testing.md](testing.md#incoming-interruption-and-food-use-2026-10-10).
+
+The following checkpoint replaces the offhand eating/drinking renderer handover with a continuous carried-hand
+pose while retaining the weapon ready stance. Both main arms, attack cancellation, returned bottles, Sodium/vanilla
+and a normal torch attack are captured; see [testing.md](testing.md#offhand-consumable-blend-2026-10-10).
+Next: item swaps and weapon-to-kick, followed by moving/crouching and the wider acceptance matrix before bending.
 
 **Deliverable:** a reliable renderer comparison and reproducible opponent-driven acceptance scenes.
 

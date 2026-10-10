@@ -59,6 +59,15 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
         return WeaponRig.bodyRotation(body).transpose().mul(camera).mul(holding).toZyx();
     }
 
+    /** Raise a consumable below the eye line (the item extends above the grip), without changing the weapon solve. */
+    public static double[] consumeArm(double viewYaw, double viewPitch, double[] body, boolean left, double ageTicks) {
+        Vec mouth = new Vec(1.5, 2 + 0.25 * Math.sin(ageTicks * Math.PI / 2), -9);
+        double[] angles = reach(LEFT_SHOULDER, mouth);
+        if (!left) angles = mirrorAngles(angles);
+        Mat3 camera = Mat3.rotY(Math.toRadians(viewYaw)).mul(Mat3.rotX(Math.toRadians(viewPitch)));
+        return bodyRotation(body).transpose().mul(camera).mul(Mat3.zyx(angles[0], angles[1], angles[2])).toZyx();
+    }
+
     /**
      * @param bladeYaw   blade direction yaw relative to the body, degrees (positive = the body's right)
      * @param bladePitch blade direction pitch, degrees (positive = down)

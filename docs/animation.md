@@ -72,6 +72,15 @@ Ready yaw/pitch are degrees relative to the view; the yaw mirrors for left-hande
 previous 65/-45 stance when omitted, and packs keep their own ready metadata when inheriting missing clips.
 Ready presentation and layer activation are suppressed while downed/dead.
 
+With ready stance enabled and a melee weapon held, offhand `EAT`/`DRINK` animations retain the same first-person
+player model and the weapon's archetype ready pose. Only the carried hand blends toward a raised consumable pose,
+then lowers over 250 ms. The presentation envelope retains its current weight when use stops/restarts; it samples
+wall-clock time independently of simulation and render frequency. Camera/body compensation and quaternion rotation
+blending keep the raised hand attached. A returned bottle/bowl uses the current stack while the hand lowers.
+Weapon/main-arm changes, unsupported use, camera/ready eligibility loss reset the envelope. Main-hand use, bows,
+shields and other use animations retain their existing paths. Vanilla still owns use duration, consumption, hunger,
+effects and cancellation; this does not change combat timing, packets or hit geometry. Third-person poses are unchanged.
+
 Set `retraction` to 0 to disable the new translation. Bounds: forward/down -16..16, retraction 0..8,
 ready yaw -120..120 and ready pitch -90..90 (all finite),
 grip gap greater than 0 and at most 10, heavy scale 0..5. Keyframe times must be finite, unique and in 0..1;
@@ -216,9 +225,9 @@ Use a disposable world with cheats and a fresh output directory:
 ```
 
 Scenes are `idle`, `attack`, `combo`, `heavy`, `feint`, `morph`, `parry`, `riposte`, `counter`, `hitstop`,
-`interrupt-windup`, `interrupt-release`, `itemuse` and `use-attack`.
+`interrupt-windup`, `interrupt-release`, `itemuse`, `use-attack` and `drinkuse`.
 Optional `liveCaptureItem` selects the main item (default iron sword, or mace for `hitstop`),
-`liveCaptureOffhand` selects the carried item (default air, or bread for the food-use scenes), and `liveCaptureView`
+`liveCaptureOffhand` selects the carried item (default air, bread for food-use scenes, potion for `drinkuse`), and `liveCaptureView`
 uses a `CameraType` name such as `FIRST_PERSON` or `THIRD_PERSON_BACK`.
 
 The tool stages a sky platform, equips the real server player, temporarily maps numpad keys, then drives the
@@ -264,6 +273,8 @@ iron-sword fixture: changing weapon timings can invalidate the scene and must no
 consume food, then lowers the hand; `use-attack` sends an ordinary attack before consumption. Both require
 client/server use to start and stop. Frames record use hand, hunger and stack count; the first scene requires
 consumption and the second requires the stack to remain intact. Hunger/equipment changes persist in this world.
+`drinkuse` stages one potion and requires a returned glass bottle on both sides. Consuming-hand blend weight and
+rendered arm rotations support continuity checks; item IDs are recorded as strings, without loader-added fields.
 
 `counter` holds ordinary guard, observes the server opponent near the end of windup, then sends the matching slash
 through ClientInput. Both sides must observe a successful counter, return damage and no player health loss.

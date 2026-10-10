@@ -8,6 +8,7 @@ import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.client.dev.LiveCapture;
 import com.steelclash.combat.Downed;
 import com.steelclash.core.RotationBlend;
+import com.steelclash.core.UsePoseBlend;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Vec;
 import com.steelclash.core.WeaponRig;
@@ -65,6 +66,9 @@ public class ProceduralSwingAnimation implements IAnimation {
     private double[] carriedReference = NO_TURN;
     /** PAL chooses its camera pass before setupAnim; keep ownership stable until its next tick. */
     private boolean firstPersonOwned;
+    private final UsePoseBlend consumableBlend = new UsePoseBlend();
+    private double consumableWeight;
+    private Object consumableWeapon, consumableMainArm;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -84,8 +88,15 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public void tick(AnimationData state) {
+        boolean readyEligible = wantsReadyStance();
+        if (!readyEligible) {
+            // PAL ticks inactive layers too: discard the envelope even when setupAnim will not run.
+            consumableBlend.reset();
+            consumableWeight = 0;
+            consumableWeapon = consumableMainArm = null;
+        }
         firstPersonOwned = player.isAlive() && !Downed.isDowned(player) && (CombatPose.isAvailable(player)
-                || CombatPresentation.get(player, 0).isPresent() || wantsReadyStance());
+                || CombatPresentation.get(player, 0).isPresent() || readyEligible);
     }
 
     @Override
@@ -100,6 +111,7 @@ public class ProceduralSwingAnimation implements IAnimation {
                         player.getViewXRot(state.getPartialTick())))
                 : null;
         ready = wantsReadyStance() ? CombatPose.ready(player, state.getPartialTick()).orElse(null) : null;
+        updateConsumable();
         if (ready != null) {
             readyRig = rigFor(ready);
         }
@@ -109,6 +121,12 @@ public class ProceduralSwingAnimation implements IAnimation {
             carriedArm = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(), player.getViewXRot(state.getPartialTick()),
                     carried.bodyDegrees(), !carried.leftHanded(), player.tickCount + (double) state.getPartialTick(),
                     pose == null ? 1 : 1 - pose.weight());
+            if (consumableWeight > 0) {
+                double[] raised = WeaponRig.consumeArm(carried.aimYaw() - carried.relativeYaw(),
+                        player.getViewXRot(state.getPartialTick()), carried.bodyDegrees(), !carried.leftHanded(),
+                        player.tickCount + (double) state.getPartialTick());
+                carriedArm = RotationBlend.blend(carriedArm[0], carriedArm[1], carriedArm[2], raised, consumableWeight);
+            }
             if (LiveCapture.recording()) {
                 carriedReference = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(),
                         player.getViewXRot(state.getPartialTick()), carried.bodyDegrees(), !carried.leftHanded());
@@ -123,8 +141,7 @@ public class ProceduralSwingAnimation implements IAnimation {
     }
 
     /**
-     * The local player in first person holding a weapon, with no shield or item in use: show a ready stance so
-     * attacks do not switch hand renderers. A carried non-shield item uses its own holding arm.
+     * Keep the same hands for combat and supported offhand consumption; other item-use animations yield to vanilla.
      */
     private boolean wantsReadyStance() {
         Minecraft mc = Minecraft.getInstance();
@@ -132,13 +149,28 @@ public class ProceduralSwingAnimation implements IAnimation {
                 && player == mc.player && mc.options.getCameraType().isFirstPerson()
                 && player.isAlive() && !Downed.isDowned(player)
                 && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)
-                && !player.isUsingItem() && !player.isSpectator()
+                && (!player.isUsingItem() || consumingOffhand()) && !player.isSpectator()
                 && ClientInput.holdsWeapon(mc.player);
+    }
+
+    private boolean consumingOffhand() {
+        if (!player.isUsingItem() || player.getUsedItemHand() != net.minecraft.world.InteractionHand.OFF_HAND) return false;
+        var animation = player.getUseItem().getUseAnimation();
+        return animation == net.minecraft.world.item.UseAnim.EAT || animation == net.minecraft.world.item.UseAnim.DRINK;
+    }
+
+    private void updateConsumable() {
+        Object weapon = player.getMainHandItem().getItem(), arm = player.getMainArm();
+        if (weapon != consumableWeapon || arm != consumableMainArm || ready == null)
+            consumableBlend.reset();
+        // The envelope holds no item snapshot: a returned bowl/bottle lowers with the current held stack.
+        consumableWeapon = weapon; consumableMainArm = arm;
+        consumableWeight = consumableBlend.update(ready != null && consumingOffhand(), System.nanoTime());
     }
 
     @Override
     public PlayerAnimBone get3DTransform(@NotNull PlayerAnimBone bone) {
-        LiveCapture.recordRenderedPose(player, pose, ready != null);
+        LiveCapture.recordRenderedPose(player, pose, ready != null, consumableWeight);
         // In first person the ready stance stands in for vanilla's arm pose: attacks blend from it and back to it.
         boolean readyBase = ready != null && FirstPersonMode.isFirstPersonPass();
         if (readyBase) {

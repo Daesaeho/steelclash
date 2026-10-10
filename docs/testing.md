@@ -823,3 +823,37 @@ commands select distinct windup, release and food-use fixtures. All temporary pr
 No local server suite is required for these client-only opt-in diagnostics; the pushed build runs the normal CI gates.
 Final restored-source food-to-attack and existing block/riposte controls also pass (139 frames each). The riposte
 still catches the opponent's normal slash, returns damage and leaves the player unharmed after per-launch tagging.
+
+## Offhand consumable blend (2026-10-10)
+
+Supersedes the visible food-use handover identified above. With a melee weapon and ready stance enabled, offhand
+eating/drinking keeps the same first-person model. The consuming hand raises and lowers over 250 ms; the weapon
+retains its ready pose. Gameplay item use is unchanged. Confirm the food/drink is visible, consumption completes,
+attack cancellation preserves the unconsumed stack, and returned containers lower without dropping the arm instantly.
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/consume-blend`. Seven accepted scenes contain 973 actual frames:
+Sodium food use and food-to-attack on right/left main arms, drink/bottle return, vanilla-renderer food use and a normal
+torch slash control. Captures use the existing disposable QA world, SLIM Ari/iron helmet, 1920x1200/FOV 95 and
+approximately 50 ms frame spacing. All retain the expected model/ready ownership. Food changes bread 64 to 63
+and hunger 14 to 19; attack cancellation retains 64 bread. Drinking returns a glass bottle on both sides while
+the presentation weight is still raised, then lowers. Live assertions bound actual rendered hand rotation and blend
+steps; final idle returns to zero use weight. This does not establish every item/model, FOV/FPS, moving/crouching,
+third-person, mouse/sneak binding or real LAN case.
+
+Use the before/after contact sheet and matching entry/exit onion windows on both arms. At entry frame 18->19,
+the full-frame speck-filtered screenshot difference drops from 18.54% (right) / 17.99% (left) to below 0.1% noise.
+The following frames show a gradual raise. Onion flags during lowering include multi-frame movement and food
+particles; they are reviewed alongside rendered matrices, not treated as automatic discontinuities. The prototype
+with a higher grip clipped the food and is excluded. A drink assertion initially expected a string where diagnostic
+JSON serialized ResourceLocation internals; normalized item IDs and a fresh accepted replay resolve that artifact.
+
+Main-hand/unsupported use and shields retain their existing paths. Check bottle/bowl replacement without showing
+an old stack, and verify weapon/arm/camera changes discard the consuming envelope. Additional container/items and
+the broader transitions remain manual acceptance; server GameTests are not required for this client presentation fix.
+
+Verification: compile and 22 fresh focused tests pass (`UsePoseBlendTest`, `ConsumeArmTest`, `WeaponRigTest`,
+`RotationBlendTest`). Five valid mutants are caught: instantaneous blending, lost reversal continuity, missing
+body compensation, restored vanilla/model swapping and omitted rendered-hand application. Temporary mutations
+are restored. PAL's installed AnimationStack ticks inactive layers too; clearing the consuming envelope there
+prevents an old pose returning after downing/death/camera eligibility loss. The final left-main-arm cancellation
+replay passes after this lifecycle cleanup. Other lifecycle combinations retain their manual gate.
