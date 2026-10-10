@@ -882,3 +882,20 @@ reports the class absent. Therefore these live comparisons establish the standar
 not active Sodium compatibility. The `-PnoSodium` replay also passes, but does not close the Sodium-on gate.
 Earlier discovery-only Sodium-enabled wording must be treated as unverified until the dev dependency/service
 loading is repaired and the active renderer is confirmed.
+
+## Kinematics and optional integration review (2026-10-10)
+
+[kinematics-compatibility-review.md](kinematics-compatibility-review.md) compares every section of the supplied
+three-page specification with the current source and records pinned candidate versions/source commits.
+Countered 2.0.1 was inspected through its distributed jar, mixin metadata, CFR and javap: client model-cube
+capture/picking is not a server sweep provider, and captured boxes are all named `cube`. Current server
+contacts retain target/progress, without a point or anatomical region. BodyHealth and LSO use different
+damage-event stages and approximate region selection; neither API inspected provides a swept-contact override.
+More Rotation's 1.21.1 item-axis patch conflicts with Steel Clash's existing PAL Y/Z compensation unless adapted.
+CPM has named animation/model APIs; CPM Animator Utils is an editor utility, not a collision implementation.
+
+Current code also differs from the PDF in active-parry stamina, armor-point damage tiers, jab release interruption
+and class passives. The expanded report marks counter refunds/exact active-parry timing unresolved. Official
+Fight Knight notes changed ordinary projectile headshots to 1.25x; the PDF's blanket 1.5x is not the right default.
+Historical fixed-jab/hyperarmor claims do not match the current source and must not be treated as current test
+coverage. This research adds no gameplay rules or candidate dependencies and claims no runtime certification.

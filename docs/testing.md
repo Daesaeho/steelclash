@@ -690,3 +690,12 @@ Final restored build passed all 187 JUnit tests (25 fresh XML reports, no skippe
 downed ready-stance/layer-activation guard passed after the ownership change. A fresh `-PnoSodium` torch live
 attack captured 138 model/ready frames and completed normally. Its success does not prove Sodium-on rendering;
 the explicit runtime probe found Sodium's renderer class absent in the standard dev run.
+
+## Optional integration candidates (2026-10-10)
+
+The [kinematics review](kinematics-compatibility-review.md#integration-design-and-acceptance-gates) defines the
+required future checks for server anatomical contacts, one injury backend, and PAL More Rotation/CPM adapters.
+Research/source inspection is complete for the stated scope; installation, dedicated-server loading, blocked-hit
+injuries, double damage/headshot reduction, death/downed/revive and custom-model alignment remain unverified.
+Run these checks only once an adapter is implemented; the current 187 unit tests do not establish candidate
+compatibility. Verify active renderer identity when comparing Sodium runs.

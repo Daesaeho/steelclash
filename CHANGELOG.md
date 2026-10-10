@@ -12,6 +12,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Document the kinematics-specification comparison and optional hitbox, injury and animation integration candidates. Correct the Sodium status to require verification of an initialized renderer rather than distribution-jar discovery.
 - Add an opt-in live animation capture tool that drives normal keyboard inputs and records actual rendered frames, frame times and integrated-server outcomes for attacks, combos, heavy upgrades, feints, morphs and held guard.
 - Pose sheets can select the main arm and offhand item, validate the rendered hand ownership, and log the actual skin/model and armor. Capture staging suppresses mob loot and fire overlays for clearer rig comparisons.
 - Record the combat/animation goal and original weapon-family style directions in `docs/combat-animation-goal.md`. Pose-sheet staging clears player effects so potion particles do not pollute motion captures.

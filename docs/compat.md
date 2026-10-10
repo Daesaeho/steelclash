@@ -14,8 +14,18 @@ Steel Clash 0.3.2-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **bo
 | Other weapon mods | Works, unmapped | Items without a weapon profile keep vanilla combat. Add a profile through the item data map (below). |
 | Other shield mods | Usually works | Anything that performs `ItemAbilities.SHIELD_BLOCK` gets the basic shield cone and stamina rules. |
 | Mob AI mods | Case by case | Mobs in `#steelclash:fighters` get a spacing goal and the bot brain on top of their goals. Mods that replace a mob's melee goal may fight it; take the mob out of the tag. |
-| Sodium 0.8.13 (NeoForge) | Works | Tested: the dev runs include it (`-PnoSodium` leaves it out), the pose sheet renders identically with it, and all GameTests pass with it loaded. |
+| Sodium 0.8.13 (NeoForge) | Active renderer verification pending | The dev classpath discovers the distribution jar, but the current live runtime probe reports the actual Sodium renderer class absent. Earlier discovery-only on/off checks do not certify Sodium rendering; see the 2026-10-10 note in `spikes.md`. |
 | Shaders / other renderers | Expected to work | Steel Clash renders through Player Animation Library and vanilla model hooks. One mixin, on `LivingEntityRenderer`, poses mob models: after `setupAnim` (arms, legs, head) and at the end of `setupRotations` (whole-body lean and twist). |
+
+### Candidates under review
+
+Countered's Accurate Hitboxes, BodyHealth, Legendary Survival Overhaul, CPM, CPM Animator Utils and PAL More
+Rotation have been reviewed for 1.21.1 NeoForge. None has an implemented or playtest-certified Steel Clash
+adapter. [Kinematics and compatibility review](kinematics-compatibility-review.md) records exact source revisions,
+the PDF comparison and integration gates. Important findings: Countered's inspected jar changes client picking
+and does not replace the server sweep; health mods need one owner for injury/headshot/death processing; More
+Rotation changes the item-axis convention that Steel Clash currently compensates for. CPM utilities are an
+authoring option, with a separate cosmetic/runtime integration still required.
 
 ### Weapon archetypes
 
