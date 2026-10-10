@@ -31,6 +31,9 @@ or measurements. The table below records the exact scope; it does not claim that
 - Carried non-shield items now retain the weapon's ready stance between attacks. PAL camera ownership is sampled
   on its animation tick rather than recalculated from pose fields being refreshed during the same render pass.
   This keeps armor visibility consistent as a pose expires. Alive/downed checks still take effect immediately.
+- In first-person idle, a carried non-shield hand has a small breathing rotation (about +/-0.86 degrees pitch and
+  +/-0.34 degrees roll, roughly a 4.2-second cycle). Its weight fades with combat-pose ownership, using the same
+  aim/body compensation and mirror rule. This does not alter the weapon-arm solve, grip, reach or hit timing.
 - Thrust extension drives a small first-person arm translation. Third-person reach, blade length and rigid
   shoulder dimensions remain separate work. This is a presentation offset, not a change to traced reach.
 - Throw preparation completes its forward gesture before release, when the existing server code launches the
@@ -209,8 +212,9 @@ Use a disposable world with cheats and a fresh output directory:
 .\gradlew.bat runClient '-PquickPlay=Steelclash Animation QA' '-PliveCapture=combo' '-PliveCaptureOffhand=minecraft:torch' '-PliveCaptureOut=C:/dev/steelclash-live/combo'
 ```
 
-Scenes are `attack`, `combo`, `heavy`, `feint`, `morph`, `parry` and `riposte`. Optional `liveCaptureItem` selects the main
-item (default iron sword), `liveCaptureOffhand` selects the carried item (default air), and `liveCaptureView`
+Scenes are `idle`, `attack`, `combo`, `heavy`, `feint`, `morph`, `parry`, `riposte`, `counter` and `hitstop`.
+Optional `liveCaptureItem` selects the main item (default iron sword, or mace for `hitstop`),
+`liveCaptureOffhand` selects the carried item (default air), and `liveCaptureView`
 uses a `CameraType` name such as `FIRST_PERSON` or `THIRD_PERSON_BACK`.
 
 The tool stages a sky platform, equips the real server player, temporarily maps numpad keys, then drives the
@@ -238,3 +242,15 @@ damage is applied. The capture requires caught-parry and active-parry attack out
 rendered opponent, reduced opponent health and no player health loss. This tests the specific integrated-server
 exchange, not autonomous bot decision-making or real LAN correction. Contact effects/telegraph labels remain
 visible and can pollute whole-image onion measurements.
+
+`idle` sends no combat inputs and requires the player to stay idle throughout. `liveCaptureArm=RIGHT` or `LEFT`
+temporarily changes the normal client main-arm option and broadcasts it to the server; it restores at completion.
+Frames record actual rendered carried-arm rotation, plus server main arm, counter/thwack state and opponent phase
+time. The opponent is bound only once capture is active, after staging cleanup/summoning has finished.
+
+`counter` holds ordinary guard, observes the server opponent near the end of windup, then sends the matching slash
+through ClientInput. Both sides must observe a successful counter, return damage and no player health loss.
+`hitstop` strikes a passive, surviving opponent with a light mace; both sides must thwack. This is the blunt
+contact stop. The rendered phase/progress/weight records also let us check a visual hit-stop sample stays held
+while the simulated phase advances, then returns to the live timeline. These checks do not imply all correction,
+reload, FPS or real-network hit-stop cases are verified.

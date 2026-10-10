@@ -346,10 +346,18 @@ public final class CombatStateMachine {
 
     /** @param allowParry whether the staggered fighter may still parry (true after being parried, false on guard break) */
     public void stagger(int ticks, boolean allowParry) {
+        long durationUs = (long) Math.max(1, ticks) * AttackTimings.TICK_US;
+        if (phase == Phase.STAGGER) {
+            // Weaker effects neither relax nor extend a hard guard-break punishment.
+            if (!staggerAllowsParry && allowParry) return;
+            long remainingUs = phaseDurationUs - phaseElapsedUs;
+            if (staggerAllowsParry == allowParry && durationUs <= remainingUs) return;
+            durationUs = Math.max(durationUs, remainingUs);
+        }
         riposteTicks = 0;
         activeParryTicks = 0;
         staggerAllowsParry = allowParry;
-        enter(Phase.STAGGER, Math.max(1, ticks));
+        enterUs(Phase.STAGGER, durationUs);
     }
 
     public void cancel() {

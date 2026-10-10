@@ -11,6 +11,55 @@ class WeaponRigTest {
     private static final double[] NO_BODY = {0, 0, 0};
 
     @Test
+    void carriedIdleMovesWithinSmallSmoothMirroredBounds() {
+        double[] baseline = WeaponRig.carryArm(0, 0, NO_BODY, false);
+        Mat3 base = Mat3.zyx(baseline[0], baseline[1], baseline[2]);
+        Mat3 previous = base;
+        double largest = 0;
+        for (int tick = 0; tick <= 160; tick++) {
+            double[] right = WeaponRig.carryArm(0, 0, NO_BODY, false, tick, 1);
+            double[] left = WeaponRig.carryArm(0, 0, NO_BODY, true, tick, 1);
+            Mat3 rotation = Mat3.zyx(right[0], right[1], right[2]);
+            largest = Math.max(largest, rotation.distance(base));
+            assertTrue(rotation.distance(base) < 0.03, "breathing stays close to the stable carry pose");
+            assertTrue(rotation.distance(previous) < 0.004, "one tick cannot pop the hand");
+            Vec r = rotation.apply(new Vec(0, 1, 0));
+            Vec l = Mat3.zyx(left[0], left[1], left[2]).apply(new Vec(0, 1, 0));
+            assertEquals(-r.x(), l.x(), 1e-9);
+            assertEquals(r.y(), l.y(), 1e-9);
+            assertEquals(r.z(), l.z(), 1e-9);
+            previous = rotation;
+        }
+        assertTrue(largest > 0.004, "the carry pose must actually move in idle");
+    }
+
+    @Test
+    void carriedIdleFadesOutWithoutChangingAimedAttackCarry() {
+        Random random = new Random(90);
+        for (int i = 0; i < 200; i++) {
+            double yaw = random.nextDouble() * 240 - 120, pitch = random.nextDouble() * 160 - 80;
+            double[] body = {random.nextDouble() * 30, random.nextDouble() * 180, random.nextDouble() * 30};
+            for (boolean left : new boolean[]{false, true}) {
+                assertArrayEquals(WeaponRig.carryArm(yaw, pitch, body, left),
+                        WeaponRig.carryArm(yaw, pitch, body, left, random.nextDouble() * 800, 0), 1e-9);
+            }
+        }
+    }
+
+    @Test
+    void idleCarryStillCountersBodyRotation() {
+        double[] body = {17, 83, -12};
+        for (double age : new double[]{12.5, 55.7, 190.25}) {
+            for (boolean left : new boolean[]{false, true}) {
+                double[] calm = WeaponRig.carryArm(23, -14, NO_BODY, left, age, 1);
+                double[] turned = WeaponRig.carryArm(23, -14, body, left, age, 1);
+                Mat3 world = WeaponRig.bodyRotation(body).mul(Mat3.zyx(turned[0], turned[1], turned[2]));
+                assertEquals(0, world.distance(Mat3.zyx(calm[0], calm[1], calm[2])), 1e-9);
+            }
+        }
+    }
+
+    @Test
     void carriedHandStaysForwardDespiteBodyTurnAndViewAim() {
         Random random = new Random(61);
         for (int i = 0; i < 800; i++) {

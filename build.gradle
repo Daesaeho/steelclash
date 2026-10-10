@@ -111,7 +111,7 @@ neoForge {
                 programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay').toString()
             }
             if (project.hasProperty('liveCapture')) {
-                ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut', 'liveCaptureRenderer'].each { name ->
+                ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut', 'liveCaptureRenderer', 'liveCaptureArm'].each { name ->
                     if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
                 }
             }

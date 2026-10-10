@@ -7,6 +7,7 @@ import com.steelclash.client.ClientInput;
 import com.steelclash.client.anim.CombatPose;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.Phase;
+import com.steelclash.core.Mat3;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,6 +24,7 @@ import net.minecraft.client.Screenshot;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.HumanoidArm;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
@@ -41,16 +43,19 @@ import org.jetbrains.annotations.Nullable;
 @EventBusSubscriber(modid = SteelClash.MOD_ID, value = Dist.CLIENT)
 public final class LiveCapture {
     private static final String SCENE = System.getProperty("steelclash.liveCapture");
+    private static final String DEFAULT_ITEM = "hitstop".equals(SCENE) ? "minecraft:mace" : "minecraft:iron_sword";
     private static final KeyMapping[] KEYS = {ClientInput.SLASH_RIGHT_TO_LEFT, ClientInput.STAB, ClientInput.FEINT, ClientInput.PARRY};
     private static final InputConstants.Key[] OLD_KEYS = new InputConstants.Key[KEYS.length];
     private static final List<Map<String, Object>> FRAMES = new ArrayList<>();
     private static final List<Map<String, Object>> INPUTS = new ArrayList<>();
     private static final AtomicInteger SAVED = new AtomicInteger();
     private static int ticks, captureTick, frames, releaseAt;
-    private static boolean initialized, active, done, followup, modelSeen, readySeen;
+    private static boolean initialized, done, followup, modelSeen, readySeen;
+    private static volatile boolean active;
     private static boolean clientAttack, serverAttack, clientHeavy, serverHeavy;
     private static boolean clientRelease, serverRelease, clientMorph, serverMorph, clientGuard, serverGuard;
     private static boolean clientCaught, serverCaught, clientRiposte, serverRiposte, opponentSeen;
+    private static boolean clientCounter, serverCounter, clientThwack, serverThwack;
     private static int opponentRenderFrames;
     private static float initialPlayerHealth, initialOpponentHealth = Float.NaN, minOpponentHealth = Float.POSITIVE_INFINITY;
     private static final Map<String, Object> CONDITIONS = new LinkedHashMap<>();
@@ -60,12 +65,16 @@ public final class LiveCapture {
     private static int previousFps;
     private static boolean previousHideGui, previousPause;
     private static CameraType previousView;
+    @Nullable private static HumanoidArm previousMainArm;
     private static long startNanos;
     private static Path out;
     private static volatile UUID playerId;
     @Nullable private static CombatPose renderedPose;
+    @Nullable private static float[] carriedRotation;
+    @Nullable private static double[] carriedIdleDelta;
     private record ServerSample(long tick, Phase phase, int serial, boolean heavy, boolean morphed,
-                                int parriedHits, boolean activeParry, float health, @Nullable LiveOpponent.Sample opponent) {}
+                                int parriedHits, boolean activeParry, boolean countered, boolean thwacked,
+                                float health, HumanoidArm arm, @Nullable LiveOpponent.Sample opponent) {}
     private static volatile ServerSample server;
 
     private LiveCapture() {}
@@ -75,6 +84,16 @@ public final class LiveCapture {
             modelSeen = true;
             renderedPose = pose;
             readySeen = ready;
+        }
+    }
+
+    public static boolean recording() { return active; }
+
+    public static void recordCarriedRotation(AbstractClientPlayer player, float x, float y, float z, double[] reference) {
+        if (active && player == Minecraft.getInstance().player) {
+            carriedRotation = new float[]{x, y, z};
+            carriedIdleDelta = Mat3.zyx(reference[0], reference[1], reference[2]).transpose()
+                    .mul(Mat3.zyx(x, y, z)).toZyx();
         }
     }
 
@@ -101,9 +120,9 @@ public final class LiveCapture {
         if (player == null || mc.getOverlay() != null) return;
         if (!initialized) {
             if (PoseSheet.running()) throw new IllegalStateException("Live capture cannot run with frozen pose sheets");
-            if (!List.of("attack", "combo", "heavy", "feint", "morph", "parry", "riposte").contains(SCENE))
+            if (!List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "hitstop").contains(SCENE))
                 throw new IllegalArgumentException("Unknown live capture scene: " + SCENE);
-            String item = item("steelclash.liveCaptureItem", "minecraft:iron_sword");
+            String item = item("steelclash.liveCaptureItem", DEFAULT_ITEM);
             String offhand = item("steelclash.liveCaptureOffhand", "minecraft:air");
             out = Path.of(System.getProperty("steelclash.liveCaptureOut", new java.io.File(mc.gameDirectory,
                     "steelclash-live/" + System.currentTimeMillis()).getPath()));
@@ -119,6 +138,14 @@ public final class LiveCapture {
             // F1 hides vanilla's first-person hands too; cancel GUI layers separately instead.
             mc.options.hideGui = false;
             mc.options.setCameraType(CameraType.valueOf(System.getProperty("steelclash.liveCaptureView", "FIRST_PERSON")));
+            String mainArm = System.getProperty("steelclash.liveCaptureArm");
+            if (mainArm != null) {
+                previousMainArm = mc.options.mainHand().get();
+                HumanoidArm requested = HumanoidArm.valueOf(mainArm);
+                mc.options.mainHand().set(requested);
+                mc.options.broadcastOptions();
+                player.setMainArm(requested);
+            }
             for (int i = 0; i < KEYS.length; i++) {
                 OLD_KEYS[i] = KEYS[i].getKey();
                 KEYS[i].setKey(InputConstants.Type.KEYSYM.getOrCreate(321 + i)); // numpad 1..4
@@ -151,7 +178,7 @@ public final class LiveCapture {
         var machine = player.getData(ModAttachments.COMBAT).machine;
         if (!active) {
             if (!BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString()
-                    .equals(item("steelclash.liveCaptureItem", "minecraft:iron_sword"))
+                    .equals(item("steelclash.liveCaptureItem", DEFAULT_ITEM))
                     || !BuiltInRegistries.ITEM.getKey(player.getOffhandItem().getItem()).toString()
                     .equals(item("steelclash.liveCaptureOffhand", "minecraft:air")))
                 throw new IllegalStateException("Live capture equipment was not applied by the server");
@@ -187,14 +214,18 @@ public final class LiveCapture {
                     mc.options.getCameraType(), player.getMainArm(), player.getMainHandItem(), player.getOffhandItem(), out);
         }
         captureTick++;
-        if (captureTick == 20) {
-            boolean guard = SCENE.equals("parry") || SCENE.equals("riposte");
+        if (captureTick == 20 && !SCENE.equals("idle")) {
+            boolean guard = SCENE.equals("parry") || SCENE.equals("riposte") || SCENE.equals("counter");
             press(guard ? 3 : 0);
             releaseAt = captureTick + (SCENE.equals("heavy") ? 9 : guard ? 40 : 1);
         }
         if (captureTick == releaseAt) release();
         if (!followup && captureTick > 20) {
             if (SCENE.equals("riposte") && machine.parriedHits() > 0 && machine.isRiposteReady()) {
+                release(); press(0); followup = true; releaseAt = captureTick + 1;
+            } else if (SCENE.equals("counter") && server != null && server.opponent != null
+                    && server.opponent.phase() == Phase.WINDUP
+                    && server.opponent.elapsedUs() >= server.opponent.durationUs() - 150_000) {
                 release(); press(0); followup = true; releaseAt = captureTick + 1;
             } else if (SCENE.equals("combo") && machine.phase() == Phase.RELEASE && machine.phaseTick() >= 2) {
                 press(1); followup = true; releaseAt = captureTick + 1;
@@ -210,6 +241,8 @@ public final class LiveCapture {
         clientGuard |= machine.phase() == Phase.PARRY;
         clientCaught |= machine.parriedHits() > 0;
         clientRiposte |= SCENE.equals("riposte") && machine.isActiveParry() && machine.phase().isAttack();
+        clientCounter |= machine.predictionState().countered();
+        clientThwack |= machine.isThwacked();
         maxClientSerial = Math.max(maxClientSerial, machine.attackSerial());
         if (captureTick >= 140) finish(mc);
     }
@@ -247,12 +280,13 @@ public final class LiveCapture {
         if (player == null) return;
         var machine = player.getData(ModAttachments.COMBAT).machine;
         server = new ServerSample(event.getServer().getTickCount(), machine.phase(), machine.attackSerial(), machine.isHeavy(),
-                machine.isMorphed(), machine.parriedHits(), machine.isActiveParry(), player.getHealth(), LiveOpponent.tick(player));
+                machine.isMorphed(), machine.parriedHits(), machine.isActiveParry(), machine.predictionState().countered(),
+                machine.isThwacked(), player.getHealth(), player.getMainArm(), LiveOpponent.tick(player, active));
     }
 
     @SubscribeEvent
     static void beforeFrame(RenderFrameEvent.Pre event) {
-        if (active) { renderedPose = null; modelSeen = readySeen = opponentSeen = false; }
+        if (active) { renderedPose = null; carriedRotation = null; carriedIdleDelta = null; modelSeen = readySeen = opponentSeen = false; }
     }
 
     @SubscribeEvent
@@ -278,9 +312,12 @@ public final class LiveCapture {
         row.put("phase_us", machine.phaseElapsedUs()); row.put("serial", machine.attackSerial()); row.put("type", machine.type());
         row.put("heavy", machine.isHeavy()); row.put("variant", machine.variant()); row.put("mirrored", machine.isMirrored());
         row.put("model_seen", modelSeen); row.put("ready_seen", readySeen);
+        row.put("carried_rotation", carriedRotation);
+        row.put("carried_idle_delta", carriedIdleDelta);
         row.put("opponent_seen", opponentSeen);
         if (opponentSeen) opponentRenderFrames++;
         row.put("parried_hits", machine.parriedHits()); row.put("active_parry", machine.isActiveParry());
+        row.put("countered", machine.predictionState().countered()); row.put("thwacked", machine.isThwacked());
         row.put("health", player.getHealth());
         row.put("rendered_phase", renderedPose == null ? null : renderedPose.phase());
         row.put("rendered_progress", renderedPose == null || renderedPose.swing() == null ? null : renderedPose.swing().progress());
@@ -293,6 +330,7 @@ public final class LiveCapture {
             serverRelease |= sample.phase == Phase.RELEASE; serverMorph |= sample.morphed; serverGuard |= sample.phase == Phase.PARRY;
             serverCaught |= sample.parriedHits > 0;
             serverRiposte |= SCENE.equals("riposte") && sample.activeParry && sample.phase.isAttack();
+            serverCounter |= sample.countered; serverThwack |= sample.thwacked;
             if (sample.opponent != null) {
                 if (Float.isNaN(initialOpponentHealth)) initialOpponentHealth = sample.opponent.health();
                 minOpponentHealth = Math.min(minOpponentHealth, sample.opponent.health());
@@ -312,6 +350,10 @@ public final class LiveCapture {
         mc.options.framerateLimit().set(previousFps);
         mc.options.hideGui = previousHideGui; mc.options.pauseOnLostFocus = previousPause;
         mc.options.setCameraType(previousView);
+        if (previousMainArm != null) {
+            mc.options.mainHand().set(previousMainArm); mc.options.broadcastOptions();
+            if (mc.player != null) mc.player.setMainArm(previousMainArm);
+        }
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("scene", SCENE); report.put("frames", FRAMES); report.put("inputs", INPUTS);
         report.put("conditions", CONDITIONS);
@@ -321,7 +363,9 @@ public final class LiveCapture {
         report.put("client_release", clientRelease); report.put("server_release", serverRelease);
         report.put("client_morph", clientMorph); report.put("server_morph", serverMorph);
         report.put("client_guard", clientGuard); report.put("server_guard", serverGuard);
-        if (SCENE.equals("riposte")) {
+        report.put("client_counter", clientCounter); report.put("server_counter", serverCounter);
+        report.put("client_thwack", clientThwack); report.put("server_thwack", serverThwack);
+        if (LiveOpponent.enabled()) {
             report.put("client_caught", clientCaught); report.put("server_caught", serverCaught);
             report.put("client_riposte", clientRiposte); report.put("server_riposte", serverRiposte);
             report.put("opponent_render_frames", opponentRenderFrames);
@@ -329,7 +373,10 @@ public final class LiveCapture {
         }
         report.put("client_serials", maxClientSerial - firstSerial); report.put("server_serials", maxServerSerial - firstServerSerial);
         Files.writeString(out.resolve("capture.json"), new GsonBuilder().serializeNulls().setPrettyPrinting().create().toJson(report));
-        if (!SCENE.equals("parry") && (!clientAttack || !serverAttack)) throw new IllegalStateException("Live input did not reach client and server");
+        if (!List.of("idle", "parry").contains(SCENE) && (!clientAttack || !serverAttack)) throw new IllegalStateException("Live input did not reach client and server");
+        if (SCENE.equals("idle") && (clientAttack || serverAttack || !INPUTS.isEmpty()
+                || FRAMES.stream().anyMatch(frame -> frame.get("phase") != Phase.IDLE)))
+            throw new IllegalStateException("Live idle scene was not idle throughout");
         if (SCENE.equals("combo") && (!followup || maxClientSerial - firstSerial < 2 || maxServerSerial - firstServerSerial < 2))
             throw new IllegalStateException("Live combo did not start on client and server");
         if (SCENE.equals("heavy") && (!clientHeavy || !serverHeavy)) throw new IllegalStateException("Live heavy upgrade did not reach client and server");
@@ -340,5 +387,12 @@ public final class LiveCapture {
                 || opponentRenderFrames == 0 || !(minOpponentHealth < initialOpponentHealth)
                 || FRAMES.stream().anyMatch(frame -> ((Number) frame.get("health")).floatValue() < initialPlayerHealth)))
             throw new IllegalStateException("Live block/riposte did not catch the attack and damage the rendered opponent without player damage");
+        if (SCENE.equals("counter") && (!followup || !clientCounter || !serverCounter || opponentRenderFrames == 0
+                || !(minOpponentHealth < initialOpponentHealth)
+                || FRAMES.stream().anyMatch(frame -> ((Number) frame.get("health")).floatValue() < initialPlayerHealth)))
+            throw new IllegalStateException("Live matching counter failed to catch and return the attack");
+        if (SCENE.equals("hitstop") && (!clientThwack || !serverThwack || opponentRenderFrames == 0
+                || !(minOpponentHealth > 0 && minOpponentHealth < initialOpponentHealth)))
+            throw new IllegalStateException("Live light blunt strike did not stop in the surviving opponent");
     }
 }

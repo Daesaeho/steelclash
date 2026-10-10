@@ -62,6 +62,7 @@ public class ProceduralSwingAnimation implements IAnimation {
     private WeaponRig viewRig;
     /** Occupied non-shield hand, countering the body turn rather than following the weapon. */
     private double[] carriedArm = NO_TURN;
+    private double[] carriedReference = NO_TURN;
     /** PAL chooses its camera pass before setupAnim; keep ownership stable until its next tick. */
     private boolean firstPersonOwned;
 
@@ -106,10 +107,14 @@ public class ProceduralSwingAnimation implements IAnimation {
         if (carried != null && mc.options.getCameraType().isFirstPerson()
                 && !player.getOffhandItem().isEmpty() && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)) {
             carriedArm = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(), player.getViewXRot(state.getPartialTick()),
-                    carried.bodyDegrees(), !carried.leftHanded());
+                    carried.bodyDegrees(), !carried.leftHanded(), player.tickCount + (double) state.getPartialTick(),
+                    pose == null ? 1 : 1 - pose.weight());
+            if (LiveCapture.recording()) {
+                carriedReference = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(),
+                        player.getViewXRot(state.getPartialTick()), carried.bodyDegrees(), !carried.leftHanded());
+            }
         }
         PoseSheet.recordRenderedPose(player, pose);
-        LiveCapture.recordRenderedPose(player, pose, ready != null);
     }
 
     private static WeaponRig rigFor(CombatPose pose) {
@@ -133,6 +138,7 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public PlayerAnimBone get3DTransform(@NotNull PlayerAnimBone bone) {
+        LiveCapture.recordRenderedPose(player, pose, ready != null);
         // In first person the ready stance stands in for vanilla's arm pose: attacks blend from it and back to it.
         boolean readyBase = ready != null && FirstPersonMode.isFirstPersonPass();
         if (readyBase) {
@@ -155,6 +161,7 @@ public class ProceduralSwingAnimation implements IAnimation {
                     // carry a torch below the camera. Shields, bash/kick and guard keep their own choreography.
                     // Keep carrying the item as the weapon recovers; PAL handles the vanilla/model hand transition.
                     blendRotation(bone, carriedArm, 1);
+                    LiveCapture.recordCarriedRotation(player, bone.getRotX(), bone.getRotY(), bone.getRotZ(), carriedReference);
                     break;
                 }
                 firstPersonOffset(bone, pose, readyBase ? 0 : w, w); // over the ready stance, it already moved them
@@ -236,6 +243,7 @@ public class ProceduralSwingAnimation implements IAnimation {
         }
         if (name.equals("left_arm") != ready.leftHanded() && !player.getOffhandItem().isEmpty()) {
             blendRotation(bone, carriedArm, 1);
+            LiveCapture.recordCarriedRotation(player, bone.getRotX(), bone.getRotY(), bone.getRotZ(), carriedReference);
             return;
         }
         firstPersonOffset(bone, ready, 1, 1);

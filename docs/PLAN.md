@@ -17,6 +17,8 @@ BodyHealth and Legendary Survival Overhaul are deferred by user direction.
 - **Camera: first person is primary,** as in Chiv 2, with full third-person support as well.
 - *(2026-10-06: the default `CHIVALRY` control scheme restores this: one alternating slash key on left click and parry on right click. The `TWO_SLASH_KEYS` scheme keeps the per-side slash keys; gestures are optional, with an optional view lock.)* **Right mouse is always block** for anything you can melee with, as in Chiv 2. Throwing uses its own key. Bows and crossbows fire on left mouse (see controls).
 - **Parrying at 0 stamina = disarm,** as in Chiv 2. Your weapon is knocked out of your hands and drops in front of you. The config can switch this to a "holster" mode, where the weapon is locked for 3 s instead of dropping.
+- **Overlapping stagger:** hard guard breaks take priority over soft effects. A later soft effect neither relaxes nor extends that hard lockout. Equal-strength effects retain the longer remaining duration; applying a harder effect also retains any longer existing lockout.
+- **Ground-slam cover:** secondary stamina/stagger/knockback needs a clear collision path from the impact to the target at ground level. Solid collision shapes block it; fluids do not. This is the Minecraft slam's explicit cover policy, not a measured Chivalry constant.
 
 ---
 

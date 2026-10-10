@@ -11,11 +11,12 @@ import org.jetbrains.annotations.Nullable;
 /** Integrated-server actor for an opt-in live scene. Starts ordinary combat; never applies a frozen machine state. */
 final class LiveOpponent {
     private static final String TAG = "steelclash_live_opponent";
-    private static final boolean ENABLED = "riposte".equals(System.getProperty("steelclash.liveCapture"));
+    private static final String SCENE = System.getProperty("steelclash.liveCapture", "");
+    private static final boolean ENABLED = java.util.List.of("riposte", "counter", "hitstop").contains(SCENE);
     @Nullable private static Husk opponent;
     private static boolean started;
 
-    record Sample(int id, Phase phase, int serial, float health, boolean started) {}
+    record Sample(int id, Phase phase, long elapsedUs, long durationUs, int serial, float health, boolean started) {}
 
     private LiveOpponent() {}
 
@@ -27,11 +28,11 @@ final class LiveOpponent {
     }
 
     @Nullable
-    static Sample tick(ServerPlayer player) {
-        if (!ENABLED) return null;
+    static Sample tick(ServerPlayer player, boolean captureActive) {
+        if (!ENABLED || !captureActive) return null;
         if (opponent == null) {
             var actors = player.serverLevel().getEntitiesOfClass(Husk.class, player.getBoundingBox().inflate(6),
-                    actor -> actor.getTags().contains(TAG));
+                    actor -> actor.isAlive() && actor.getTags().contains(TAG));
             if (actors.size() > 1) throw new IllegalStateException("Live opponent fixture is not unique");
             if (actors.size() == 1) opponent = actors.getFirst();
         }
@@ -41,7 +42,7 @@ final class LiveOpponent {
             return null;
         }
         var machine = opponent.getData(ModAttachments.COMBAT).machine;
-        if (!started && playerMachine.phase() == Phase.PARRY) {
+        if (!SCENE.equals("hitstop") && !started && playerMachine.phase() == Phase.PARRY) {
             if (player.isCreative() || player.isSpectator() || !opponent.isNoAi() || opponent.getTarget() != null)
                 throw new IllegalStateException("Live opponent needs a survival player and a passive controlled actor");
             opponent.setYRot(180); opponent.setYHeadRot(180); opponent.yBodyRot = 180;
@@ -49,6 +50,7 @@ final class LiveOpponent {
             if (machine.phase() != Phase.WINDUP) throw new IllegalStateException("Live opponent attack was rejected");
             started = true;
         }
-        return new Sample(opponent.getId(), machine.phase(), machine.attackSerial(), opponent.getHealth(), started);
+        return new Sample(opponent.getId(), machine.phase(), machine.phaseElapsedUs(), machine.phaseDurationUs(),
+                machine.attackSerial(), opponent.getHealth(), started);
     }
 }

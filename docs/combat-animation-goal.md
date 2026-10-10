@@ -227,3 +227,12 @@ records a real server swing/catch/return, rendered-opponent presence and unchang
 conditions, evidence and limits are in [testing.md](testing.md#verified-renderer-and-live-opponent-checkpoint-2026-10-10).
 Counter/hit-stop/correction and broader acceptance remain open; this is progress on step 1 of the next-work plan.
 BodyHealth and LSO remain deferred.
+
+## Counter, thwack, idle and cover/stagger checkpoint (2026-10-10)
+
+Matching-counter and light-blunt thwack/visual-hold scenes now run through ordinary player input and server
+combat. Offhand idle inspection found a rigid carry pose and added bounded, mirrored breathing that fades into
+the attack carry. Left/right torch, bread, shield/empty controls and attack return are captured. C04 wall/floor
+secondary slam effects and C09 hard-stagger relaxation were reproduced before fixes and resolved under explicit
+cover/precedence rules. Current evidence, scope and remaining playtests:
+[testing.md](testing.md#carried-idle-counterthwack-and-c04c09-2026-10-10).

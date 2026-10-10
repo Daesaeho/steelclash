@@ -8,6 +8,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.level.ClipContext;
 
 /** Area effects of weapon specials. Lunges and sweeps are plain attacks; slams also shake everyone nearby. */
 public final class Specials {
@@ -30,7 +32,7 @@ public final class Specials {
                 new AABB(impact, impact).inflate(SLAM_RADIUS, 1.5, SLAM_RADIUS),
                 e -> e != attacker && e.isAlive() && !e.isSpectator() && !Allies.areAllies(attacker, e)
                         && !Allies.isFriendlyPet(attacker, e)
-                        && e.position().distanceTo(impact) <= SLAM_RADIUS);
+                        && e.position().distanceTo(impact) <= SLAM_RADIUS && clearGroundPath(attacker, impact, e));
         for (LivingEntity target : caught) {
             CombatData data = target.getData(ModAttachments.COMBAT);
             data.stamina.spend(spec.staminaDamage());
@@ -46,5 +48,11 @@ public final class Specials {
             level.sendParticles(ParticleTypes.EXPLOSION, impact.x, impact.y + 0.1, impact.z, 1, 0, 0, 0, 0);
             level.sendParticles(ParticleTypes.CRIT, impact.x, impact.y + 0.2, impact.z, 20, SLAM_RADIUS * 0.4, 0.1, SLAM_RADIUS * 0.4, 0.3);
         }
+    }
+
+    /** Ground-level shockwave: collision shapes block it; a small lift avoids clipping the supporting floor. */
+    private static boolean clearGroundPath(LivingEntity attacker, Vec3 impact, LivingEntity target) {
+        return attacker.level().clip(new ClipContext(impact.add(0, 0.1, 0), target.position().add(0, 0.1, 0),
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, attacker)).getType() == HitResult.Type.MISS;
     }
 }

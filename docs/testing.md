@@ -725,3 +725,50 @@ required GameTests in each Spartan dependency variant. The initial global graphi
 was repaired by client-only scope; both final headless runs completed. Two valid live mutations were caught;
 the wrapped-dependency mutation was repeated after the final client-only scoping change and was caught again.
 Saved diagnostics distinguish the intended renderer/outcome failures from compile or unrelated startup errors.
+
+## Carried idle, counter/thwack and C04/C09 (2026-10-10)
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/next-live-offhand`. Fresh baseline reproducers fail at their desired
+assertions for wall/floor slam effects and real-special hard-stagger downgrade, alongside three core precedence
+failures. The cover policy and stagger precedence are now explicit in PLAN.md and fixed in production code.
+
+The final eight active-Sodium captures include left/right torch idle, shield/empty idle controls, torch attack
+handover, matching counter, light-mace thwack and bread idle (1,111 actual frames). Conditions: SLIM Ari, iron
+helmet, 1920x1200, FOV 95, camera motion 0, 20 FPS cap; main arm/equipment and actual frame times are recorded.
+Main-arm changes use normal settings synchronization and restore after capture. The first stale-actor hit-stop
+prototype is excluded; the rebound and final cases track the newly staged living husk.
+
+Rendered torch idle is no longer rigid: pitch range is approximately 1.72 degrees, largest frame step about
+0.065 degrees on both main arms. Both matched 50-frame onion windows have no flags. The subtle motion retains
+item visibility and mirrored holding geometry, with fade-to-attack rather than a second weapon-arm solve.
+Shield/empty controls and the torch attack-to-idle sequence still pass their relevant scene/ownership checks.
+
+The counter observes success on client/server and return damage without player injury. The blunt scene observes
+client/server thwack and a surviving target. Its visual sample holds through an advancing simulated phase and
+then resumes, as recorded in `visual-hold-audit.json`. This covers the specific default exchange, not all hit-stop
+correction, FPS, model replacement or real LAN behavior.
+
+Remaining manual checks: idle while turning/moving/crouching, flat/large/custom items and models, item use/swap,
+other FOV/FPS, incoming interruptions, reload/tracking and LAN correction. Existing original-family style and
+blade calibration gates remain visible in the goal document.
+
+Restored verification: 193 fresh JUnit tests (26 XML reports, zero failed/skipped/stale) and all 174 required
+GameTests with Spartan integrations and all 174 without. Four valid mutations were caught by the intended core,
+wall/floor and actual-client assertions. The renderer-hook mutation has a separate saved-frame audit because
+the mutation helper does not extract unittest names: moving baseline versus zero-variation reverted solve.
+
+Vanilla-renderer torch idle/attack were also replayed. The first idle audit found seven setup-only `model_seen`
+flags false despite actual carried-bone transforms continuing. This was an observer-order issue; presence is now
+recorded in the render-bone callback instead of setup. The affected controls were repeated with that probe.
+Animation/core geometry and server behavior were not changed to repair the diagnostic.
+
+Rendered arm angles include legitimate view/body compensation. The final vanilla motion audit therefore records
+the rendered matrix relative to the static carry solve (`carried_idle_delta`) and bounds that breathing component,
+rather than treating all local Euler-angle changes as idle snaps. The final idle replay has zero render-presence
+misses, roughly 0.03 radians relative pitch range and maximum relative frame step about 0.00114 radians. The
+ordinary torch attack replay also retains idle model/ready ownership. This observer/reference work changes no
+animation math or gameplay rules.
+
+The final camera-relative renderer assertion was mutation-checked again: moving baseline passed; reverting the
+renderer call to the static solve failed. The original four-rule report is retained as `all-rule-mutants.report.json`,
+with the final renderer rerun in `render-reference-mutation.log`. All temporary code was restored before compilation.

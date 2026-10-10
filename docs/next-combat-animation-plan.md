@@ -15,6 +15,10 @@ Checkpoint progress, 2026-10-10: actual Sodium loading is repaired; torch/shield
 block/riposte opponent scene pass with verified Sodium and vanilla renderers. Evidence and remaining cases are
 in [testing.md](testing.md#verified-renderer-and-live-opponent-checkpoint-2026-10-10). The rest of this step is open.
 
+Next checkpoint: matching counter, light-blunt thwack/visual hold and occupied-hand idle are now captured. C04
+wall/floor cover and C09 stagger downgrade were reproduced and fixed under explicit rules. See
+[testing.md](testing.md#carried-idle-counterthwack-and-c04c09-2026-10-10). Interruption and broader acceptance remain open.
+
 **Deliverable:** a reliable renderer comparison and reproducible opponent-driven acceptance scenes.
 
 - Repair the dev Sodium dependency/service loading and require the runtime renderer probe to report `active`.

@@ -47,8 +47,15 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
 
     /** First-person carried item: keep the hand forward of the camera as the fighter's body twists beneath it. */
     public static double[] carryArm(double viewYaw, double viewPitch, double[] body, boolean left) {
+        return carryArm(viewYaw, viewPitch, body, left, 0, 0);
+    }
+
+    /** Small continuous breathing motion, fading to the stable carry solve as the combat pose takes ownership. */
+    public static double[] carryArm(double viewYaw, double viewPitch, double[] body, boolean left,
+                                    double ageTicks, double idleWeight) {
         Mat3 camera = Mat3.rotY(Math.toRadians(viewYaw)).mul(Mat3.rotX(Math.toRadians(viewPitch)));
-        Mat3 holding = Mat3.zyx(-1.1, 0, left ? -0.1 : 0.1);
+        double breath = Math.sin(ageTicks * 0.075) * Math.max(0, Math.min(1, idleWeight));
+        Mat3 holding = Mat3.zyx(-1.1 + breath * 0.015, 0, (left ? -1 : 1) * (0.1 + breath * 0.006));
         return WeaponRig.bodyRotation(body).transpose().mul(camera).mul(holding).toZyx();
     }
 

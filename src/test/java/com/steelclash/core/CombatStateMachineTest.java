@@ -289,6 +289,8 @@ class CombatStateMachineTest {
         assertEquals(Phase.STAGGER, m.phase());
         assertFalse(m.startAttack(AttackType.SLASH, TIMINGS));
         assertFalse(m.canParry(), "guard break: no parry");
+        m.tick(); m.tick(); m.tick();
+        assertEquals(Phase.IDLE, m.phase());
         m.stagger(3, true);
         assertTrue(m.canParry(), "parried: may parry the riposte");
         m.tick();

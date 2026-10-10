@@ -1,6 +1,8 @@
 # Unreleased
 
 **Fixes**
+- Ground-slam secondary effects stop at solid collision shapes along the ground-level path, protecting targets behind walls and beneath floors.
+- A softer hit cannot relax, shorten or extend an existing hard guard-break stagger. Repeated effects of the same strength preserve the longer remaining duration and avoid restarting the visual clock when nothing changes.
 - Ground slams spare the attacker's and allies' pets from secondary stamina drain, stagger and knockback. Hostile creatures and enemy-owned pets remain eligible targets.
 - Delayed special hits apply their on-hit stagger after parry grace, using the captured attack type even if the attacker has started another action. Fully blocked specials retain only their guard penalty.
 - Archer mobs draw or stow their sidearm before the combat brain chooses a new attack, preventing a fallback attack with the bow from repeatedly postponing the switch. Existing attacks and switch cooldowns still prevent equipment changes.
@@ -12,6 +14,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add idle, matching-counter and light-blunt hit-stop capture scenes, real main-arm selection and rendered carried-arm measurements. Bind the controlled opponent after staging, preventing a stale actor from the previous scene.
 - Load Sodium's actual renderer in dev runs using the official mod artifact and its boot-layer workarounds. Live captures can require an active Sodium or absent vanilla renderer, instead of treating jar discovery as proof.
 - Add an opponent-driven live block/riposte capture: a controlled husk attacks through normal server combat, while regular player inputs catch the hit and deliver the return attack. Record rendered-opponent presence, health and caught-parry/active-parry outcomes.
 - Record the ordered combat/animation plan, deferring BodyHealth and Legendary Survival Overhaul while prioritizing live acceptance, confirmed blockers, PAL bending, Blockbench authoring and authoritative collision.
@@ -37,6 +40,7 @@
 - A blow during your release interrupts your attack (Chivalry 2): whoever lands first wins the exchange. Blades landing in the same tick trade. Heavies with hyper armour are immune, and fire or falls don't count. `releaseInterrupt` turns it off.
 
 **Animation**
+- Carried non-shield items breathe subtly in first-person idle, mirrored for both main arms and fading into the existing attack carry. Weapon/grip alignment, shields and third-person posing keep their existing behavior.
 - First person: a carried non-shield item keeps the weapon ready stance active between attacks, avoiding the abrupt vanilla/model hand swap. Item use still yields to vanilla.
 - Keep PAL's camera ownership stable through its animation tick so an expiring pose cannot expose the player's helmet inside the first-person camera.
 - First person: carried non-shield offhand items hold a camera-relative pose during weapon attacks, rather than following the weapon's translation and torso sweep below the view. Shields retain their existing choreography.

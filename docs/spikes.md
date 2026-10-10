@@ -947,3 +947,58 @@ The renderer mutation was repeated against the final client-only bootstrap scope
 wrapped dependency was caught again. Restored build: 187 fresh JUnit passes, 25 reports with no failed/skipped/stale
 tests. Final GameTest runs: all 171 required tests passed with Spartan integrations and all 171 without them.
 No permanent change was made to defense, damage, timing or hit detection.
+
+## Cover, stagger precedence and carried idle (2026-10-10)
+
+C04/C09 were reproduced before fixes: two new full-mace-swing GameTests fail for wall/floor secondary effects,
+and a real special-hit test relaxes an existing hard guard break. All three desired assertions fail on the old
+code; the other 171 required tests pass. Three new core stagger tests also fail on the old overwrite behavior.
+
+The chosen cover rule is ground-level collision visibility from synthetic impact to target feet, lifted 0.1 block
+to avoid the supporting floor. COLLIDER shapes block it, fluids do not. The secondary effect remains an area query
+with its previous radius/cost/knockback; ally/pet filtering and vanilla direct-hit dispatch are preserved. Impact
+placement/capped aim/ground contact (C11) remain separate work, and this rule is not claimed as a Chivalry numeric
+constant. Wall/floor tests include exposed controls so a disabled slam cannot pass them.
+
+Hard stagger now ignores softer effects entirely, including longer soft effects that would otherwise extend
+hard punishment. Equal-strength effects cannot shorten the remaining microsecond duration; longer effects extend
+it. A harder effect retains a longer existing lockout. An ignored effect keeps the original phase clock, avoiding
+a presentation restart. Tests cover permission/duration/expiry and a full real special hitting a hard-staggered mob.
+No packet format or default duration changes were needed.
+
+The offhand idle review found a visible but rigid torch: actual rendered carrying rotation had zero variation on
+both main arms. A bounded breathing rotation now uses interpolated entity age and fades by combat-pose weight.
+It remains camera-relative/body-compensated, mirrored, and independent of the solved weapon arm. Matched idle
+replays span about 0.03 radians (1.72 degrees peak-to-peak) in pitch, with maximum frame steps around 0.00113 rad
+(0.065 degrees). The 50-frame before/after onion windows flag no jumps. This is scoped idle evidence, not a claim
+about moving, using/swapping items, every model, or every FPS. Torch attack return, bread idle, shield and empty
+controls are recorded alongside left/right main-arm checks.
+
+New ordinary-input scenes also verify matching counter and surviving-target blunt thwack. The first hit-stop
+prototype selected the previous world's actor before cleanup; its recorded actor was dead even though the real
+mace contact occurred. That run is excluded. Binding only after staging fixes the fixture. The valid hit-stop
+replay keeps the target alive at 14.6864 HP from 20. In the final capture, frames 37/38 hold the same rendered
+sample while raw recovery advances 50,000 us, and frame 39 resumes the live sample. This demonstrates the visual
+hold and expiry for this exchange as well as the gameplay thwack.
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/next-live-offhand`, including the baseline failure logs, actual
+frame conditions/rotations, paired idle sheets, onion reports and `visual-hold-audit.json`. BodyHealth/LSO remain
+deferred. Incoming windup/release interruption, item-use/swap, weapon-to-kick, tracking/reload, wider models/FPS/LAN,
+3D parry, anatomical collision and C11 remain outside this checkpoint.
+
+Four targeted mutations were caught: old stagger overwrite, missing cover predicate, disabled core idle motion,
+and the renderer reverting to its old static solve. Core/GameTest failures match their intended names; the saved
+actual-client audit independently shows approximately 0.03 radians baseline variation versus zero for the reverted
+renderer call. Source was restored. Final server checks pass all 174 required tests in both Spartan variants;
+fresh unit build passes 193 tests, 26 reports with no failures/skips/stale files.
+
+A final vanilla idle audit exposed the capture observer's ordering limit: seven frames lacked setup flags while
+the actual carried-bone rotation continued changing. LiveCapture presence now comes from `get3DTransform`, where
+the bone is consumed during rendering. This changes observation only, and the affected vanilla idle/attack controls
+were replayed. The rendered carry and gameplay changes retain their preceding evidence/limits.
+
+The replay also showed why local-bone Euler deltas alone are insufficient: view/body compensation can move those
+angles even when the desired camera-relative carry is smooth. The diagnostic now records the relative matrix
+against the static carry solve while capturing. This isolates the added breathing motion. Final vanilla idle
+records about 0.03 rad pitch range, 0.00114 rad maximum step and no render-presence misses; the torch attack replay
+retains idle model/ready ownership. Normal play does not compute this diagnostic reference.
