@@ -1018,3 +1018,21 @@ with empty/torch idle, the unchanged shield control and normal slash entry/retur
 active Sodium, SLIM Ari/iron helmet, 1920x1200 and actual FOV 95. Ready ownership remains present. The entry
 onion flags represent multi-frame chamber/release motion; no isolated hand-renderer replacement was identified.
 No test hardcodes this aesthetic tuning choice. The before/after sheet and source-hashed invocations are retained.
+
+## Live incoming contacts and item use (2026-10-10)
+
+Incoming windup/release interruption can be reproduced through ordinary input and a passive husk's normal jab.
+Observe positive `LivingDamageEvent.Post` at highest priority to retain contact phase before Steel Clash's normal
+flinch listener. A later rendered snapshot can already be staggered, so it cannot alone identify the contact phase.
+The default sword fixture needs the release jab scheduled with 300 ms of player windup remaining; a later jab
+can be interrupted before landing. This is fixture scheduling, not a new gameplay timing.
+
+Saved tagged actors can survive/reappear after staging; bind a per-launch tag rather than just the shared fixture
+tag. The integrated server also keeps ticking after capture deactivation, so shutdown assertions must retain one
+final server sample before clearing the active flag. A live null sample after deactivation caused a false failure
+despite recorded positive release damage and both stagger outcomes.
+
+Vanilla offhand bread use works alongside a sword: one consumed bread raises hunger 14 to 19; ordinary attack
+input cancels use before consumption. The custom first-person ready model yields to vanilla while eating and
+returns afterward. Captures show a visible pose change at that renderer handover; retain it as presentation work,
+not proof of a smooth transition. Evidence is in `20261010/live-transitions` under the external beta-audit root.

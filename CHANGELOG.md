@@ -14,6 +14,8 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add live incoming windup/release interruption and offhand food-use/cancel scenes. Record the real damaging contact phase, use hand, hunger and stack count; require matching client/server outcomes.
+- Isolate each live opponent with a unique launch tag and retain the final server sample during diagnostic shutdown, avoiding stale actor binding and false acceptance failures.
 - Add idle, matching-counter and light-blunt hit-stop capture scenes, real main-arm selection and rendered carried-arm measurements. Bind the controlled opponent after staging, preventing a stale actor from the previous scene.
 - Load Sodium's actual renderer in dev runs using the official mod artifact and its boot-layer workarounds. Live captures can require an active Sodium or absent vanilla renderer, instead of treating jar discovery as proof.
 - Add an opponent-driven live block/riposte capture: a controlled husk attacks through normal server combat, while regular player inputs catch the hit and deliver the return attack. Record rendered-opponent presence, health and caught-parry/active-parry outcomes.

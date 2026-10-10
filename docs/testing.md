@@ -786,3 +786,40 @@ Verified: compile and seven existing animation-file/metadata tests pass. Seven f
 torch and empty hands. Expected ready ownership is retained. The entry onion flags span neighboring chamber/release
 frames rather than an isolated renderer handover. The paired sheet shows the upright idle silhouette on both arms.
 This asset-only change does not require a new tuning-value test or local server suite.
+
+## Incoming interruption and food use (2026-10-10)
+
+The opt-in live diagnostic adds `interrupt-windup`, `interrupt-release`, `itemuse` and `use-attack`. Use the
+existing disposable `Steelclash Animation QA` world; see [animation.md](animation.md#live-capture-diagnostic)
+for staging side effects and defaults. Incoming scenes use a normal iron-sword slash and controlled opponent jab,
+not synthetic damage or a frozen combat state. The damage observer retains the victim's contact phase before
+the ordinary flinch listener. Both sides must stagger; windup interruption must prevent release.
+
+The first four successful scenes contain 555 actual frames under active Sodium, right main arm, SLIM Ari,
+iron helmet, 1920x1200/FOV 95. Incoming hits deal 3.5424 damage in the requested phase, changing health from
+20 to 16.4576. Food use starts/stops on both sides; consumption changes bread 64 to 63 and hunger 14 to 19.
+Attack cancellation retains all 64 bread. The last 20 frames return to idle/ready ownership; both interruption
+sequences retain model ownership throughout. These observations establish these integrated-server fixtures,
+not every weapon/profile, heavy hyperarmor, mouse binding, model, FOV, FPS or LAN exchange.
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/live-transitions`, with timestamped scene directories,
+`transition-summary.json`, commands/source hashes, actual frame times, contact sheets and onion reports.
+Review the flagged neighboring frames: damage tint, particles and several-frame stagger motion affect the
+interruption measurements. Food entry/exit also has an actual immediate change between the custom ready
+pose and vanilla eating pose. That handover is an open presentation issue; these captures do not establish
+smooth food transitions. Confirm both use ownership and a continuous silhouette when refining it.
+
+Excluded attempts: the first release fixture's jab was interrupted by the player's earlier strike, another launch
+found duplicate saved actors, and a repeated release outcome falsely failed after diagnostic shutdown cleared
+the live server sample. Each launch now uses a unique opponent tag; completion reads one retained final
+snapshot. Keep failed logs separate from acceptance. Production combat rules and animation transforms were
+not changed for this checkpoint. Item swaps, weapon-to-kick, moving/crouching and wider acceptance remain open.
+
+Verification: compilation passes (final restored compile retrieved from Gradle's cache); seven fresh existing
+`PoseBlendTest`/`VisualFrameTest` tests pass. After the shutdown fix, all three live mutation baselines pass, and
+3/3 valid faults are caught: disabling windup flinch, disabling release interruption, and retaining the ready
+renderer while eating. The mutation helper's broad-test warning groups the same Python wrapper name; its three
+commands select distinct windup, release and food-use fixtures. All temporary production changes are restored.
+No local server suite is required for these client-only opt-in diagnostics; the pushed build runs the normal CI gates.
+Final restored-source food-to-attack and existing block/riposte controls also pass (139 frames each). The riposte
+still catches the opponent's normal slash, returns damage and leaves the player unharmed after per-launch tagging.

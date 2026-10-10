@@ -43,7 +43,9 @@ import org.jetbrains.annotations.Nullable;
 @EventBusSubscriber(modid = SteelClash.MOD_ID, value = Dist.CLIENT)
 public final class LiveCapture {
     private static final String SCENE = System.getProperty("steelclash.liveCapture");
+    private static final boolean ITEM_USE = "itemuse".equals(SCENE) || "use-attack".equals(SCENE);
     private static final String DEFAULT_ITEM = "hitstop".equals(SCENE) ? "minecraft:mace" : "minecraft:iron_sword";
+    private static final String DEFAULT_OFFHAND = ITEM_USE ? "minecraft:bread" : "minecraft:air";
     private static final KeyMapping[] KEYS = {ClientInput.SLASH_RIGHT_TO_LEFT, ClientInput.STAB, ClientInput.FEINT, ClientInput.PARRY};
     private static final InputConstants.Key[] OLD_KEYS = new InputConstants.Key[KEYS.length];
     private static final List<Map<String, Object>> FRAMES = new ArrayList<>();
@@ -66,6 +68,9 @@ public final class LiveCapture {
     private static boolean previousHideGui, previousPause;
     private static CameraType previousView;
     @Nullable private static HumanoidArm previousMainArm;
+    @Nullable private static KeyMapping useKey;
+    @Nullable private static InputConstants.Key previousUseKey;
+    private static boolean foodStaged;
     private static long startNanos;
     private static Path out;
     private static volatile UUID playerId;
@@ -74,7 +79,8 @@ public final class LiveCapture {
     @Nullable private static double[] carriedIdleDelta;
     private record ServerSample(long tick, Phase phase, int serial, boolean heavy, boolean morphed,
                                 int parriedHits, boolean activeParry, boolean countered, boolean thwacked,
-                                float health, HumanoidArm arm, @Nullable LiveOpponent.Sample opponent) {}
+                                float health, HumanoidArm arm, boolean usingItem, int food, int offhandCount,
+                                @Nullable LiveOpponent.Sample opponent) {}
     private static volatile ServerSample server;
 
     private LiveCapture() {}
@@ -120,10 +126,13 @@ public final class LiveCapture {
         if (player == null || mc.getOverlay() != null) return;
         if (!initialized) {
             if (PoseSheet.running()) throw new IllegalStateException("Live capture cannot run with frozen pose sheets");
-            if (!List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "hitstop").contains(SCENE))
+            if (!List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "hitstop",
+                    "interrupt-windup", "interrupt-release", "itemuse", "use-attack").contains(SCENE))
                 throw new IllegalArgumentException("Unknown live capture scene: " + SCENE);
             String item = item("steelclash.liveCaptureItem", DEFAULT_ITEM);
-            String offhand = item("steelclash.liveCaptureOffhand", "minecraft:air");
+            String offhand = item("steelclash.liveCaptureOffhand", DEFAULT_OFFHAND);
+            if (ITEM_USE && !offhand.equals("minecraft:bread"))
+                throw new IllegalArgumentException("Food-use scenes require minecraft:bread in the offhand");
             out = Path.of(System.getProperty("steelclash.liveCaptureOut", new java.io.File(mc.gameDirectory,
                     "steelclash-live/" + System.currentTimeMillis()).getPath()));
             if (Files.exists(out.resolve("capture.json")) || Files.exists(out.resolve("screenshots")))
@@ -150,6 +159,11 @@ public final class LiveCapture {
                 OLD_KEYS[i] = KEYS[i].getKey();
                 KEYS[i].setKey(InputConstants.Type.KEYSYM.getOrCreate(321 + i)); // numpad 1..4
             }
+            if (ITEM_USE) {
+                useKey = mc.options.keyUse;
+                previousUseKey = useKey.getKey();
+                useKey.setKey(InputConstants.Type.KEYSYM.getOrCreate(325)); // numpad 5, vanilla item use
+            }
             KeyMapping.resetMapping();
             playerId = player.getUUID();
             for (String command : new String[]{"gamerule doDaylightCycle false", "gamerule doWeatherCycle false",
@@ -157,11 +171,11 @@ public final class LiveCapture {
                     "effect clear @s", "fill ~-3 300 ~-3 ~3 300 ~3 minecraft:polished_andesite",
                     "tp @s ~ 301 ~ 0 0", "kill @e[type=!player,distance=..12]",
                     "item replace entity @s weapon.mainhand with " + item,
-                    "item replace entity @s weapon.offhand with " + offhand}) player.connection.sendCommand(command);
-            if (LiveOpponent.enabled()) {
+                    "item replace entity @s weapon.offhand with " + offhand + (ITEM_USE ? " 64" : "")}) player.connection.sendCommand(command);
+            if (LiveOpponent.enabled() || ITEM_USE) {
                 player.connection.sendCommand("gamemode survival @s");
                 player.connection.sendCommand("effect give @s minecraft:instant_health 1 10 true");
-                player.connection.sendCommand(LiveOpponent.summonCommand());
+                if (LiveOpponent.enabled()) player.connection.sendCommand(LiveOpponent.summonCommand());
             }
             initialized = true;
         }
@@ -180,7 +194,7 @@ public final class LiveCapture {
             if (!BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString()
                     .equals(item("steelclash.liveCaptureItem", DEFAULT_ITEM))
                     || !BuiltInRegistries.ITEM.getKey(player.getOffhandItem().getItem()).toString()
-                    .equals(item("steelclash.liveCaptureOffhand", "minecraft:air")))
+                    .equals(item("steelclash.liveCaptureOffhand", DEFAULT_OFFHAND)))
                 throw new IllegalStateException("Live capture equipment was not applied by the server");
             player.getRandom().setSeed(61);
             firstSerial = machine.attackSerial();
@@ -215,13 +229,21 @@ public final class LiveCapture {
         }
         captureTick++;
         if (captureTick == 20 && !SCENE.equals("idle")) {
-            boolean guard = SCENE.equals("parry") || SCENE.equals("riposte") || SCENE.equals("counter");
-            press(guard ? 3 : 0);
-            releaseAt = captureTick + (SCENE.equals("heavy") ? 9 : guard ? 40 : 1);
+            if (ITEM_USE) {
+                useKey.setDown(true); KeyMapping.click(useKey.getKey());
+                INPUTS.add(Map.of("tick", captureTick, "time_ns", System.nanoTime() - startNanos, "key", useKey.getName()));
+                releaseAt = captureTick + 35;
+            } else {
+                boolean guard = SCENE.equals("parry") || SCENE.equals("riposte") || SCENE.equals("counter");
+                press(guard ? 3 : 0);
+                releaseAt = captureTick + (SCENE.equals("heavy") ? 9 : guard ? 40 : 1);
+            }
         }
         if (captureTick == releaseAt) release();
         if (!followup && captureTick > 20) {
-            if (SCENE.equals("riposte") && machine.parriedHits() > 0 && machine.isRiposteReady()) {
+            if (SCENE.equals("use-attack") && player.isUsingItem() && captureTick >= 32) {
+                release(); press(0); followup = true; releaseAt = captureTick + 1;
+            } else if (SCENE.equals("riposte") && machine.parriedHits() > 0 && machine.isRiposteReady()) {
                 release(); press(0); followup = true; releaseAt = captureTick + 1;
             } else if (SCENE.equals("counter") && server != null && server.opponent != null
                     && server.opponent.phase() == Phase.WINDUP
@@ -271,7 +293,15 @@ public final class LiveCapture {
         INPUTS.add(Map.of("tick", captureTick, "time_ns", System.nanoTime() - startNanos, "key", KEYS[index].getName()));
     }
 
-    private static void release() { for (var key : KEYS) key.setDown(false); }
+    private static void release() {
+        for (var key : KEYS) key.setDown(false);
+        if (useKey != null) useKey.setDown(false);
+    }
+
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGHEST)
+    static void damage(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post event) {
+        if (active) LiveOpponent.damaged(event);
+    }
 
     @SubscribeEvent
     static void serverTick(ServerTickEvent.Post event) {
@@ -279,9 +309,15 @@ public final class LiveCapture {
         var player = event.getServer().getPlayerList().getPlayer(playerId);
         if (player == null) return;
         var machine = player.getData(ModAttachments.COMBAT).machine;
+        if (ITEM_USE && active && !foodStaged) {
+            player.getFoodData().setFoodLevel(14);
+            player.getFoodData().setSaturation(0);
+            foodStaged = true;
+        }
         server = new ServerSample(event.getServer().getTickCount(), machine.phase(), machine.attackSerial(), machine.isHeavy(),
                 machine.isMorphed(), machine.parriedHits(), machine.isActiveParry(), machine.predictionState().countered(),
-                machine.isThwacked(), player.getHealth(), player.getMainArm(), LiveOpponent.tick(player, active));
+                machine.isThwacked(), player.getHealth(), player.getMainArm(), player.isUsingItem(),
+                player.getFoodData().getFoodLevel(), player.getOffhandItem().getCount(), LiveOpponent.tick(player, active));
     }
 
     @SubscribeEvent
@@ -319,6 +355,10 @@ public final class LiveCapture {
         row.put("parried_hits", machine.parriedHits()); row.put("active_parry", machine.isActiveParry());
         row.put("countered", machine.predictionState().countered()); row.put("thwacked", machine.isThwacked());
         row.put("health", player.getHealth());
+        row.put("using_item", player.isUsingItem());
+        row.put("use_hand", player.isUsingItem() ? player.getUsedItemHand() : null);
+        row.put("food", player.getFoodData().getFoodLevel());
+        row.put("offhand_count", player.getOffhandItem().getCount());
         row.put("rendered_phase", renderedPose == null ? null : renderedPose.phase());
         row.put("rendered_progress", renderedPose == null || renderedPose.swing() == null ? null : renderedPose.swing().progress());
         row.put("rendered_weight", renderedPose == null ? null : renderedPose.weight());
@@ -343,8 +383,11 @@ public final class LiveCapture {
     }
 
     private static void finish(Minecraft mc) throws IOException {
+        // The server continues ticking after active becomes false; keep this final outcome immutable for guards.
+        ServerSample finalServer = server;
         release();
         for (int i = 0; i < KEYS.length; i++) KEYS[i].setKey(OLD_KEYS[i]);
+        if (useKey != null) useKey.setKey(previousUseKey);
         KeyMapping.resetMapping();
         active = false; draining = true;
         mc.options.framerateLimit().set(previousFps);
@@ -373,7 +416,7 @@ public final class LiveCapture {
         }
         report.put("client_serials", maxClientSerial - firstSerial); report.put("server_serials", maxServerSerial - firstServerSerial);
         Files.writeString(out.resolve("capture.json"), new GsonBuilder().serializeNulls().setPrettyPrinting().create().toJson(report));
-        if (!List.of("idle", "parry").contains(SCENE) && (!clientAttack || !serverAttack)) throw new IllegalStateException("Live input did not reach client and server");
+        if (!List.of("idle", "parry", "itemuse").contains(SCENE) && (!clientAttack || !serverAttack)) throw new IllegalStateException("Live input did not reach client and server");
         if (SCENE.equals("idle") && (clientAttack || serverAttack || !INPUTS.isEmpty()
                 || FRAMES.stream().anyMatch(frame -> frame.get("phase") != Phase.IDLE)))
             throw new IllegalStateException("Live idle scene was not idle throughout");
@@ -394,5 +437,26 @@ public final class LiveCapture {
         if (SCENE.equals("hitstop") && (!clientThwack || !serverThwack || opponentRenderFrames == 0
                 || !(minOpponentHealth > 0 && minOpponentHealth < initialOpponentHealth)))
             throw new IllegalStateException("Live light blunt strike did not stop in the surviving opponent");
+        if (SCENE.startsWith("interrupt-")) {
+            Phase expected = SCENE.equals("interrupt-windup") ? Phase.WINDUP : Phase.RELEASE;
+            if (finalServer == null || finalServer.opponent == null || finalServer.opponent.hitPhase() != expected
+                    || !(finalServer.opponent.hitDamage() > 0) || opponentRenderFrames == 0
+                    || FRAMES.stream().noneMatch(frame -> frame.get("phase") == Phase.STAGGER)
+                    || FRAMES.stream().noneMatch(frame -> frame.get("server") instanceof ServerSample sample && sample.phase == Phase.STAGGER)
+                    || (expected == Phase.WINDUP && (clientRelease || serverRelease)))
+                throw new IllegalStateException("Incoming hit did not interrupt the requested live phase: " + expected);
+        }
+        if (ITEM_USE) {
+            if (FRAMES.stream().noneMatch(frame -> Boolean.TRUE.equals(frame.get("using_item")))
+                    || FRAMES.stream().noneMatch(frame -> frame.get("server") instanceof ServerSample sample && sample.usingItem)
+                    || FRAMES.subList(Math.max(0, FRAMES.size() - 20), FRAMES.size()).stream()
+                        .anyMatch(frame -> Boolean.TRUE.equals(frame.get("using_item"))
+                            || !(frame.get("server") instanceof ServerSample sample) || sample.usingItem))
+                throw new IllegalStateException("Item use did not start and stop on client and server");
+            if (SCENE.equals("itemuse") && (finalServer == null || finalServer.offhandCount >= 64 || finalServer.food <= 14))
+                throw new IllegalStateException("Live food use did not consume food");
+            if (SCENE.equals("use-attack") && (!followup || finalServer == null || finalServer.offhandCount != 64))
+                throw new IllegalStateException("Attack did not cancel food use before consumption");
+        }
     }
 }

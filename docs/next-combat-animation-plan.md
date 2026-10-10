@@ -4,7 +4,7 @@ User scope, 2026-10-10: plan the next Steel Clash work; defer BodyHealth and Leg
 Continue toward readable Chivalry-style combat with distinct original weapon-family styles and PvE priority.
 This document plans implementation; it does not install candidates or change gameplay rules.
 
-Baseline: `2f4d121`, Minecraft 1.21.1, NeoForge 21.1.252, Java 21, PAL 1.1.6. The latest build and both Spartan
+Original planning baseline: `2f4d121`, Minecraft 1.21.1, NeoForge 21.1.252, Java 21, PAL 1.1.6. The latest build and both Spartan
 GameTest variants passed in GitHub CI. The animation checkpoint has 187 fresh local JUnit passes and seven
 ordinary-input live capture scenes, totaling 970 frames. These do not establish every live transition or active
 Sodium rendering. Preserve the existing local `AGENTS.md` and `tools/` work.
@@ -17,7 +17,13 @@ in [testing.md](testing.md#verified-renderer-and-live-opponent-checkpoint-2026-1
 
 Next checkpoint: matching counter, light-blunt thwack/visual hold and occupied-hand idle are now captured. C04
 wall/floor cover and C09 stagger downgrade were reproduced and fixed under explicit rules. See
-[testing.md](testing.md#carried-idle-counterthwack-and-c04c09-2026-10-10). Interruption and broader acceptance remain open.
+[testing.md](testing.md#carried-idle-counterthwack-and-c04c09-2026-10-10). Newer evidence follows below.
+
+Next progress: ordinary opponent jabs now exercise incoming windup and release interruption, and vanilla offhand
+food use exercises consumption and attack cancellation. The first four successful scenes contain 555 actual frames.
+The vanilla eating/ready renderer handover visibly changes the hand/weapon pose; its presentation polish remains
+open. See [testing.md](testing.md#incoming-interruption-and-food-use-2026-10-10). Item swap, weapon-to-kick,
+moving/crouching and the broader acceptance matrix still remain. Review the food-use handover before the bending trial.
 
 **Deliverable:** a reliable renderer comparison and reproducible opponent-driven acceptance scenes.
 

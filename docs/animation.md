@@ -215,9 +215,10 @@ Use a disposable world with cheats and a fresh output directory:
 .\gradlew.bat runClient '-PquickPlay=Steelclash Animation QA' '-PliveCapture=combo' '-PliveCaptureOffhand=minecraft:torch' '-PliveCaptureOut=C:/dev/steelclash-live/combo'
 ```
 
-Scenes are `idle`, `attack`, `combo`, `heavy`, `feint`, `morph`, `parry`, `riposte`, `counter` and `hitstop`.
+Scenes are `idle`, `attack`, `combo`, `heavy`, `feint`, `morph`, `parry`, `riposte`, `counter`, `hitstop`,
+`interrupt-windup`, `interrupt-release`, `itemuse` and `use-attack`.
 Optional `liveCaptureItem` selects the main item (default iron sword, or mace for `hitstop`),
-`liveCaptureOffhand` selects the carried item (default air), and `liveCaptureView`
+`liveCaptureOffhand` selects the carried item (default air, or bread for the food-use scenes), and `liveCaptureView`
 uses a `CameraType` name such as `FIRST_PERSON` or `THIRD_PERSON_BACK`.
 
 The tool stages a sky platform, equips the real server player, temporarily maps numpad keys, then drives the
@@ -231,7 +232,7 @@ in the disposable world. Do not run this with PoseSheet.
 snapshot, input times, model/equipment/FOV and loaded mods. PNGs are chronologically numbered under `screenshots`.
 Scene guards require the requested outcomes on client and server and complete screenshot files before quitting.
 Use the recorded intervals when reviewing motion: the cap targets about 50 ms, not an exact fixed-step replay.
-These scripted keyboard cases do not establish mouse gestures, real LAN latency, hit-stop, item use or every model.
+These scripted keyboard cases do not establish mouse gestures, real LAN latency or every model.
 
 `-PliveCaptureRenderer=sodium` requires an initialized `SodiumWorldRenderer`; `vanilla` requires its class to be
 absent. The default `any` only records the result. Renderer discovery and the loaded-mod list are not substitutes
@@ -250,6 +251,19 @@ visible and can pollute whole-image onion measurements.
 temporarily changes the normal client main-arm option and broadcasts it to the server; it restores at completion.
 Frames record actual rendered carried-arm rotation, plus server main arm, counter/thwack state and opponent phase
 time. The opponent is bound only once capture is active, after staging cleanup/summoning has finished.
+Each launch gives its actor a unique tag, so a stale saved opponent cannot be mistaken for the current fixture.
+
+`interrupt-windup` and `interrupt-release` start a normal player slash and schedule the passive opponent's
+ordinary jab to contact during the selected phase. A high-priority damage observer records the phase of real
+positive damage before the normal flinch listener runs. Acceptance requires that contact phase, client/server
+stagger and a rendered opponent; a windup interrupt must prevent release. Scheduling is tuned to the default
+iron-sword fixture: changing weapon timings can invalidate the scene and must not be counted as a pass.
+
+`itemuse` and `use-attack` switch the disposable player to survival, stage 64 offhand bread and set hunger to
+14 with zero saturation. Vanilla item use is temporarily bound to numpad 5. `itemuse` holds it long enough to
+consume food, then lowers the hand; `use-attack` sends an ordinary attack before consumption. Both require
+client/server use to start and stop. Frames record use hand, hunger and stack count; the first scene requires
+consumption and the second requires the stack to remain intact. Hunger/equipment changes persist in this world.
 
 `counter` holds ordinary guard, observes the server opponent near the end of windup, then sends the matching slash
 through ClientInput. Both sides must observe a successful counter, return damage and no player health loss.
