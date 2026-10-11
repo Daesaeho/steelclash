@@ -697,7 +697,7 @@ the explicit runtime probe found Sodium's renderer class absent in the standard 
 
 ## Optional integration candidates (2026-10-10)
 
-The [kinematics review](../kinematics-compatibility-review.md#integration-design-and-acceptance-gates) defines the
+The [kinematics review](kinematics-compatibility-review.md#integration-design-and-acceptance-gates) defines the
 required future checks for server anatomical contacts, one injury backend, and PAL More Rotation/CPM adapters.
 Research/source inspection is complete for the stated scope; installation, dedicated-server loading, blocked-hit
 injuries, double damage/headshot reduction, death/downed/revive and custom-model alignment remain unverified.

@@ -889,7 +889,7 @@ loading is repaired and the active renderer is confirmed.
 
 ## Kinematics and optional integration review (2026-10-10)
 
-[kinematics-compatibility-review.md](../kinematics-compatibility-review.md) compares every section of the supplied
+[kinematics-compatibility-review.md](kinematics-compatibility-review.md) compares every section of the supplied
 three-page specification with the current source and records pinned candidate versions/source commits.
 Countered 2.0.1 was inspected through its distributed jar, mixin metadata, CFR and javap: client model-cube
 capture/picking is not a server sweep provider, and captured boxes are all named `cube`. Current server

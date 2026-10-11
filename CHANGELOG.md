@@ -17,23 +17,12 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
-- Consolidate developer documentation with a navigation map, concise goal/roadmap/findings/test guides and preserved historical evidence; correct stale background-capture and Sodium acceptance notes.
-- Add a two-attacker live active-parry scene with real packet-merge observations and a combat rule/reference table separating confirmed bugs from unresolved balance measurements.
-- Add opt-in hidden-window live/pose-sheet captures that avoid mouse grabbing, plus bounded Mercury/Google API assistant helpers and a local masked credential setup window. Bounded hidden live and pose-sheet captures and the configured API helpers have been verified; initial startup-window visibility remains unverified.
-- Add ordinary movement/crouch/sprint/turn, resource reload, humanoid mob attack/morph/kick and late-tracking acceptance scenes, with model, FOV/FPS, position and rendered mob-bone diagnostics.
-- Add live hotbar swaps, weapon-to-kick and buffered kick-to-attack controls, with rendered bone transforms, rig-blend state and a separate third-person player-mesh observer.
-- Add a live drink/bottle-return capture and record consuming-hand blend weight and stable item IDs alongside rendered rotations.
-- Add live incoming windup/release interruption and offhand food-use/cancel scenes. Record the real damaging contact phase, use hand, hunger and stack count; require matching client/server outcomes.
-- Isolate each live opponent with a unique launch tag and retain the final server sample during diagnostic shutdown, avoiding stale actor binding and false acceptance failures.
-- Add idle, matching-counter and light-blunt hit-stop capture scenes, real main-arm selection and rendered carried-arm measurements. Bind the controlled opponent after staging, preventing a stale actor from the previous scene.
-- Load Sodium's actual renderer in dev runs using the official mod artifact and its boot-layer workarounds. Live captures can require an active Sodium or absent vanilla renderer, instead of treating jar discovery as proof.
-- Add an opponent-driven live block/riposte capture: a controlled husk attacks through normal server combat, while regular player inputs catch the hit and deliver the return attack. Record rendered-opponent presence, health and caught-parry/active-parry outcomes.
-- Record the ordered combat/animation plan, deferring BodyHealth and Legendary Survival Overhaul while prioritizing live acceptance, confirmed blockers, PAL bending, Blockbench authoring and authoritative collision.
-- Document the kinematics-specification comparison and optional hitbox, injury and animation integration candidates. Correct the Sodium status to require verification of an initialized renderer rather than distribution-jar discovery.
-- Add an opt-in live animation capture tool that drives normal keyboard inputs and records actual rendered frames, frame times and integrated-server outcomes for attacks, combos, heavy upgrades, feints, morphs and held guard.
-- Pose sheets can select the main arm and offhand item, validate the rendered hand ownership, and log the actual skin/model and armor. Capture staging suppresses mob loot and fire overlays for clearer rig comparisons.
-- Record the combat/animation goal and original weapon-family style directions in `docs/combat-animation-goal.md`. Pose-sheet staging clears player effects so potion particles do not pollute motion captures.
-- Add three focused Codex skills for project context, change verification, and animation review, with helpers for current source routes, fresh test-result summaries, and chronologically ordered pose captures.
+- Simplify the current documentation guides and navigation; retain dated reports, setup notes and verification history in the archive.
+- Add ordinary-input live capture for attack chains, heavy/feint/morph/guard, opponent block/counter/riposte/AP, interruption, consumption, swaps, movement, reload and tracking. Record actual rendered frames, timestamps, client/server outcomes, model/equipment/FOV/FPS and rig diagnostics; isolated opponent tags and final server samples guard capture integrity.
+- Add opt-in background live/pose capture without mouse grabbing, with bounded runtime evidence; startup-window visibility remains unverified. Pose sheets select handedness/offhand/model conditions and suppress capture-world loot/fire/effect noise.
+- Initialize Sodium's actual dev renderer and require active/absent probes for renderer comparisons.
+- Add bounded Mercury/Google API helpers, masked local credential setup, and focused Codex skills for context, change verification and animation review.
+- Record the six-step combat/animation roadmap, original weapon styles and optional-mod source review; BodyHealth and LSO remain deferred.
 
 **Combat** (from the Chivalry 2 report)
 - Running out of stamina leaves you **exhausted** until it regenerates back to a quarter (`exhaustionRecoverFraction`): any blow you block breaks your guard (weapon: disarm and stagger; shield: guard broken), and you can't feint, morph or dash. The stamina bar pulses red meanwhile. Before, an empty bar only mattered on the exact hit that emptied it, and feints were free at zero.

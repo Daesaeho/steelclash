@@ -1,3 +1,5 @@
+Historical source review; current candidate status is in [compatibility](../compat.md#candidates-under-review), and adoption gates are in the [active roadmap](../next-combat-animation-plan.md).
+
 # Kinematics and optional-mod review
 
 Reviewed 2026-10-10 against Steel Clash `3d65b40`, Minecraft 1.21.1, NeoForge 21.1.252, Java 21 and Player Animation Library (PAL) 1.1.6. This is a source and artifact review, not an in-game compatibility certification. The proposed mods were not installed or added as dependencies.
@@ -7,7 +9,7 @@ The primary comparison is the supplied three-page **Chivalry 2 Melee Kinematics 
 ## Recommendation
 
 Planning update, 2026-10-10: the user deferred BodyHealth and LSO. Their findings below remain reference material;
-the active next-work sequence is [next-combat-animation-plan.md](next-combat-animation-plan.md).
+the active next-work sequence is [next-combat-animation-plan.md](../next-combat-animation-plan.md).
 
 1. Add server-authoritative contact location and anatomical collision to Steel Clash before connecting a limb-health backend. Countered's inspected implementation cannot supply this on a dedicated server.
 2. Trial PAL More Rotation for visible elbow/body bending, with an explicit item-axis adapter and blade-alignment checks. It is the closest fit to the current animation stack.
@@ -36,7 +38,7 @@ The inspected jar puts all five mixins in the **client** list. `LivingEntityRend
 
 `ModelOBB` has a name field, but `OBBCaptureContext.captureCube` names every captured box `"cube"`. The inspected capture path therefore does not provide semantic HEAD/ARM/TORSO labels. Nor does the jar provide a server bone-pose history or a server blade-versus-model sweep API.
 
-Steel Clash's [SwingTracer](../src/main/java/com/steelclash/combat/SwingTracer.java) queries living entities and tests blade segments against `getBoundingBox()` on the server. It does not call `GameRenderer.pick`. Installing Countered consequently does not replace Steel Clash's collision. This is an implementation finding from the 2.0.1 artifact; the project's broader advertised client/server support does not change that path.
+Steel Clash's [SwingTracer](../../src/main/java/com/steelclash/combat/SwingTracer.java) queries living entities and tests blade segments against `getBoundingBox()` on the server. It does not call `GameRenderer.pick`. Installing Countered consequently does not replace Steel Clash's collision. This is an implementation finding from the 2.0.1 artifact; the project's broader advertised client/server support does not change that path.
 
 Useful possibilities: client selection/debug visualization and geometric reference for a separately implemented server collision provider. Render-derived boxes alone cannot decide dedicated-server damage. CPM/custom renderers may bypass the `ModelPart.compile` hook, so their boxes require a real rendering test rather than an assumption.
 
@@ -70,7 +72,7 @@ A Steel Clash adapter must map combat phase/progress to CPM, stop interrupted ge
 
 The 1.21.1 source matches Steel Clash's PAL version and offers multi-axis bends, bend position/scale and playback/sync utilities. This could make elbows, torso anticipation and offhand poses more expressive while keeping the weapon arm tied to the authoritative arc.
 
-There is a concrete integration conflict. Steel Clash's [itemRotation](../src/main/java/com/steelclash/client/ProceduralSwingAnimation.java) compensates for PAL's item Y/Z convention with `bone.addRot(-x, -z, -y)`. More Rotation's [PlayerItemRotationFixMixin](https://github.com/kltyton/PlayerAnimationLibraryMoreRotation/blob/e02f9924dee3217efc6f31c782f9f948638c74ff/versions/1.21.1/common/src/main/java/com/kltyton/playeranimationlibrarymorerotation/mixin/PlayerItemRotationFixMixin.java) removes the swapped PAL transform and applies standard item axes. Keeping both assumptions would change weapon orientation. Add a version-aware convention adapter and compare hilt/tip alignment in both stacks before claiming compatibility.
+There is a concrete integration conflict. Steel Clash's [itemRotation](../../src/main/java/com/steelclash/client/ProceduralSwingAnimation.java) compensates for PAL's item Y/Z convention with `bone.addRot(-x, -z, -y)`. More Rotation's [PlayerItemRotationFixMixin](https://github.com/kltyton/PlayerAnimationLibraryMoreRotation/blob/e02f9924dee3217efc6f31c782f9f948638c74ff/versions/1.21.1/common/src/main/java/com/kltyton/playeranimationlibrarymorerotation/mixin/PlayerItemRotationFixMixin.java) removes the swapped PAL transform and applies standard item axes. Keeping both assumptions would change weapon orientation. Add a version-aware convention adapter and compare hilt/tip alignment in both stacks before claiming compatibility.
 
 Its recommended [PAL Bend Player Tools](https://github.com/kltyton/Pal-bend-player-tools/blob/main/pal_bend_player_tools.js) Blockbench exporter produces PAL animation JSON under `player_animations`. Steel Clash uses its own normalized, phase-based `steelclash_animations` format and procedural arm solve. A converter or runtime adapter is required. Multi-axis bend metadata also needs an actual Bendable Cuboids backend; writing bend values alone does not demonstrate visible deformation. Keep Steel Clash's existing state packets authoritative rather than running a second combat clock through the library's generic playback sync.
 
@@ -123,4 +125,4 @@ Before claiming support, test dedicated-server loading with each mod absent/pres
 
 For More Rotation/CPM, compare first/third person, both main arms, armor/offhand/shields and hilt-tip alignment with the addon enabled/disabled. Retiming, interruptions, combos and correction must follow Steel Clash's existing phase clock. Include normal live captures and actual renderer identity; discovery of a Sodium jar alone does not prove Sodium rendering.
 
-Current verification for the separate animation checkpoint: fresh compile/build, 187 JUnit tests, seven successful live scenes totaling 970 frames, and two actual-client reversions caught by their intended assertions. Follow-up [Sodium and vanilla-renderer scenes](archive/testing-history.md#verified-renderer-and-live-opponent-checkpoint-2026-10-10) pass with actual renderer identity; broader model/FPS/shader and candidate-mod coverage remain separate gates. No compatibility GameTests or multiplayer certification for the researched candidates are claimed.
+Current verification for the separate animation checkpoint: fresh compile/build, 187 JUnit tests, seven successful live scenes totaling 970 frames, and two actual-client reversions caught by their intended assertions. Follow-up [Sodium and vanilla-renderer scenes](testing-history.md#verified-renderer-and-live-opponent-checkpoint-2026-10-10) pass with actual renderer identity; broader model/FPS/shader and candidate-mod coverage remain separate gates. No compatibility GameTests or multiplayer certification for the researched candidates are claimed.

@@ -65,7 +65,7 @@ and [GameTest fixture guidance](testing.md#fixtures-and-evidence).
 
 ## Optional compatibility and local loading mods
 
-Candidate inspection is recorded in the [kinematics review](kinematics-compatibility-review.md); support requires
+Candidate inspection is recorded in the [kinematics review](archive/kinematics-compatibility-review.md); support requires
 the roadmap's runtime gates. BodyHealth/LSO are deferred. User-installed loading mods remain local and ignored,
 not release dependencies; record the actual addon stack when comparing captures. See
 [loading-mod evidence](archive/testing-history.md#optional-local-loading-mods-2026-10-10) and

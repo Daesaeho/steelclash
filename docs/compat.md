@@ -1,38 +1,41 @@
-# Compatibility
+# Compatibility and pack configuration
 
-Steel Clash 0.3.2-beta, Minecraft 1.21.1, NeoForge 21.1.252+. Install it on **both** the client and the server.
+Steel Clash 0.3.2-beta targets Minecraft 1.21.1 and NeoForge 21.1.252+. Install it on **both client and server**.
 
 ## Mods
 
 | Mod | Status | Notes |
 |---|---|---|
-| Player Animation Library 1.1.6+ | **Required** | Swing animations in first and third person. Other mods animating the player through it layer cleanly with ours. |
-| Spartan Weaponry (Unofficial) 1.2.3+ | Optional, integrated | Each Spartan weapon type maps to an archetype (table below). Its traits (armour piercing, backstab, reach and so on) still apply, because hits go through vanilla attack code. Its weapons join mob gear pools and the brigand loot. Tested by GameTests with and without it. |
-| Spartan Shields (Unofficial) 1.0.0+ | Optional, integrated | Basic shields block in a 150° cone and tower shields in a 180° cone; towers stop arrows from the front only. The parry key raises them. Tested with and without it. |
-| Better Combat | **Incompatible** | Both replace melee attacks; the game refuses to load with both. |
-| Epic Fight | **Incompatible** | Same. |
-| Other weapon mods | Works, unmapped | Items without a weapon profile keep vanilla combat. Add a profile through the item data map (below). |
-| Other shield mods | Usually works | Anything that performs `ItemAbilities.SHIELD_BLOCK` gets the basic shield cone and stamina rules. |
-| Mob AI mods | Case by case | Mobs in `#steelclash:fighters` get a spacing goal and the bot brain on top of their goals. Mods that replace a mob's melee goal may fight it; take the mob out of the tag. |
-| Sodium 0.8.13 (NeoForge) | Verified live controls | The corrected dev setup initializes the actual Sodium renderer. Torch continuity, shield/helmet return and an opponent-driven block/riposte pass with Sodium active and with `-PnoSodium`. This certifies those scenes; earlier discovery-only checks and broader model/FPS/shader cases retain their limits. |
-| Shaders / other renderers | Expected to work | Steel Clash renders through Player Animation Library and vanilla model hooks. One mixin, on `LivingEntityRenderer`, poses mob models: after `setupAnim` (arms, legs, head) and at the end of `setupRotations` (whole-body lean and twist). |
+| Player Animation Library 1.1.6+ | Required | Player swing animations in first and third person. |
+| Spartan Weaponry Unofficial 1.2.3+ | Optional, integrated | Weapon profiles, vanilla trait dispatch, mob gear and brigand loot; GameTests with/without it. |
+| Spartan Shields Unofficial 1.0.0+ | Optional, integrated | Basic/tower guard cones of 150°/180°; tower arrow blocking from the front; GameTests with/without it. |
+| Better Combat / Epic Fight | Incompatible | Both replace melee attacks; the game refuses to load with either alongside Steel Clash. |
+| Other weapon mods | Unmapped items retain vanilla combat | Assign a profile through the item data map below. |
+| Other shield mods | Usually works | `ItemAbilities.SHIELD_BLOCK` receives basic shield cone/stamina rules. |
+| Mob AI mods | Case by case | Remove conflicting mobs from `#steelclash:fighters` if another mod owns their melee goals. |
+| Sodium 0.8.13, NeoForge | Bounded live controls verified | Actual Sodium and `-PnoSodium` torch/shield/block-riposte scenes passed; [scope and evidence](archive/testing-history.md#verified-renderer-and-live-opponent-checkpoint-2026-10-10). |
+| Shaders / other renderers | Further acceptance required | PAL and vanilla model hooks are used; altered renderer/model stacks need their own checks. See [mixin risks](mixin-risk.md). |
 
 ### Candidates under review
 
-Countered's Accurate Hitboxes, BodyHealth, Legendary Survival Overhaul, CPM, CPM Animator Utils and PAL More
-Rotation have been reviewed for 1.21.1 NeoForge. None has an implemented or playtest-certified Steel Clash
-adapter. [Kinematics and compatibility review](kinematics-compatibility-review.md) records exact source revisions,
-the PDF comparison and integration gates. Important findings: Countered's inspected jar changes client picking
-and does not replace the server sweep; health mods need one owner for injury/headshot/death processing; More
-Rotation changes the item-axis convention that Steel Clash currently compensates for. CPM utilities are an
-authoring option, with a separate cosmetic/runtime integration still required.
+These candidates have source/artifact reviews but no implemented or playtest-certified Steel Clash adapter.
+
+| Candidate | Finding | Planned decision |
+|---|---|---|
+| PAL More Rotation | Changes PAL's item-axis convention; bends need a rendered backend | [Step 3](next-combat-animation-plan.md#3-prototype-pal-more-rotation-on-the-existing-rig): optional prototype with grip/blade checks. |
+| Countered's Accurate Hitboxes | Reviewed jar changes client picking, not the authoritative server sweep | [Step 5](next-combat-animation-plan.md#5-add-accurate-server-collision-in-two-stages): server-owned contact metadata and optional anatomical collision. |
+| CPM / CPM Animator Utils | Cosmetic rig and authoring tools; no automatic clip conversion or collision | [Step 6](next-combat-animation-plan.md#6-evaluate-cpm-after-the-default-rig-is-stable): bone ownership, lifecycle and fallback prototype. |
+| BodyHealth / Legendary Survival Overhaul | Injury systems require one damage/headshot/death owner | Deferred by user direction. |
+
+Pinned sources, inspected versions and the PDF comparison are preserved in the
+[dated compatibility review](archive/kinematics-compatibility-review.md). Source inspection establishes no runtime support.
 
 ### Weapon archetypes
 
 | Archetype | Vanilla | Spartan Weaponry |
 |---|---|---|
 | sword | swords | longsword, katana, saber |
-| rapier | | rapier (fast, light stabs) |
+| rapier | | rapier |
 | dagger | | dagger, parrying dagger, throwing knife |
 | axe | axes | battleaxe, tomahawk |
 | blunt | mace | battle hammer, warhammer, flanged mace, club |
@@ -40,25 +43,60 @@ authoring option, with a separate cosmetic/runtime integration still required.
 | polearm | | halberd, glaive, scythe |
 | two_handed | | greatsword |
 | staff | | quarterstaff |
-| claw, beast, heavy_beast | | used by unarmed mobs (zombie hands, spiders, ravagers…) |
+| claw, beast, heavy_beast | | unarmed mobs such as zombies, spiders and ravagers |
 
-Two-handed archetypes (two_handed, polearm, spear) can't raise an offhand shield.
+Two-handed archetypes (`two_handed`, `polearm`, `spear`) cannot raise an offhand shield.
 
 ## Config
 
-The common config (`steelclash-common.toml`, the server's copy counts) has sections for stamina, defense, offense, mobs and network. The client config (`steelclash-client.toml`) covers the HUD, camera motion, hit-stop, scroll attacks, telegraph labels and the tutorial hint. Both can be edited in game under *Mods → Steel Clash → Config*.
+The server's `steelclash-common.toml` controls stamina, defense, offense, mobs and networking.
+`steelclash-client.toml` controls HUD, camera motion, hit-stop, scroll attacks, telegraph labels and tutorial hints.
+Edit both through **Mods → Steel Clash → Config**.
 
 ## For pack makers
 
-| What | Where | Format |
+### Weapon profiles
+
+Profiles live at `data/<ns>/steelclash/weapon_profile/<name>.json` in registry `steelclash:weapon_profile`.
+Start from a [built-in profile](../src/main/resources/data/steelclash/steelclash/weapon_profile/sword.json).
+
+| Fields | Meaning |
+|---|---|
+| `archetype`, `reference_attack_speed`, `speed_scaling` | Family and attack-speed scaling. |
+| `attacks.slash`, `.overhead`, `.stab` | Each attack's timing, damage, arc and contact settings below. |
+| `guard.parry_ticks`, `.recovery`, `.cone`, `.stamina_mult` | Defense window, recovery, angle and stamina scaling. |
+| `riposte_windup_mult` | Riposte startup fallback when an attack omits `riposte_ms`. |
+| `heavy.windup_extra_ms`, `.recovery_extra_ms` | Added heavy startup/recovery; without `windup_extra_ms`, `windup_mult` is the fallback. |
+| `heavy.damage_mult`, `.stamina_damage_mult` | Heavy damage and guard-stamina scaling. |
+| `hyper_armor_on_heavy`, `damage_type`, `special` | Heavy protection, default `cut`/`blunt`/`chop`, and special attack. |
+
+Per-attack fields:
+
+| Fields | Meaning |
+|---|---|
+| `windup`, `release`, `recovery` | Tick-based durations. |
+| `windup_ms`, `release_ms`, `recovery_ms` | Millisecond overrides; each overrides its tick equivalent, and units can be mixed. |
+| `combo_ms`, `riposte_ms` | Chained/riposte windup; combo defaults to ordinary windup, riposte to ordinary windup × `riposte_windup_mult`. |
+| `damage`, `reach_bonus`, `stamina_damage`, `stamina_cost`, `damage_type` | Damage multiplier, reach adjustment, guard damage, cost and damage-type override. |
+| `arc`, `variants`, `max_targets` | Swing shape/width, optional variant keyframes and target limit. |
+| `contact` | `cleave`, `thwack` or `cleave_on_kill`; unset blunt attacks use `cleave_on_kill`, other attacks cleave. |
+| `thwack_ms` | Recovery measured from contact; defaults to ordinary recovery. |
+
+### Item and entity mappings
+
+An item profile mapping at `data/<ns>/data_maps/item/weapon_profile.json`:
+
+```json
+{"values": {"mymod:big_sword": {"profile": "steelclash:two_handed"}}}
+```
+
+| Purpose | Data path or tag | Value / notes |
 |---|---|---|
-| Weapon profiles | `data/<ns>/steelclash/weapon_profile/<name>.json` (datapack registry `steelclash:weapon_profile`) | `archetype`, `reference_attack_speed`, `speed_scaling`, `attacks` (`slash`/`overhead`/`stab`, each with `windup`/`release`/`recovery` in ticks or, more precisely, `windup_ms`/`release_ms`/`recovery_ms` in milliseconds (milliseconds win where both are given, and you can mix them), `damage` multiplier, `arc` shape and width, optional `variants` keyframes, `max_targets`, `contact` (`cleave`, `thwack` or `cleave_on_kill`; unset, blunt attacks use `cleave_on_kill` and the rest cleave), `thwack_ms` (recovery after a thwack, from the contact; defaults to the normal recovery), `combo_ms` (windup when the attack is chained out of the previous attack's recovery; defaults to the normal windup), `riposte_ms` (windup as a riposte; defaults to the windup times `riposte_windup_mult`), `reach_bonus`, `stamina_damage`, `stamina_cost`, `damage_type`), `guard` (`parry_ticks`, `recovery`, `cone`, `stamina_mult`), `riposte_windup_mult`, `heavy` (`windup_extra_ms` and `recovery_extra_ms` added to the attack's windup and recovery, or, without `windup_extra_ms`, `windup_mult`; plus `damage_mult` and `stamina_damage_mult`), `hyper_armor_on_heavy`, `damage_type` (`cut`/`blunt`/`chop`), `special`. Copy one of the built-in profiles in `data/steelclash/steelclash/weapon_profile/` as a starting point. |
-| Item → profile | `data/<ns>/data_maps/item/weapon_profile.json` | `{"values": {"mymod:big_sword": {"profile": "steelclash:two_handed"}}}` |
-| Which mobs fight | `#steelclash:fighters` (entity tag) | Telegraphed, parryable attacks and the bot brain. |
-| Mob's unarmed profile | `data_maps/entity_type/mob_profile.json` | `{"profile": "steelclash:claw"}` |
-| Mob personality | `data_maps/entity_type/bot_style.json` | `shambler`, `duelist`, `rusher`, `brute`, `skirmisher` |
-| Mobs that spawn armed | `#steelclash:armable` | Chances per difficulty are in the mobs config. |
-| Mob gear pools | `#steelclash:mob_weapons/tier_1`, `tier_2`, `tier_3`, `#steelclash:mob_shields`, `#steelclash:soldier_weapons/footman`, `knight` | Item tags; entries from optional mods need `"required": false`. |
-| Archer sidearms | `#steelclash:sidearm_users` (entity types: skeleton, stray, bogged), `#steelclash:mob_sidearms/tier_1`, `tier_2`, `tier_3` (items: Spartan Weaponry daggers) | A sidearm user spawned with a bow or crossbow also gets a sidearm from the tier its difficulty rolls; it's saved with the mob. Chance: `sidearmChance`. |
-| Brigand camp | `worldgen/structure/brigand_camp.json`, `structure_set/brigand_camps.json`, biome tag `#steelclash:has_structure/brigand_camp` | Remove the structure set to disable camps. |
-| Soldier night spawns | `neoforge/biome_modifier/soldier_spawns.json` | Override it with an empty `spawners` list to disable them. |
+| Fighting mobs | `#steelclash:fighters` | Telegraphed attacks and bot brain. |
+| Unarmed mob profile | `data_maps/entity_type/mob_profile.json` | `{"profile": "steelclash:claw"}` |
+| Bot personality | `data_maps/entity_type/bot_style.json` | `shambler`, `duelist`, `rusher`, `brute`, `skirmisher` |
+| Armed spawns | `#steelclash:armable` | Difficulty-dependent chances in common config. |
+| Gear pools | `#steelclash:mob_weapons/tier_1`, `tier_2`, `tier_3`; `#steelclash:mob_shields`; `#steelclash:soldier_weapons/footman`, `knight` | Optional-mod entries need `"required": false`. |
+| Archer sidearms | `#steelclash:sidearm_users`; `#steelclash:mob_sidearms/tier_1`, `tier_2`, `tier_3` | Skeleton/stray/bogged bow or crossbow users; saved sidearm from the difficulty tier, controlled by `sidearmChance`. |
+| Brigand camps | `worldgen/structure/brigand_camp.json`, `structure_set/brigand_camps.json`, `#steelclash:has_structure/brigand_camp` | Remove the structure set to disable camps. |
+| Soldier night spawns | `neoforge/biome_modifier/soldier_spawns.json` | Override with an empty `spawners` list to disable. |

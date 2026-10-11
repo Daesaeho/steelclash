@@ -75,7 +75,7 @@ Select the relevant checks below; preserve the player guide's normal controls an
 
 ### Compatibility and release
 
-- Optional-mod stacks, clean config/world, resource reload, dedicated server, release packaging. [Candidate gates](kinematics-compatibility-review.md#integration-design-and-acceptance-gates), [release](archive/testing-history.md#manual-in-game-checklist-m8-release).
+- Optional-mod stacks, clean config/world, resource reload, dedicated server, release packaging. [Candidate gates](archive/kinematics-compatibility-review.md#integration-design-and-acceptance-gates), [release](archive/testing-history.md#manual-in-game-checklist-m8-release).
 
 ## Remaining unsupported checks
 
