@@ -171,6 +171,10 @@ Scene guards require the requested outcomes on client and server and complete sc
 Use the recorded intervals when reviewing motion: the cap targets about 50 ms, not an exact fixed-step replay.
 These scripted keyboard cases do not establish mouse gestures, real LAN latency or every model.
 
+The `turn-cap` scene requests 90° yaw changes before the ordinary client limiter during windup/release.
+Reports include native client/server resolved timings, phase duration, stamina, attack speed and profile identity;
+server traced yaw/pitch are the actual committed sweep view. See [rule measurements](combat-rule-evidence.md#measured-representative-weapons).
+
 `-PliveCaptureBackground` hides the opted-in test window from its first client tick, disables focus-loss pausing
 and skips mouse/screen grabs. `-PposeSheetBackground` provides the same hidden-window option for frozen sheets.
 Use a windowed test client: both fail if GLFW cannot hide it. Pose sheets that finish without quitting restore

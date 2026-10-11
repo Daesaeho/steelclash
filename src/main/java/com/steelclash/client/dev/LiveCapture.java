@@ -6,8 +6,13 @@ import com.steelclash.SteelClash;
 import com.steelclash.client.ClientInput;
 import com.steelclash.client.anim.CombatPose;
 import com.steelclash.combat.ModAttachments;
+import com.steelclash.combat.Combat;
+import com.steelclash.combat.CombatData;
+import com.steelclash.combat.CombatMath;
+import com.steelclash.core.AttackTimings;
 import com.steelclash.core.Phase;
 import com.steelclash.core.Mat3;
+import com.steelclash.profile.WeaponProfiles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,6 +30,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
@@ -46,6 +52,7 @@ public final class LiveCapture {
     private static final String SCENE = System.getProperty("steelclash.liveCapture");
     private static final boolean BACKGROUND = Boolean.getBoolean("steelclash.liveCaptureBackground");
     private static final boolean ACTIVE_PARRY = "active-parry".equals(SCENE);
+    private static final boolean TURN_CAP = "turn-cap".equals(SCENE);
     private static final boolean FOOD_USE = "itemuse".equals(SCENE) || "use-attack".equals(SCENE);
     private static final boolean ITEM_USE = FOOD_USE || "drinkuse".equals(SCENE);
     private static final boolean LOCOMOTION = "locomotion".equals(SCENE) || "locomotion-attack".equals(SCENE);
@@ -55,6 +62,7 @@ public final class LiveCapture {
     private static final InputConstants.Key[] OLD_KEYS = new InputConstants.Key[KEYS.length];
     private static final List<Map<String, Object>> FRAMES = new ArrayList<>();
     private static final List<Map<String, Object>> INPUTS = new ArrayList<>();
+    private static final List<Map<String, Object>> TURN_REQUESTS = new ArrayList<>();
     private static final AtomicInteger SAVED = new AtomicInteger();
     private static int ticks, frames, releaseAt;
     private static volatile int captureTick;
@@ -112,6 +120,10 @@ public final class LiveCapture {
                                 float health, HumanoidArm arm, boolean usingItem, int food, int offhandCount, String offhandItem,
                                 String mainItem, com.steelclash.core.AttackType type,
                                 double x, double z, boolean crouching, boolean sprinting,
+                                long phaseDurationUs, AttackTimings timings, float stamina, float staminaMax,
+                                boolean staminaExhausted, @Nullable Double attackSpeed, @Nullable String profileKey,
+                                @Nullable String archetype, float yaw, float pitch, float prevYaw, float prevPitch,
+                                float tracedYaw, float tracedPitch,
                                 @Nullable LiveOpponent.Sample opponent) {}
     private static volatile ServerSample server;
 
@@ -138,6 +150,23 @@ public final class LiveCapture {
 
     /** Only the opted-in hidden diagnostic may drive keyboard combat without capturing the user's mouse. */
     public static boolean backgroundInputEnabled() { return active && BACKGROUND && backgroundPrepared; }
+
+    /** Apply a reproducible large turn before the ordinary client turn-cap listener sees the player view. */
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGHEST)
+    static void requestTurnCapProbe(ClientTickEvent.Pre event) {
+        if (!TURN_CAP || !active) return;
+        Minecraft mc = Minecraft.getInstance();
+        var player = mc.player;
+        if (player == null || !player.hasData(ModAttachments.COMBAT)) return;
+        var machine = player.getData(ModAttachments.COMBAT).machine;
+        if (machine.phase() != Phase.WINDUP && machine.phase() != Phase.RELEASE) return;
+        float before = player.getYRot();
+        float requested = net.minecraft.util.Mth.wrapDegrees(before + 90.0f);
+        player.setYRot(requested);
+        TURN_REQUESTS.add(Map.of("time_ns", System.nanoTime() - startNanos, "client_tick", player.tickCount,
+                "phase", machine.phase(), "phase_elapsed_us", machine.phaseElapsedUs(),
+                "before_yaw", before, "requested_yaw", requested, "requested_delta_degrees", 90.0));
+    }
 
     public static void recordReadyView(AbstractClientPlayer player, double yaw, double pitch) {
         if (active && player == Minecraft.getInstance().player) readyView = new double[]{yaw, pitch};
@@ -182,6 +211,7 @@ public final class LiveCapture {
                 throw new IllegalStateException("Background live capture requires a windowed Minecraft window; GLFW cannot hide fullscreen windows");
             }
             mc.mouseHandler.releaseMouse();
+            mc.setWindowActive(false); // A hidden test window must not auto-grab when vanilla closes its loading GUI.
             backgroundPrepared = true;
         }
         if (draining) {
@@ -290,8 +320,10 @@ public final class LiveCapture {
         float pitch = Float.parseFloat(System.getProperty("steelclash.liveCapturePitch", "0"));
         if (!Float.isFinite(pitch) || Math.abs(pitch) > 60) throw new IllegalArgumentException("Capture pitch out of range");
         player.setXRot(pitch);
-        player.setYRot(LOCOMOTION && captureTick >= 90 ? (captureTick - 90) * 4 : 0);
-        if (!LOCOMOTION) player.yBodyRot = player.yBodyRotO = 0;
+        if (!TURN_CAP) {
+            player.setYRot(LOCOMOTION && captureTick >= 90 ? (captureTick - 90) * 4 : 0);
+            if (!LOCOMOTION) player.yBodyRot = player.yBodyRotO = 0;
+        }
         var machine = player.getData(ModAttachments.COMBAT).machine;
         if (!active) {
             if (!BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString()
@@ -320,6 +352,7 @@ public final class LiveCapture {
             CONDITIONS.put("ready_stance", com.steelclash.Config.Client.FIRST_PERSON_READY_STANCE.get());
             CONDITIONS.put("game_mode", mc.gameMode == null ? null : mc.gameMode.getPlayerMode());
             CONDITIONS.put("initial_player_health", initialPlayerHealth);
+            conditionsForMeasurements(player);
             String renderer = sodiumRenderer();
             CONDITIONS.put("sodium_renderer", renderer);
             String expected = System.getProperty("steelclash.liveCaptureRenderer", "any");
@@ -410,7 +443,7 @@ public final class LiveCapture {
     }
 
     private static boolean validScene() {
-        return List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "active-parry", "hitstop",
+        return List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "active-parry", "hitstop", "turn-cap",
                 "interrupt-windup", "interrupt-release", "itemuse", "use-attack", "drinkuse", "weapon-kick", "kick-attack", "swap-weapon", "swap-empty",
                 "locomotion", "locomotion-attack", "reload", "mob-attack", "mob-morph", "mob-kick", "mob-track-attack", "mob-track-guard").contains(SCENE);
     }
@@ -476,18 +509,33 @@ public final class LiveCapture {
         }
         serverActiveParry |= ACTIVE_PARRY && machine.isActiveParry();
         serverRelease |= ACTIVE_PARRY && machine.phase() == Phase.RELEASE && machine.type() == com.steelclash.core.AttackType.SLASH;
+        CombatData data = player.getData(ModAttachments.COMBAT);
+        // Combat.tickServer has already committed this tick's swept view into prevYaw/prevPitch.
+        // Calling swingView again would measure a second hypothetical cap step, not the actual trace.
+        var resolvedProfile = Combat.currentProfile(player, data);
+        Double attackSpeed = player.getAttributes().hasAttribute(Attributes.ATTACK_SPEED)
+                ? player.getAttributeValue(Attributes.ATTACK_SPEED) : null;
         server = new ServerSample(event.getServer().getTickCount(), machine.phase(), machine.attackSerial(), machine.isHeavy(),
                 machine.isMorphed(), machine.parriedHits(), machine.isActiveParry(), activeParryTicks, machine.predictionState().countered(),
                 machine.isThwacked(), player.getHealth(), player.getMainArm(), player.isUsingItem(),
                 player.getFoodData().getFoodLevel(), player.getOffhandItem().getCount(),
                 BuiltInRegistries.ITEM.getKey(player.getOffhandItem().getItem()).toString(),
                 BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString(), machine.type(),
-                player.getX(),player.getZ(),player.isCrouching(),player.isSprinting(),opponentSample);
+                player.getX(),player.getZ(),player.isCrouching(),player.isSprinting(),
+                machine.phaseDurationUs(), machine.timings(), data.stamina.current(), data.stamina.max(), data.stamina.isExhausted(),
+                attackSpeed, data.profileKey == null ? null : data.profileKey.location().toString(),
+                resolvedProfile.map(profile -> profile.archetype()).orElse(null), CombatMath.viewYaw(player), player.getXRot(),
+                data.prevYaw, data.prevPitch, data.prevYaw, data.prevPitch, opponentSample);
     }
 
     @SubscribeEvent
     static void beforeFrame(RenderFrameEvent.Pre event) {
-        if (BACKGROUND && backgroundPrepared && !done) GLFW.glfwHideWindow(Minecraft.getInstance().getWindow().getWindow());
+        if (BACKGROUND && backgroundPrepared && !done) {
+            Minecraft mc = Minecraft.getInstance();
+            GLFW.glfwHideWindow(mc.getWindow().getWindow());
+            mc.setWindowActive(false);
+            if (mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
+        }
         readyView = null;
         if (active) { renderedPose = null; carriedRotation = null; carriedIdleDelta = null; carriedUseWeight = null; renderedBones.clear(); opponentBones.clear(); opponentRenderedType=null; opponentRenderedPhase=null; rigBlendSeen = playerBodySeen = false; modelSeen = readySeen = opponentSeen = false; }
     }
@@ -528,6 +576,15 @@ public final class LiveCapture {
         }
         row.put("frame", frames); row.put("time_ns", System.nanoTime() - startNanos); row.put("client_tick", player.tickCount);
         row.put("partial", event.getPartialTick().getGameTimeDeltaPartialTick(false)); row.put("phase", machine.phase());
+        row.put("phase_duration_us", machine.phaseDurationUs());
+        row.put("resolved_timings", timingsMap(machine.timings()));
+        var clientData = player.getData(ModAttachments.COMBAT);
+        row.put("stamina", Map.of("current", clientData.stamina.current(), "max", clientData.stamina.max(),
+                "exhausted", clientData.stamina.isExhausted()));
+        row.put("attack_speed", player.getAttributes().hasAttribute(Attributes.ATTACK_SPEED)
+                ? player.getAttributeValue(Attributes.ATTACK_SPEED) : null);
+        row.put("profile_key", clientData.profileKey == null ? null : clientData.profileKey.location().toString());
+        row.put("profile_archetype", Combat.currentProfile(player, clientData).map(profile -> profile.archetype()).orElse(null));
         row.put("phase_us", machine.phaseElapsedUs()); row.put("serial", machine.attackSerial()); row.put("type", machine.type());
         row.put("heavy", machine.isHeavy()); row.put("variant", machine.variant()); row.put("mirrored", machine.isMirrored());
         row.put("model_seen", modelSeen); row.put("ready_seen", readySeen);
@@ -584,6 +641,7 @@ public final class LiveCapture {
             }
             maxServerSerial = Math.max(maxServerSerial, sample.serial);
         }
+        if (TURN_CAP) row.put("turn_request_count", TURN_REQUESTS.size());
         FRAMES.add(row);
         Screenshot.grab(out.toFile(), String.format(java.util.Locale.ROOT, "frame_%04d.png", frames++),
                 mc.getMainRenderTarget(), ignored -> SAVED.incrementAndGet());
@@ -611,6 +669,7 @@ public final class LiveCapture {
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("scene", SCENE); report.put("frames", FRAMES); report.put("inputs", INPUTS);
         report.put("conditions", CONDITIONS);
+        if (TURN_CAP) report.put("turn_requests", TURN_REQUESTS);
         report.put("reload_requested",reloadRequested); report.put("reload_completed",reloadCompleted); report.put("reload_overlay_frames",reloadOverlayFrames);
         report.put("mods", ModList.get().getMods().stream().map(m -> m.getModId() + ":" + m.getVersion()).toList());
         report.put("client_attack", clientAttack); report.put("server_attack", serverAttack);
@@ -730,6 +789,26 @@ public final class LiveCapture {
                     || mc.player == null || !mc.player.getOffhandItem().is(net.minecraft.world.item.Items.GLASS_BOTTLE)))
                 throw new IllegalStateException("Drinking did not return a bottle on client and server");
         }
+        if (TURN_CAP && (!clientAttack || !serverAttack || !clientRelease || !serverRelease
+                || TURN_REQUESTS.stream().noneMatch(request -> request.get("phase") == Phase.WINDUP)
+                || TURN_REQUESTS.stream().noneMatch(request -> request.get("phase") == Phase.RELEASE)))
+            throw new IllegalStateException("Turn-cap probe did not request turns during both windup and release on an ordinary slash");
+    }
+
+    private static Map<String, Integer> timingsMap(AttackTimings timings) {
+        return Map.of("windup_us", timings.windupUs(), "release_us", timings.releaseUs(), "recovery_us", timings.recoveryUs());
+    }
+
+    private static void conditionsForMeasurements(net.minecraft.world.entity.LivingEntity entity) {
+        var profile = WeaponProfiles.resolveFor(entity);
+        CONDITIONS.put("attack_speed", entity.getAttributes().hasAttribute(Attributes.ATTACK_SPEED)
+                ? entity.getAttributeValue(Attributes.ATTACK_SPEED) : null);
+        CONDITIONS.put("resolved_profile_key", profile.map(resolved -> resolved.key().location().toString()).orElse(null));
+        CONDITIONS.put("resolved_profile_archetype", profile.map(resolved -> resolved.profile().archetype()).orElse(null));
+        CONDITIONS.put("turn_cap_degrees_per_second", com.steelclash.Config.TURN_CAP.get());
+        CONDITIONS.put("riposte_active_parry_ticks", com.steelclash.Config.RIPOSTE_ACTIVE_PARRY_TICKS.get());
+        CONDITIONS.put("counter_active_parry_ticks", com.steelclash.Config.COUNTER_ACTIVE_PARRY_TICKS.get());
+        CONDITIONS.put("active_parry_extend_ticks", com.steelclash.Config.ACTIVE_PARRY_EXTEND_TICKS.get());
     }
 
     private static boolean hasNearbyActiveParryMerge() {

@@ -17,6 +17,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Measure representative sword/spear/blunt attack phases, actual turn-limited sweep views and extra active-parry catch costs. Hidden diagnostics prevent loading-GUI mouse re-grabs while preserving ordinary launches.
 - Simplify the current documentation guides and navigation; retain dated reports, setup notes and verification history in the archive.
 - Add ordinary-input live capture for attack chains, heavy/feint/morph/guard, opponent block/counter/riposte/AP, interruption, consumption, swaps, movement, reload and tracking. Record actual rendered frames, timestamps, client/server outcomes, model/equipment/FOV/FPS and rig diagnostics; isolated opponent tags and final server samples guard capture integrity.
 - Add opt-in background live/pose capture without mouse grabbing, with bounded runtime evidence; startup-window visibility remains unverified. Pose sheets select handedness/offhand/model conditions and suppress capture-world loot/fire/effect noise.

@@ -10,8 +10,8 @@ Target: Minecraft 1.21.1, NeoForge 21.1.252, Java 21, PAL 1.1.6. Preserve unrela
 | Step | Status | Evidence or next action |
 |---|---|---|
 | 1. Baseline | Bounded gate closed at `253021b`; unsupported cases stay explicit | [20-case baseline](testing.md#current-verified-checkpoints), [remaining checks](testing.md#remaining-unsupported-checks) |
-| 2. Rules and fidelity | In progress; N07 fixed at `c342391` | [Rule evidence](combat-rule-evidence.md); complete representative timing/turn/cost measurements before tuning |
-| 3. PAL More Rotation | Pending | Isolated optional prototype and guarded axis adapter |
+| 2. Rules and fidelity | Bounded measurement gate closed; N07 fixed; unresolved reference tuning stays explicit | [Measured rule table](combat-rule-evidence.md#measured-representative-weapons) and remaining fidelity questions |
+| 3. PAL More Rotation | Next | Isolated optional prototype and guarded axis adapter |
 | 4. Blockbench/styles | Pending | Validated importer and editable original clips |
 | 5. Server collision | Pending | Contact metadata, then optional anatomical narrow phase |
 | 6. CPM | Pending | Cosmetics/model lifecycle after the default rig is stable |

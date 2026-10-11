@@ -23,6 +23,8 @@ startup. Review the [timing mapping](archive/findings-history.md#chivalry-2-timi
 [sub-tick architecture](archive/findings-history.md#sub-tick-combat-timing-architecture-plan-5-2026-10-07)
 before changing balance. Existing [benchmarks](archive/findings-history.md#combat-benchmark-and-baseline-architecture-plan-3141-2026-10-07)
 describe their measured versions, not current performance claims.
+Representative native sword/spear/blunt timings, actual trace caps and AP catch costs are now recorded in the
+[measured rule table](combat-rule-evidence.md#measured-representative-weapons); no new balance inference is made.
 
 ## Defense, counter-feint, cleave and release interrupts
 

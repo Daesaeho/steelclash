@@ -150,6 +150,7 @@ public final class PoseSheet {
         mc.options.pauseOnLostFocus = false;
         long window = mc.getWindow().getWindow();
         GLFW.glfwHideWindow(window);
+        mc.setWindowActive(false);
         if (GLFW.glfwGetWindowAttrib(window, GLFW.GLFW_VISIBLE) != GLFW.GLFW_FALSE) {
             mc.options.pauseOnLostFocus = previousPauseOnLostFocus;
             throw new IllegalStateException("Background pose sheet requires a windowed Minecraft window; GLFW cannot hide fullscreen windows");
@@ -159,7 +160,10 @@ public final class PoseSheet {
     @SubscribeEvent
     static void keepBackgroundHidden(RenderFrameEvent.Pre event) {
         if (BACKGROUND && pauseOnLostFocusSaved && (shots == null || index < shots.size())) {
-            GLFW.glfwHideWindow(Minecraft.getInstance().getWindow().getWindow());
+            Minecraft mc = Minecraft.getInstance();
+            GLFW.glfwHideWindow(mc.getWindow().getWindow());
+            mc.setWindowActive(false);
+            if (mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
         }
     }
 
