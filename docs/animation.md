@@ -250,6 +250,39 @@ Scene guards require the requested outcomes on client and server and complete sc
 Use the recorded intervals when reviewing motion: the cap targets about 50 ms, not an exact fixed-step replay.
 These scripted keyboard cases do not establish mouse gestures, real LAN latency or every model.
 
+`-PliveCaptureBackground` hides the opted-in test window from its first client tick, disables focus-loss pausing
+and skips mouse/screen grabs. `-PposeSheetBackground` provides the same hidden-window option for frozen sheets.
+Use a windowed test client: both fail if GLFW cannot hide it. Pose sheets that finish without quitting restore
+visibility with focus-on-show temporarily disabled. The initial loading window can precede the first client tick.
+Actual hidden rendering/input/FPS acceptance is pending; existing foreground evidence does not verify this mode.
+
+The `locomotion` scene uses normal movement keys for forward/backward movement, crouched strafing and sprinting,
+then turns through 192 degrees without pinning body yaw. `locomotion-attack` starts a slash while crouched.
+The larger disposable platform accommodates this route. `liveCaptureFps` (10–120), `liveCaptureFov` (30–110),
+`liveCapturePitch` (-60–60) and `liveCaptureUsername` select capture conditions; FOV/frame-cap/toggle preferences
+restore on completion. A different username's actual resolved skin model must be checked, not assumed.
+
+First-person ready poses now solve in camera space before converting arm rotations, shoulder pivots and view
+composition offsets into body space. This keeps the ready blade visible as body yaw catches up and preserves the
+two-handed support grip. Active strike rigs and third-person blade alignment retain their existing solve.
+
+`reload` invokes the normal resource reload during windup and requires a new animation generation and idle
+completion on both sides. Loading-overlay/native-pause frames are excluded from pose screenshots; timestamps
+retain the reload gap. This integrated-server reload includes Minecraft's normal loading pause.
+
+`mob-attack`, `mob-morph` and `mob-kick` summon a controlled sword-equipped husk four blocks away and request
+ordinary server attacks. These are rendering/transition fixtures, not tests of autonomous mob decisions.
+Humanoid and illager model bones now share the 200 ms weapon/leg handover policy used by players. Mob held-item
+rotations are already canonical, so they do not use PAL's item-axis conversion. Equipment, main-arm, generation
+and render gaps reset history; ordinary weapon release and frozen pose-sheet samples bypass interpolation.
+
+`mob-track-attack` and `mob-track-guard` move the observer 256 blocks away, start an ordinary actor action, then bring
+the observer back while it is active. The attack scene requests the normal heavy upgrade. A temporary forced chunk
+keeps the actor's server clock ticking; no-gravity staging prevents unrelated falls. The prior forced flag restores
+after return. Guards require an unobserved interval followed by matching native client/server windup/guard state,
+plus actual mob rendering later. Native state is recorded separately because chunk rebuild can delay visible poses.
+The latest tracking acceptance has not run; these fixtures do not establish real LAN latency.
+
 `-PliveCaptureRenderer=sodium` requires an initialized `SodiumWorldRenderer`; `vanilla` requires its class to be
 absent. The default `any` only records the result. Renderer discovery and the loaded-mod list are not substitutes
 for this probe. `-PnoSodium` removes both the actual mod and its boot/FFA runtime dependencies from dev runs.

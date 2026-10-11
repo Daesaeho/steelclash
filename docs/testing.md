@@ -894,3 +894,68 @@ right/left/third-person/vanilla-renderer kick handover, swaps to axe/air, revers
 offhand-food regression control. The two mutation baseline captures count as ordinary accepted replays;
 fault-injected captures and the earlier observer/test failures are excluded. Source-hashed commands, native mesh
 presence, matrices, contact sheets and final acceptance counts are retained outside the repository.
+
+## Broader baseline and background work (2026-10-11)
+
+Evidence: `C:/dev/steelclash-beta-audit/20261010/step1-broad` (UTC-date folder). The latest successful replay per
+case totals **14 cases / 2,110 actual frames** in `matrix.json`. Earlier failures and bug reproductions are retained
+separately. Most captures use SLIM Ari, iron helmet, 1920x1200, FOV 95, sword/torch and actual Sodium; the native
+conditions in each report identify exceptions.
+
+| Cases | Verified scope |
+|---|---|
+| Right/left torch movement | Actual displacement, crouched strafing, sprinting, turn through 192 degrees, client/server stance flags, rendered hand ownership |
+| Crouched attack / third-person movement | Ordinary attack during crouch; native player mesh throughout the third-person scene |
+| Shield movement | Existing shield renderer control during the route |
+| WIDE movement / attack | Resolved WIDE Sunny skin, alongside SLIM Ari cases |
+| FOV 70 / 10 FPS combo | Actual median interval 99.94 ms; client/server combo |
+| FOV 110 / 60 FPS heavy | Actual median interval 17.01 ms; client/server heavy upgrade |
+| Reload during attack | Normal resource reload, new animation generation, client/server idle afterward |
+| Mob slash / morph / kick | Controlled passive husk requests normal actions; requested types render and reach release without player damage |
+| Vanilla movement/attack | Sodium absent; actual movement and attack guard outcomes pass |
+
+Movement exposed a ready-rig camera/body mismatch: the left sword disappeared and the right sword tilted as body
+yaw lagged. The ready solve now rotates its arm/grip, shoulder pivots and view offsets together in camera space.
+Before/after contact sheets verify visible upright ready blades on both sides at idle and while turning. Active
+strike geometry and third-person rig logic are unchanged. Additional pitched-camera/two-handed replays are pending.
+
+Mob kick entry originally jumped **1.356 radians (77.7 degrees)** in the rendered right arm. The fixed replay's
+first kick step is **zero**, then moves over 200 ms. Canonical mob held-item rotations blend with the model.
+The matching 12-frame onion windows target about 50 ms steps. At sensitive `--min-jump 0.001`, the entry image
+step falls from **0.92% / 3.4 times typical** to **0.14% / 0.4 times typical**. A later leg/telegraph flag remains
+visible in the inspected pairs; it does not reintroduce the arm entry snap. Default whole-image thresholds miss
+the small distant actor, so rendered matrices and the focused comparison accompany the onion report.
+
+The first reload observer failed on Minecraft's native loading pause after the overlay disappeared. The accepted
+replay excludes loading-overlay/pause/pending-reload frames and retains the timestamp gap; this is integrated-server
+reload acceptance, not proof of uninterrupted simulation during loading. The loading mods remain installed.
+
+Compile and 22 focused rig tests pass, including a fresh run at `2026-10-11T01:41:27Z`. Final restored-source
+verification at `01:45:22Z` also succeeds. Five valid mutations are caught: lost camera rotation, unshifted shoulder,
+abrupt mob limb handover, restored body-space ready solve and hidden input requiring mouse grab. The original
+pixel-only renderer test survived; a first relative-frame test depended on starting body yaw. The final check uses
+the route's body-aligned reference and actual rendered arm positions/rotations in camera space. It passes the healthy
+renderer with roughly zero travel and rejects two saved faulty captures with 5.6–5.9 model-pixel drift, then kills
+the mutant in a fresh run. Initial gaps and reruns remain visible in the evidence, not counted as clean first passes.
+Temporary mutations are restored. No local server-rule GameTest suite is required for these presentation changes.
+
+The latest accepted matrix is now **20 cases / 2,937 actual frames**, adding pitched-camera and empty/torch
+trident controls plus attack/held-guard late tracking. The earlier 14-case matrix is the initial checkpoint.
+Tracking moves the observer out of range while a stationary actor starts an ordinary heavy/guard; native client
+state matches the server during the action and the actor later renders. Actor-teleport staging produced a stale
+native spawn position; observer return also exposed chunk-rebuild visibility latency. These are excluded initial
+fixtures. Immediate visible windup after chunk return and real LAN/remote-player corrections are not established.
+
+Hidden live and three-shot frozen-sheet runs pass. A later attack control found that ClientInput still required
+mouse grab, which the initial idle/movement smoke test did not exercise. Only an opted-in, actively recording
+background diagnostic now bypasses that keyboard gate. The final sword and both trident attacks reach client/server
+through normal packets. Their frames record `window_visible=false` and `mouse_grabbed=false`. The window is kept
+hidden through loading transitions. GLFW's Win32 focus value reflects GetActiveWindow on the calling thread and
+can stay true for a hidden window; it is retained as a diagnostic, not treated as desktop-foreground proof.
+See [GLFW's Win32 implementation](https://raw.githubusercontent.com/glfw/glfw/3.3.10/src/win32_window.c).
+The disposable QA options are windowed; fullscreen was explicitly rejected. A startup-window flash before the first
+client event remains possible. Normal gameplay launches retain their input gate and window behavior.
+
+Step 1's bounded baseline gate is closed with unsupported cases documented. Remaining human/feature acceptance:
+first-person kick feet, shield-bash/other model and camera-effect variants, actual LAN and startup-window behavior.
+BodyHealth/LSO stay deferred; none of these results declare the full beta goal complete.

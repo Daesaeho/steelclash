@@ -199,6 +199,15 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
         return leftHanded ? solved.mirrored() : solved;
     }
 
+    /** Ready wrist home belongs to the camera frame; rotating only the blade leaves the hand behind as the body turns. */
+    public WeaponRig readyRigInView(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis, double viewPitch) {
+        double[] override = PoseSheet.readyOverride();
+        double pitch = override == null ? firstPerson.readyPitch() : override[1];
+        CombatPose camera = new CombatPose(phase,type,weight,relativeYaw,pitch,offsets,twoHanded,kick,bladeTwist,gripGap,
+                leftHanded,bash,relativeYaw,extension,firstPerson,swing);
+        return camera.rig(gripDegrees,twistScale,twistAxis).fromView(aimYaw-relativeYaw,viewPitch);
+    }
+
     /**
      * First person only: the swing spread {@code width} times wider around the view and raised {@code lift} degrees, so
      * it sweeps across the screen. The camera sits behind the hand, so the traced arc itself mostly points away from it.

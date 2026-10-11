@@ -1079,3 +1079,28 @@ Left/third-person and reverse kick-to-slash controls pass; the latter has no rig
 Evidence is in `20261010/swaps-kick`. First-person kick feet, mob rig conversion and wider acceptance remain open.
 Compile and 19 fresh focused tests pass; seven valid mutations are caught. Eight accepted cases contain 1,109
 actual frames, including a vanilla-renderer kick handover and the preceding eating-animation regression check.
+
+## View-space ready rigs and humanoid handovers (2026-10-11)
+
+Ordinary movement leaves body yaw free to follow the camera. A ready solve that rotates only the target blade
+still relaxes the wrist toward the body's heading; the view-relative hand can disappear, particularly left-handed.
+Solve the entire ready rig in camera space, then rotate arms, support-shoulder displacement and view composition
+together. Rotate the shoulder pivot too: rotating arm angles around an unshifted body-space shoulder is insufficient.
+Pure geometry tests cover both main arms and two-handed grips across yaw/pitch. Active hit-arc solves are unaffected.
+
+The existing mob hook needed displayed-bone history at the weapon/kick boundary, like the player PAL layer.
+ModelPart and held-item rotations are canonical Z/Y/X; applying PAL's swapped item-channel conversion to these
+would be wrong. The generic RigPoseBlend uses ordinary channel names for mob held items. Root/model/item histories
+share entity/item/main-arm/generation identity; exact weapon release/frozen sheet gates remain intact.
+The reproduced arm step falls from 1.356 radians to zero at entry in a live replay. Fourteen latest successful
+baseline cases total 2,110 frames; [testing.md](testing.md#broader-baseline-and-background-work-2026-10-11)
+records scope and outstanding checks. Mutation definitions are prepared, not yet executed.
+
+Actor teleport staging can spawn the native client entity at the prior network position; this polluted the first
+late-tracking fixtures. Moving the observer retains a stationary actor and exercises native tracking, but chunk
+rebuild can delay rendered visibility beyond a short windup. Record native combat state separately from visible
+pose, rather than blaming an absent screenshot on combat packets. The revised guard has not run; tracking remains open.
+
+Hidden live capture uses an opt-in GLFW window hide and avoids MouseHandler.grabMouse, whose physical-key refresh
+would overwrite scripted key states. Client source inspection supports continued rendering while unfocused; actual
+hidden-window/FPS/input acceptance remains pending the approval-review reset. Ordinary launches keep their behavior.

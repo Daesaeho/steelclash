@@ -45,6 +45,23 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
         return new double[]{angles[0], -angles[1], -angles[2]};
     }
 
+    /** Convert a view-space ready rig into body space without moving its wrist home toward the body's heading. */
+    public WeaponRig fromView(double viewYaw, double viewPitch) {
+        Mat3 camera = cameraRotation(viewYaw, viewPitch);
+        return new WeaponRig(camera.mul(Mat3.zyx(arm[0],arm[1],arm[2])).toZyx(), item.clone(),
+                camera.mul(Mat3.zyx(offArm[0],offArm[1],offArm[2])).toZyx(), camera.apply(offShoulder));
+    }
+
+    public static Mat3 cameraRotation(double viewYaw, double viewPitch) {
+        return Mat3.rotY(Math.toRadians(viewYaw)).mul(Mat3.rotX(Math.toRadians(viewPitch)));
+    }
+
+    /** Shoulder translation needed when a first-person hand is anchored to the view instead of the body's yaw. */
+    public static Vec viewShoulderOffset(double viewYaw, double viewPitch, boolean left) {
+        Vec shoulder = left ? LEFT_SHOULDER : RIGHT_SHOULDER;
+        return cameraRotation(viewYaw,viewPitch).apply(shoulder).subtract(shoulder);
+    }
+
     /** First-person carried item: keep the hand forward of the camera as the fighter's body twists beneath it. */
     public static double[] carryArm(double viewYaw, double viewPitch, double[] body, boolean left) {
         return carryArm(viewYaw, viewPitch, body, left, 0, 0);

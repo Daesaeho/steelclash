@@ -43,3 +43,6 @@ repo/
 run-client2
 run-gametest
 build-*.log
+
+# Local Python assistant helpers
+__pycache__/

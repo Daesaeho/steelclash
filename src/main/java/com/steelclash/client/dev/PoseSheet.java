@@ -41,7 +41,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Dev tool for checking animations without anyone at the keyboard. Started with system properties (see build.gradle:
@@ -62,6 +64,8 @@ import org.jetbrains.annotations.Nullable;
  *     <li>{@code steelclash.poseSheetArm}: main arm, {@code left} or {@code right};</li>
  *     <li>{@code steelclash.poseSheetOffhand}: offhand item id, including {@code minecraft:air} for empty;
  *     omitted arm/offhand settings preserve the subject's existing conditions;</li>
+ *     <li>{@code steelclash.poseSheetBackground}: hide the window from the first client tick for a valid pose sheet;
+ *     if the run does not quit, GLFW shows it again after capture without requesting input focus;</li>
  *     <li>{@code steelclash.poseSheetQuit}: close the game when done.</li>
  * </ul>
  * Each pose is frozen on the local player (client-side only) at fixed points of the attack and photographed from
@@ -71,6 +75,7 @@ import org.jetbrains.annotations.Nullable;
 public final class PoseSheet {
     private static final String SPEC = System.getProperty("steelclash.poseSheet");
     private static final String MOB = System.getProperty("steelclash.poseSheetMob");
+    private static final boolean BACKGROUND = Boolean.getBoolean("steelclash.poseSheetBackground");
     /** Mob shots: the mob's yaw (the player looks along +Z): facing the camera, then side-on. */
     private static final float[] MOB_YAWS = {180, 90};
     /** Ticks for the world to settle before the first shot, and per shot for the pose to be rendered. */
@@ -90,6 +95,11 @@ public final class PoseSheet {
     private static int index = -1;
     private static int wait;
     private static boolean stagedDowned;
+    private static boolean backgroundConfigChecked;
+    private static boolean previousPauseOnLostFocus;
+    private static boolean pauseOnLostFocusSaved;
+    private static int backgroundGuiWaitTicks;
+    private static final int BACKGROUND_GUI_WAIT_LIMIT = 1300;
     @Nullable
     private static CombatPose renderedPose;
     private static int renderedIndex = -1;
@@ -129,6 +139,30 @@ public final class PoseSheet {
         return MOB != null && running();
     }
 
+    @SubscribeEvent
+    static void onClientTickPre(ClientTickEvent.Pre event) {
+        if (!BACKGROUND || backgroundConfigChecked) return;
+        backgroundConfigChecked = true;
+        if (!validCaptureSpec()) return;
+        Minecraft mc = Minecraft.getInstance();
+        previousPauseOnLostFocus = mc.options.pauseOnLostFocus;
+        pauseOnLostFocusSaved = true;
+        mc.options.pauseOnLostFocus = false;
+        long window = mc.getWindow().getWindow();
+        GLFW.glfwHideWindow(window);
+        if (GLFW.glfwGetWindowAttrib(window, GLFW.GLFW_VISIBLE) != GLFW.GLFW_FALSE) {
+            mc.options.pauseOnLostFocus = previousPauseOnLostFocus;
+            throw new IllegalStateException("Background pose sheet requires a windowed Minecraft window; GLFW cannot hide fullscreen windows");
+        }
+    }
+
+    @SubscribeEvent
+    static void keepBackgroundHidden(RenderFrameEvent.Pre event) {
+        if (BACKGROUND && pauseOnLostFocusSaved && (shots == null || index < shots.size())) {
+            GLFW.glfwHideWindow(Minecraft.getInstance().getWindow().getWindow());
+        }
+    }
+
     /** The actual player-layer sample, retained until the frozen screenshot is read back. */
     public static void recordRenderedPose(LivingEntity entity, @Nullable CombatPose pose) {
         if (!running()) {
@@ -152,6 +186,13 @@ public final class PoseSheet {
         }
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
+        if (BACKGROUND && (mc.screen != null || mc.getOverlay() != null)) {
+            if (++backgroundGuiWaitTicks > BACKGROUND_GUI_WAIT_LIMIT) {
+                throw new IllegalStateException("Background pose sheet timed out waiting for the gameplay GUI to close");
+            }
+            return;
+        }
+        backgroundGuiWaitTicks = 0;
         if (player == null || mc.level == null || (shots != null && index >= shots.size())) {
             return;
         }
@@ -170,12 +211,20 @@ public final class PoseSheet {
             previousPlayerArm = player.getMainArm();
             previousPlayerOffhand = player.getOffhandItem().copy();
             wait = SETTLE_TICKS;
-            mc.options.pauseOnLostFocus = false;
+            if (BACKGROUND) {
+                if (!pauseOnLostFocusSaved) {
+                    previousPauseOnLostFocus = mc.options.pauseOnLostFocus;
+                    pauseOnLostFocusSaved = true;
+                }
+                mc.options.pauseOnLostFocus = false;
+            } else {
+                mc.options.pauseOnLostFocus = false;
+            }
             CombatDebugRenderer.setEnabled(System.getProperty("steelclash.poseSheetDebug") != null);
             buildStage(player);
             SteelClash.LOGGER.info("Pose sheet: {} shots planned", shots.size());
         }
-        if (mc.screen != null) {
+        if (!BACKGROUND && mc.screen != null) {
             mc.setScreen(null); // pause menu, chat, death screen: not in the picture
         }
         if (index >= 0) {
@@ -490,8 +539,31 @@ public final class PoseSheet {
         player.getData(ModAttachments.COMBAT).machine.apply(Phase.IDLE, AttackType.SLASH, 0, 0, AttackTimings.ofTicks(1, 1, 1), 0,
                 false, false, false, 0, false);
         SteelClash.LOGGER.info("Pose sheet: done, {} screenshots in {}", shots.size(), new File(mc.gameDirectory, "screenshots"));
-        if (System.getProperty("steelclash.poseSheetQuit") != null) {
+        boolean quitWhenDone = System.getProperty("steelclash.poseSheetQuit") != null;
+        if (BACKGROUND) {
+            if (pauseOnLostFocusSaved) mc.options.pauseOnLostFocus = previousPauseOnLostFocus;
+            if (!quitWhenDone) {
+                long window = mc.getWindow().getWindow();
+                int focusOnShow = GLFW.glfwGetWindowAttrib(window, GLFW.GLFW_FOCUS_ON_SHOW);
+                try {
+                    GLFW.glfwSetWindowAttrib(window, GLFW.GLFW_FOCUS_ON_SHOW, GLFW.GLFW_FALSE);
+                    GLFW.glfwShowWindow(window);
+                } finally {
+                    GLFW.glfwSetWindowAttrib(window, GLFW.GLFW_FOCUS_ON_SHOW, focusOnShow);
+                }
+            }
+        }
+        if (quitWhenDone) {
             mc.stop();
+        }
+    }
+
+    private static boolean validCaptureSpec() {
+        if (SPEC == null || SPEC.isBlank()) return false;
+        try {
+            return !plan().isEmpty();
+        } catch (RuntimeException invalidSpec) {
+            return false;
         }
     }
 }

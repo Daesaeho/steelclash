@@ -101,7 +101,7 @@ neoForge {
     runs {
         client {
             client()
-            programArguments.addAll '--username', 'Dev1'
+            programArguments.addAll '--username', project.findProperty('liveCaptureUsername') ?: 'Dev1'
             // Optional dev switches: -PclientMemory=1536M (heap cap), -PquickPlay="New World" (load straight into a
             // world), -PposeSheet=slash,overhead,stab (photograph frozen combat poses, then quit; see client/dev/PoseSheet)
             if (project.hasProperty('clientMemory')) {
@@ -111,13 +111,19 @@ neoForge {
                 programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay').toString()
             }
             if (project.hasProperty('liveCapture')) {
-                ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut', 'liveCaptureRenderer', 'liveCaptureArm'].each { name ->
+                ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut', 'liveCaptureRenderer', 'liveCaptureArm', 'liveCaptureFps', 'liveCaptureFov', 'liveCapturePitch'].each { name ->
                     if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
+                }
+                if (project.hasProperty('liveCaptureBackground')) {
+                    systemProperty 'steelclash.liveCaptureBackground', 'true'
                 }
             }
             if (project.hasProperty('poseSheet')) {
                 systemProperty 'steelclash.poseSheet', project.property('poseSheet').toString()
                 systemProperty 'steelclash.poseSheetQuit', 'true'
+                if (project.hasProperty('poseSheetBackground')) {
+                    systemProperty 'steelclash.poseSheetBackground', 'true'
+                }
                 if (project.hasProperty('poseSheetMob')) {
                     systemProperty 'steelclash.poseSheetMob', project.property('poseSheetMob').toString()
                 }

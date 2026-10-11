@@ -658,7 +658,8 @@ public final class ClientInput {
     }
 
     private static boolean inGame(Minecraft mc) {
-        return mc.player != null && mc.screen == null && mc.getOverlay() == null && mc.mouseHandler.isMouseGrabbed()
+        return mc.player != null && mc.screen == null && mc.getOverlay() == null
+                && (mc.mouseHandler.isMouseGrabbed() || com.steelclash.client.dev.LiveCapture.backgroundInputEnabled())
                 && !mc.player.isSpectator();
     }
 

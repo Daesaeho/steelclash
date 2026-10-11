@@ -5,6 +5,8 @@ import com.mojang.math.Axis;
 import com.steelclash.Config;
 import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.core.WeaponRig;
+import com.steelclash.core.RigPoseBlend;
+import com.steelclash.core.Phase;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +49,8 @@ public final class MobCombatPoses {
 
     /** This frame's turn of each posed mob's weapon in its hand, for {@link #turnHeldItem}. Render thread only. */
     private static final Map<LivingEntity, HeldItemTurn> ITEM_TURNS = new WeakHashMap<>();
+    private static final Map<LivingEntity, RigPoseBlend> RIGS = new WeakHashMap<>();
+    private record RigIdentity(Object weapon, Object offhand, HumanoidArm arm, long generation) {}
     /** Mob types whose held items vanilla's item layer draws, so their weapons can be turned in the hand. */
     private static final Set<EntityType<?>> TURNABLE = new HashSet<>();
 
@@ -68,8 +72,10 @@ public final class MobCombatPoses {
         CombatPose pose = takePose(entity, partialTick);
         PoseSheet.recordRenderedPose(entity, pose);
         if (pose == null) {
+            RIGS.remove(entity);
             return;
         }
+        RigPoseBlend blend = rig(entity, pose);
         if (model instanceof IllagerModel<?> illager) {
             // A crossed-arms illager hides its real arms; the swing needs them (the server also keeps fighters
             // aggressive, which uncrosses them and shows the weapon).
@@ -113,6 +119,40 @@ public final class MobCombatPoses {
         if (parts.body != null) {
             add(parts.body, pose, "torso"); // the torso part only gets the clip's extra torso motion
         }
+        blendPart(blend, "right_arm", parts.rightArm);
+        blendPart(blend, "left_arm", parts.leftArm);
+        blendPart(blend, "right_leg", parts.rightLeg);
+        blendPart(blend, "left_leg", parts.leftLeg);
+        blendPart(blend, "head", parts.head);
+        if (parts.body != null) blendPart(blend, "torso", parts.body);
+        HumanoidArm main = pose.leftHanded() ? HumanoidArm.LEFT : HumanoidArm.RIGHT;
+        HeldItemTurn target = ITEM_TURNS.get(entity);
+        double[] item = target == null ? new double[3] : target.radians();
+        // Mob item rotations are already canonical Z/Y/X, unlike PAL's swapped item channels.
+        RigPoseBlend.Bone hand = blend.apply("held." + main, new RigPoseBlend.Bone(item[0], item[1], item[2], 0, 0, 0, 0));
+        ITEM_TURNS.put(entity, new HeldItemTurn(main, new double[]{hand.rx(), hand.ry(), hand.rz()}));
+        record(entity,pose,"right_arm",parts.rightArm); record(entity,pose,"left_arm",parts.leftArm);
+        record(entity,pose,"right_leg",parts.rightLeg); record(entity,pose,"left_leg",parts.leftLeg);
+        com.steelclash.client.dev.LiveCapture.recordMob(entity, pose, "held_item", new double[]{hand.rx(), hand.ry(), hand.rz()});
+    }
+
+    private static RigPoseBlend rig(LivingEntity entity, CombatPose pose) {
+        RigPoseBlend blend = RIGS.computeIfAbsent(entity, ignored -> new RigPoseBlend());
+        blend.begin(CombatPresentation.frameNumber(), CombatPresentation.frameTimeNanos(), pose.kick(),
+                PoseSheet.running() || pose.phase() == Phase.RELEASE && !pose.kick(),
+                new RigIdentity(entity.getMainHandItem().getItem(), entity.getOffhandItem().getItem(),
+                        entity.getMainArm(), AnimationLibrary.INSTANCE.generation()));
+        return blend;
+    }
+
+    private static void blendPart(RigPoseBlend blend, String name, ModelPart part) {
+        RigPoseBlend.Bone result = blend.apply(name, new RigPoseBlend.Bone(part.xRot, part.yRot, part.zRot, part.x, part.y, part.z, 0));
+        part.xRot = (float) result.rx(); part.yRot = (float) result.ry(); part.zRot = (float) result.rz();
+        part.x = (float) result.x(); part.y = (float) result.y(); part.z = (float) result.z();
+    }
+
+    private static void record(LivingEntity entity, CombatPose pose, String name, ModelPart part) {
+        com.steelclash.client.dev.LiveCapture.recordMob(entity,pose,name,new double[]{part.xRot,part.yRot,part.zRot,part.x,part.y,part.z});
     }
 
     /**
@@ -129,9 +169,13 @@ public final class MobCombatPoses {
         posedPartialTick = partialTick;
         posed = pose;
         if (pose == null) {
+            RIGS.remove(entity);
             return;
         }
         double[] body = pose.bodyDegrees();
+        RigPoseBlend.Bone root = rig(entity, pose).apply("root", new RigPoseBlend.Bone(Math.toRadians(body[0]),
+                Math.toRadians(body[1]), Math.toRadians(body[2]), 0, 0, 0, 0));
+        body = new double[]{Math.toDegrees(root.rx()), Math.toDegrees(root.ry()), Math.toDegrees(root.rz())};
         if (body[0] == 0 && body[1] == 0 && body[2] == 0) {
             return;
         }

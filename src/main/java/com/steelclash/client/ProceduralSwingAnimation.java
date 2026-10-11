@@ -72,6 +72,7 @@ public class ProceduralSwingAnimation implements IAnimation {
     private Object consumableWeapon, consumableMainArm;
     private final RigPoseBlend firstPersonRig = new RigPoseBlend(), worldRig = new RigPoseBlend();
     private record RigIdentity(Object weapon, Object offhand, Object mainArm, long animationGeneration) {}
+    private double readyViewYaw, readyViewPitch;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -116,7 +117,9 @@ public class ProceduralSwingAnimation implements IAnimation {
         ready = wantsReadyStance() ? CombatPose.ready(player, state.getPartialTick()).orElse(null) : null;
         updateConsumable();
         if (ready != null) {
-            readyRig = rigFor(ready);
+            readyViewYaw=ready.aimYaw()-ready.relativeYaw(); readyViewPitch=player.getViewXRot(state.getPartialTick());
+            readyRig = ready.readyRigInView(Config.Client.WEAPON_GRIP_PITCH.get(),Config.Client.BLADE_TWIST.get(),
+                    WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()),readyViewPitch);
         }
         CombatPose carried = pose != null ? pose : ready;
         if (carried != null && mc.options.getCameraType().isFirstPerson()
@@ -247,6 +250,7 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     /** Blend the actually displayed bone transforms when leg choreography replaces the weapon rig, and vice versa. */
     private PlayerAnimBone finishBone(PlayerAnimBone bone) {
+        if (ready != null && FirstPersonMode.isFirstPersonPass()) LiveCapture.recordReadyView(player, readyViewYaw, readyViewPitch);
         RigPoseBlend blend = FirstPersonMode.isFirstPersonPass() ? firstPersonRig : worldRig;
         boolean legRig = pose != null && pose.kick();
         boolean exact = PoseSheet.running() || (pose != null && pose.phase() == com.steelclash.core.Phase.RELEASE && !legRig);
@@ -296,11 +300,13 @@ public class ProceduralSwingAnimation implements IAnimation {
             }
             return;
         }
+        addModelOffset(bone,WeaponRig.viewShoulderOffset(readyViewYaw,readyViewPitch,name.equals("left_arm")));
         if (name.equals("left_arm") != ready.leftHanded() && !player.getOffhandItem().isEmpty()) {
             blendRotation(bone, carriedArm, 1);
             return;
         }
-        firstPersonOffset(bone, ready, 1, 1);
+        addModelOffset(bone,WeaponRig.cameraRotation(readyViewYaw,readyViewPitch)
+                .apply(new Vec(0,ready.firstPerson().down(),-ready.firstPerson().forward())));
         if (name.equals("left_arm") == ready.leftHanded()) {
             bone.updateRotation((float) readyRig.arm()[0], (float) readyRig.arm()[1], (float) readyRig.arm()[2]);
         } else if (ready.twoHanded()) {
@@ -311,6 +317,10 @@ public class ProceduralSwingAnimation implements IAnimation {
             bone.setPosY(bone.getPosY() - (float) shoulder.y());
             bone.setPosZ(bone.getPosZ() + (float) shoulder.z());
         }
+    }
+
+    private static void addModelOffset(PlayerAnimBone bone, Vec offset) {
+        bone.setPosX(bone.getPosX()+(float)offset.x()); bone.setPosY(bone.getPosY()-(float)offset.y()); bone.setPosZ(bone.getPosZ()+(float)offset.z());
     }
 
     private static void blendRotation(PlayerAnimBone bone, double[] target, float weight) {

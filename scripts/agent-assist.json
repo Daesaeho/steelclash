@@ -1,0 +1,17 @@
+{
+  "mercury": {
+    "base_url": "https://api.inceptionlabs.ai/v1",
+    "model": "mercury-2.5",
+    "key_env": "INCEPTION_API_KEY",
+    "reasoning_effort": "low",
+    "max_output_tokens": 2048,
+    "daily_request_cap": 12
+  },
+  "google": {
+    "base_url": "https://generativelanguage.googleapis.com/v1beta",
+    "model": "gemini-3.5-flash-lite",
+    "key_env": "GEMINI_API_KEY",
+    "max_output_tokens": 1024,
+    "daily_request_cap": 2
+  }
+}

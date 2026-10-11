@@ -7,6 +7,28 @@ Next-work scope, 2026-10-10: BodyHealth and Legendary Survival Overhaul are defe
 plan is [next-combat-animation-plan.md](next-combat-animation-plan.md): live acceptance and confirmed blockers,
 PAL bending/axis compatibility, Blockbench authoring, authoritative contact/anatomical collision, then a CPM pilot.
 
+## Required implementation roadmap (2026-10-11)
+
+The user explicitly includes **all six steps** of [next-combat-animation-plan.md](next-combat-animation-plan.md)
+in this project goal. That file is the implementation order and its deliverables and "Done when" clauses are
+completion gates, not optional suggestions:
+
+1. Close the important baseline gaps with real renderer/opponent-driven evidence and explicit unsupported cases.
+2. Fix confirmed combat defects and resolve the highest-impact fidelity questions with reproductions and a rule table.
+3. Evaluate PAL More Rotation through an optional prototype before adopting it.
+4. Establish Blockbench source projects/import validation and refine distinct original weapon-family styles.
+5. Add authoritative contact metadata, then optional server-owned humanoid anatomical collision with fallback.
+6. Evaluate CPM cosmetics on the stable default rig, retaining normal fallback and independent legal collision.
+
+An experiment's adoption remains conditional on its plan criteria. BodyHealth/LSO stay deferred. Complete relevant
+tests, mutation checks, visual evidence and documentation for each checkpoint, then commit/push under the existing
+authorization. Releases/tags require a separate explicit instruction. Record measured facts separately from
+reference claims and unresolved tuning; never mark a step complete solely from frozen poses or untested proposals.
+
+Current roadmap checkpoint: step 1's bounded baseline gate is closed (20 accepted cases, five mutation guards),
+with unsupported human/feature checks retained in the testing document. Step 2 starts with the confirmed active-parry
+extension synchronization defect (N07), then the rule/reference measurements. Steps 3–6 remain pending.
+
 ## Acceptance criteria
 
 - Preserve readable, committed windup → release → recovery, directional swings, guard/counter/riposte reactions,

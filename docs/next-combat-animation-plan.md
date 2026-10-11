@@ -33,6 +33,20 @@ weapon-to-kick rig reset. First/third-person and left-arm/reverse controls accom
 Next: moving/crouching/turning and the wider acceptance matrix before bending. First-person foot rendering,
 mob rig handovers and tracking/reload/LAN acceptance remain separate gates.
 
+Progress, 2026-10-11: fourteen successful baseline cases now cover movement/crouch/sprint/turn, both main arms,
+SLIM/WIDE models, shield/third-person controls, 10/60 FPS and FOV 70/110, resource reload and controlled humanoid
+mob slash/morph/kick. The turning ready-blade and mob kick handover bugs are reproduced and fixed in live captures.
+See [testing.md](testing.md#broader-baseline-and-background-work-2026-10-11). Tracking fixtures, pitched-camera and
+two-handed controls, final mutations and background-mode verification were still pending at that checkpoint.
+
+**Step 1 baseline gate closed, 2026-10-11:** the additional tracking, pitched-camera and trident controls pass.
+Twenty latest accepted cases contain 2,937 actual frames. Hidden keyboard combat, window visibility and mouse
+ownership are verified; five targeted mutants are caught after strengthening the renderer test to avoid starting-yaw
+dependence. Remaining unsupported LAN/model/camera/foot-renderer/startup-window cases are explicitly retained in
+[testing.md](testing.md#broader-baseline-and-background-work-2026-10-11). This closes the bounded baseline gate,
+not every human playtest or the beta goal. Step 2 now starts with confirmed active-parry extension synchronization
+(report N07); stamina cost and other reference-fidelity questions remain evidence-led investigations.
+
 **Deliverable:** a reliable renderer comparison and reproducible opponent-driven acceptance scenes.
 
 - Repair the dev Sodium dependency/service loading and require the runtime renderer probe to report `active`.

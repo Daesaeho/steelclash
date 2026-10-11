@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Blend displayed player bones across weapon/leg rig changes, without modifying simulation or release poses. */
+/** Blend displayed fighter bones across weapon/leg rig changes, without modifying simulation or release poses. */
 public final class RigPoseBlend {
     public static final long DURATION_NANOS = 200_000_000L;
     public record Bone(double rx, double ry, double rz, double x, double y, double z, double bend) {
