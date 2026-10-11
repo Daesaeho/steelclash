@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Authoring prototype, 2026-10-11 | Compile/full build; 226 fresh unit tests including eight importer tests; five caught mutations; actual offline candidate command | [Importer checkpoint](archive/roadmap-checkpoints.md#offline-authoring-prototype-2026-10-11) |
 | `253021b`, baseline | 20 accepted live cases, 2,937 frames; 22 focused rig tests; five caught mutants; hidden input and three-shot sheet | [Baseline record](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11) |
 | `c342391`, N07 | Full build, 213 JUnit; 174 required GameTests in each Spartan variant; live second-attacker extension/owner merge; five caught mutants | [AP record](archive/testing-history.md#active-parry-extension-synchronization-2026-10-11) |
 | Step 2 measurements, 2026-10-11 | 18 sword/spear/blunt cases, 2,496 frames; native timings, 360°/s trace caps and AP catch stamina; failed initial focus case excluded | [Measurement record](archive/rule-measurements-20261011.md) |

@@ -11,6 +11,7 @@ For gameplay, start with the [player guide](guide.md). For development, start wi
 | [Roadmap](next-combat-animation-plan.md) | Current progress, next work and all six completion gates. |
 | [Architecture](PLAN.md) | Locked decisions and combat-system design. |
 | [Animation](animation.md) | Presentation behavior, resource-pack format and capture commands. |
+| [Authoring](animation-authoring.md) | Offline import contract, candidate command and remaining Blockbench acceptance. |
 | [Testing](testing.md) | Relevant checks, verified checkpoints and unsupported acceptance. |
 | [Rule evidence](combat-rule-evidence.md) | Reference confidence and unresolved fidelity questions. |
 | [Compatibility](compat.md) | Mod status, candidate decisions and datapack configuration. |

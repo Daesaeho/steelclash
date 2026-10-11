@@ -65,3 +65,30 @@ jab normalization and narrower hyperarmor windows are not changed without the re
 
 The first implementation checkpoint should therefore combine the actual Sodium-loading diagnosis with the smallest
 opponent-driven live capture/reproducer. Confirmed combat blockers take priority, followed by the PAL bending trial.
+## Offline authoring prototype 2026-10-11
+
+Preparatory step 4 work: strict linear PAL-to-phase converter plus new-file-only import task, base settings/other
+clip preservation, physical left-main to canonical runtime limb conversion and free-arm scalar bend support.
+The original JSON sword fixture is hand-authored; no shipped assets, weapon timing or human test-world data changed.
+
+Verification: Java 21 repository `compileJava build`, started 2026-10-11T13:53:40Z, exit 0; **226 fresh tests**,
+zero failures/skips, including eight importer tests. An independent build in
+`C:/dev/steelclash-beta-audit/20261011/authoring-check` initially lacked JetBrains annotations; adding that external
+compile dependency fixed the harness. Tests exposed and verified constant scalar bend support. Review also found
+and fixed the runtime's left-main limb swap/reflection requirement before candidate generation.
+
+Five valid mutations caught by the intended tests: bypass solved-arm rotation protection, remove body X/Y
+compensation, omit left-main normalization, overwrite existing output/source files, and drop duplicate JSON
+properties. Production source passed the repository build; the post-mutation compile check also passed.
+Mutation configs/reports and the generated candidate are in the external evidence directory.
+
+The actual `palAnimationImport` task generated `sword-candidate.json` in that directory while preserving the base
+asset. First unquoted PowerShell invocation failed during task selection; the quoted documented command passed,
+including configuration-cache storage. This is converter/command evidence, not visible animation or performance proof.
+Repeating the command reused its configuration cache and correctly failed with `FileAlreadyExistsException`;
+the candidate's SHA-256 remained `b796f94026213d755a0774aa4bf262f55cf1214b4f7a5262d69990e1892580d9`.
+No GameTests were required: no server behavior changed. Minecraft remained available for the user's manual test.
+
+Open gates: actual editable `.bbmodel`, plugin export/coordinate retargeting, source/runtime rotation-order parity,
+rendered round-trip, dense-clip performance, alignment/onion-skin review, resource reload/invalid-file retention and
+all nine family styles. PAL More Rotation's broader step 3 matrix and adoption decision remain open as well.

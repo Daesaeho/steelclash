@@ -3,6 +3,7 @@
 How combat poses are sampled, blended and loaded. This guide covers current presentation behavior,
 the resource-pack contract, acceptance checks and capture commands. Dated review scope is in the
 [animation review archive](archive/animation-review.md).
+The [authoring prototype](animation-authoring.md) defines the offline PAL conversion contract and candidate command.
 
 ## Presentation behavior
 

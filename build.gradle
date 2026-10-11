@@ -5,6 +5,22 @@ plugins {
     id 'idea'
 }
 
+// Offline candidate import; never installs the output into the running client's resource pack.
+tasks.register('palAnimationImport', JavaExec) {
+    group = 'animation'
+    description = 'Convert a supported PAL export into a NEW Steel Clash animation candidate.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.steelclash.core.PalAnimationImport'
+    dependsOn tasks.named('classes')
+    args = ['palImportSource', 'palImportBase', 'palImportOutput', 'palImportAnimation',
+            'palImportAttack', 'palImportArm', 'palImportRelease', 'palImportRecovery', 'palImportTolerance'].collect { name ->
+        providers.gradleProperty(name).getOrElse('')
+    }
+    doFirst {
+        if (args.any { it.isEmpty() }) throw new GradleException('Missing palImport property; see docs/animation-authoring.md')
+    }
+}
+
 tasks.named('wrapper', Wrapper).configure {
     // Define wrapper values here so as to not have to always do so when updating gradlew.properties.
     // Switching this to Wrapper.DistributionType.ALL will download the full gradle sources that comes with

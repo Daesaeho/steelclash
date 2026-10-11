@@ -38,6 +38,8 @@ and [bug audit](archive/findings-history.md#bug-audit-and-fixes-2026-10-08).
 ## Animation presentation and first-person rigs
 
 The weapon arm follows the hit arc; authored body and free-hand motion must preserve grip and blade alignment.
+The [offline authoring prototype](animation-authoring.md) preserves base grip/camera settings, protects solved
+arms and rejects unsupported transforms. Its scalar/handedness/seam checks do not prove Blockbench/render parity.
 Ready rigs solve in camera space, including shoulder pivots, before body-space composition. Player and mob
 held-item rotation conventions differ. Live transitions, rendered transforms and focused motion comparisons
 supplement frozen pose sheets. Current contracts and capture instructions live in [animation.md](animation.md).
