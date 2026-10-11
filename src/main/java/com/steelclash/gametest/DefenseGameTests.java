@@ -20,6 +20,7 @@ import com.steelclash.combat.Dodge;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.compat.Compat;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import com.steelclash.net.CombatStatePayload;
@@ -50,6 +51,52 @@ public final class DefenseGameTests {
     private static final String ARENA = "arena";
 
     private DefenseGameTests() {
+    }
+
+    private static CombatStateMachine predictionCopy(CombatStateMachine source) {
+        CombatStateMachine client = new CombatStateMachine();
+        client.apply(source.phase(), source.type(), source.phaseElapsedUs(), source.phaseDurationUs(), source.timings(),
+                source.riposteTicks(), source.isHeavy(), source.isMorphed(), source.isComboAllowed(), source.variant(),
+                source.isMirrored(), source.isThwacked(), source.recoverFrom());
+        client.applyPredictionState(source.predictionState());
+        return client;
+    }
+
+    private static void mergeActiveParryPayload(GameTestHelper helper, TrainingDummy defender, CombatData server,
+                                                CombatStateMachine client) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            CombatStatePayload.STREAM_CODEC.encode(buf, CombatStatePayload.of(defender, server, false));
+            CombatStatePayload payload = CombatStatePayload.STREAM_CODEC.decode(buf);
+            CombatStateMachine.PredictionState prediction = payload.predictionState();
+            CombatStateMachine.AttackIdentity identity = new CombatStateMachine.AttackIdentity(
+                    prediction.attackSerial(), payload.attackType(), payload.heavy(), payload.morphed(),
+                    prediction.counterFeinted(), payload.variant(), payload.mirrored());
+            Phase phase = client.phase();
+            long elapsed = client.phaseElapsedUs();
+            CombatStateMachine.PredictionState before = client.predictionState();
+
+            check(helper, !payload.authoritative(), "an active-parry extension uses the mergeable snapshot path");
+            check(helper, prediction.activeParryTicks() > before.activeParryTicks(), "the catch extended server timer");
+            check(helper, client.mergeActiveParry(identity, payload.phase(), prediction.activeParryTicks(), 0),
+                    "the matching active-parry extension is merged");
+            CombatStateMachine.PredictionState after = client.predictionState();
+            check(helper, after.activeParryTicks() == prediction.activeParryTicks(), "client receives the confirmed timer");
+            check(helper, client.phase() == phase && client.phaseElapsedUs() == elapsed,
+                    "the local predicted phase and elapsed time are preserved");
+            check(helper, after.guardRecovery() == before.guardRecovery()
+                    && after.parryCooldown() == before.parryCooldown()
+                    && after.parryCooldownLeft() == before.parryCooldownLeft()
+                    && after.parriedHits() == before.parriedHits()
+                    && after.staggerAllowsParry() == before.staggerAllowsParry()
+                    && after.fromGuard() == before.fromGuard()
+                    && after.counterFeinted() == before.counterFeinted()
+                    && after.countered() == before.countered()
+                    && after.attackSerial() == before.attackSerial(),
+                    "the merge doesn't overwrite other predicted lifecycle state");
+        } finally {
+            buf.release();
+        }
     }
 
     @GameTest(template = ARENA)
@@ -187,10 +234,12 @@ public final class DefenseGameTests {
         swing(first, AttackType.SLASH);
         check(helper, Combat.start(defender, d, AttackType.SLASH), "riposte should start");
         check(helper, d.machine.isActiveParry(), "a riposte carries an active parry");
+        CombatStateMachine client = predictionCopy(d.machine);
         swing(second, AttackType.STAB);
         check(helper, !isHurt(defender), "the active parry stops the second attacker's stab");
         check(helper, data(second).machine.phase() == Phase.STAGGER, "the second attacker is parried");
         check(helper, d.machine.isAttacking(), "the riposte carries on");
+        mergeActiveParryPayload(helper, defender, d, client);
         helper.succeed();
     }
 
@@ -217,8 +266,10 @@ public final class DefenseGameTests {
         swing(first, AttackType.SLASH); // countered: same attack, just started
         check(helper, data(first).machine.phase() == Phase.STAGGER, "the slash is countered");
         check(helper, d.machine.isActiveParry(), "a counter carries an active parry");
+        CombatStateMachine client = predictionCopy(d.machine);
         swing(second, AttackType.OVERHEAD);
         check(helper, !isHurt(defender), "the active parry stops the second attacker too");
+        mergeActiveParryPayload(helper, defender, d, client);
         helper.succeed();
     }
 

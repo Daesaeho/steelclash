@@ -45,6 +45,7 @@ import org.lwjgl.glfw.GLFW;
 public final class LiveCapture {
     private static final String SCENE = System.getProperty("steelclash.liveCapture");
     private static final boolean BACKGROUND = Boolean.getBoolean("steelclash.liveCaptureBackground");
+    private static final boolean ACTIVE_PARRY = "active-parry".equals(SCENE);
     private static final boolean FOOD_USE = "itemuse".equals(SCENE) || "use-attack".equals(SCENE);
     private static final boolean ITEM_USE = FOOD_USE || "drinkuse".equals(SCENE);
     private static final boolean LOCOMOTION = "locomotion".equals(SCENE) || "locomotion-attack".equals(SCENE);
@@ -63,6 +64,12 @@ public final class LiveCapture {
     private static boolean clientAttack, serverAttack, clientHeavy, serverHeavy;
     private static boolean clientRelease, serverRelease, clientMorph, serverMorph, clientGuard, serverGuard;
     private static boolean clientCaught, serverCaught, clientRiposte, serverRiposte, opponentSeen;
+    private static boolean clientActiveParry, serverActiveParry;
+    private static boolean serverSecondaryJabWindup, serverSecondaryJabRelease;
+    private static int serverActiveParryExtensions, previousServerActiveParryTicks, previousServerActiveParrySerial = Integer.MIN_VALUE;
+    private static final long MAX_ACTIVE_PARRY_SYNC_DELAY_NANOS = 100_000_000L; // Two 50 ms tick edges, excluding the earlier riposte grant.
+    private static final List<Map<String, Object>> ACTIVE_PARRY_MERGES = new ArrayList<>();
+    private static final List<Map<String, Object>> SERVER_ACTIVE_PARRY_EXTENSIONS = new java.util.concurrent.CopyOnWriteArrayList<>();
     private static boolean clientCounter, serverCounter, clientThwack, serverThwack;
     private static int opponentRenderFrames;
     private static float initialPlayerHealth, initialOpponentHealth = Float.NaN, minOpponentHealth = Float.POSITIVE_INFINITY;
@@ -101,7 +108,7 @@ public final class LiveCapture {
     @Nullable private static com.steelclash.core.AttackType opponentRenderedType;
     @Nullable private static Phase opponentRenderedPhase;
     private record ServerSample(long tick, Phase phase, int serial, boolean heavy, boolean morphed,
-                                int parriedHits, boolean activeParry, boolean countered, boolean thwacked,
+                                int parriedHits, boolean activeParry, int activeParryTicks, boolean countered, boolean thwacked,
                                 float health, HumanoidArm arm, boolean usingItem, int food, int offhandCount, String offhandItem,
                                 String mainItem, com.steelclash.core.AttackType type,
                                 double x, double z, boolean crouching, boolean sprinting,
@@ -120,6 +127,14 @@ public final class LiveCapture {
     }
 
     public static boolean recording() { return active; }
+
+    /** Owner-thread diagnostic for a positive timer-only server merge in the live active-parry scene. */
+    public static void recordActiveParryMerge(int before, int after, int confirmed, int serial) {
+        if (ACTIVE_PARRY && active && after > before) {
+            ACTIVE_PARRY_MERGES.add(Map.of("time_ns", System.nanoTime() - startNanos, "before", before, "after", after,
+                    "confirmed", confirmed, "serial", serial));
+        }
+    }
 
     /** Only the opted-in hidden diagnostic may drive keyboard combat without capturing the user's mouse. */
     public static boolean backgroundInputEnabled() { return active && BACKGROUND && backgroundPrepared; }
@@ -166,6 +181,7 @@ public final class LiveCapture {
                 mc.options.pauseOnLostFocus = previousPause;
                 throw new IllegalStateException("Background live capture requires a windowed Minecraft window; GLFW cannot hide fullscreen windows");
             }
+            mc.mouseHandler.releaseMouse();
             backgroundPrepared = true;
         }
         if (draining) {
@@ -254,6 +270,8 @@ public final class LiveCapture {
                 player.connection.sendCommand("gamemode survival @s");
                 player.connection.sendCommand("effect give @s minecraft:instant_health 1 10 true");
                 if (LiveOpponent.enabled()) player.connection.sendCommand(LiveOpponent.summonCommand());
+                String secondSummon = LiveOpponent.secondSummonCommand();
+                if (secondSummon != null) player.connection.sendCommand(secondSummon);
             }
             initialized = true;
         }
@@ -333,7 +351,7 @@ public final class LiveCapture {
                 INPUTS.add(Map.of("tick", captureTick, "time_ns", System.nanoTime() - startNanos, "key", useKey.getName()));
                 releaseAt = captureTick + 35;
             } else {
-                boolean guard = SCENE.equals("parry") || SCENE.equals("riposte") || SCENE.equals("counter");
+                boolean guard = SCENE.equals("parry") || SCENE.equals("riposte") || SCENE.equals("counter") || ACTIVE_PARRY;
                 press(SCENE.equals("kick-attack") ? 4 : guard ? 3 : 0);
                 releaseAt = captureTick + (SCENE.equals("heavy") ? 9 : guard ? 40 : 1);
             }
@@ -349,6 +367,8 @@ public final class LiveCapture {
             if (SCENE.equals("use-attack") && player.isUsingItem() && captureTick >= 32) {
                 release(); press(0); followup = true; releaseAt = captureTick + 1;
             } else if (SCENE.equals("riposte") && machine.parriedHits() > 0 && machine.isRiposteReady()) {
+                release(); press(0); followup = true; releaseAt = captureTick + 1;
+            } else if (ACTIVE_PARRY && machine.parriedHits() > 0 && machine.isRiposteReady()) {
                 release(); press(0); followup = true; releaseAt = captureTick + 1;
             } else if (SCENE.equals("counter") && server != null && server.opponent != null
                     && server.opponent.phase() == Phase.WINDUP
@@ -374,7 +394,9 @@ public final class LiveCapture {
         clientMorph |= machine.isMorphed();
         clientGuard |= machine.phase() == Phase.PARRY;
         clientCaught |= machine.parriedHits() > 0;
-        clientRiposte |= SCENE.equals("riposte") && machine.isActiveParry() && machine.phase().isAttack();
+        clientActiveParry |= ACTIVE_PARRY && machine.isActiveParry();
+        clientRiposte |= (SCENE.equals("riposte") || ACTIVE_PARRY) && machine.isActiveParry() && machine.phase().isAttack();
+        clientRelease |= ACTIVE_PARRY && machine.phase() == Phase.RELEASE && machine.type() == com.steelclash.core.AttackType.SLASH;
         clientCounter |= machine.predictionState().countered();
         clientThwack |= machine.isThwacked();
         maxClientSerial = Math.max(maxClientSerial, machine.attackSerial());
@@ -388,7 +410,7 @@ public final class LiveCapture {
     }
 
     private static boolean validScene() {
-        return List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "hitstop",
+        return List.of("idle", "attack", "combo", "heavy", "feint", "morph", "parry", "riposte", "counter", "active-parry", "hitstop",
                 "interrupt-windup", "interrupt-release", "itemuse", "use-attack", "drinkuse", "weapon-kick", "kick-attack", "swap-weapon", "swap-empty",
                 "locomotion", "locomotion-attack", "reload", "mob-attack", "mob-morph", "mob-kick", "mob-track-attack", "mob-track-guard").contains(SCENE);
     }
@@ -433,13 +455,34 @@ public final class LiveCapture {
             player.getFoodData().setSaturation(0);
             foodStaged = true;
         }
+        int activeParryTicks = machine.predictionState().activeParryTicks();
+        if (ACTIVE_PARRY && active) {
+            if (machine.attackSerial() == previousServerActiveParrySerial && previousServerActiveParryTicks > 0
+                    && activeParryTicks > previousServerActiveParryTicks) {
+                long observedAt = System.nanoTime() - startNanos;
+                serverActiveParryExtensions++;
+                SERVER_ACTIVE_PARRY_EXTENSIONS.add(Map.of("time_ns", observedAt, "serial", machine.attackSerial(),
+                        "before", previousServerActiveParryTicks, "after", activeParryTicks));
+            }
+            previousServerActiveParrySerial = machine.attackSerial();
+            previousServerActiveParryTicks = activeParryTicks;
+        }
+        LiveOpponent.Sample opponentSample = LiveOpponent.tick(player, active, captureTick);
+        if (ACTIVE_PARRY && opponentSample != null && opponentSample.secondaryStarted()) {
+            serverSecondaryJabWindup |= opponentSample.secondaryType() == com.steelclash.core.AttackType.JAB
+                    && opponentSample.secondaryPhase() == Phase.WINDUP;
+            serverSecondaryJabRelease |= opponentSample.secondaryType() == com.steelclash.core.AttackType.JAB
+                    && opponentSample.secondaryPhase() == Phase.RELEASE;
+        }
+        serverActiveParry |= ACTIVE_PARRY && machine.isActiveParry();
+        serverRelease |= ACTIVE_PARRY && machine.phase() == Phase.RELEASE && machine.type() == com.steelclash.core.AttackType.SLASH;
         server = new ServerSample(event.getServer().getTickCount(), machine.phase(), machine.attackSerial(), machine.isHeavy(),
-                machine.isMorphed(), machine.parriedHits(), machine.isActiveParry(), machine.predictionState().countered(),
+                machine.isMorphed(), machine.parriedHits(), machine.isActiveParry(), activeParryTicks, machine.predictionState().countered(),
                 machine.isThwacked(), player.getHealth(), player.getMainArm(), player.isUsingItem(),
                 player.getFoodData().getFoodLevel(), player.getOffhandItem().getCount(),
                 BuiltInRegistries.ITEM.getKey(player.getOffhandItem().getItem()).toString(),
                 BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString(), machine.type(),
-                player.getX(),player.getZ(),player.isCrouching(),player.isSprinting(),LiveOpponent.tick(player, active, captureTick));
+                player.getX(),player.getZ(),player.isCrouching(),player.isSprinting(),opponentSample);
     }
 
     @SubscribeEvent
@@ -477,9 +520,11 @@ public final class LiveCapture {
             long window = mc.getWindow().getWindow();
             boolean visible = GLFW.glfwGetWindowAttrib(window, GLFW.GLFW_VISIBLE) == GLFW.GLFW_TRUE;
             boolean focused = GLFW.glfwGetWindowAttrib(window, GLFW.GLFW_FOCUSED) == GLFW.GLFW_TRUE;
+            boolean mouseGrabbed = mc.mouseHandler.isMouseGrabbed();
             row.put("window_visible", visible); row.put("window_focused", focused);
-            row.put("mouse_grabbed", mc.mouseHandler.isMouseGrabbed());
+            row.put("mouse_grabbed", mouseGrabbed);
             if (visible) throw new IllegalStateException("Background capture window became visible");
+            if (mouseGrabbed) throw new IllegalStateException("Background capture unexpectedly grabbed the mouse");
         }
         row.put("frame", frames); row.put("time_ns", System.nanoTime() - startNanos); row.put("client_tick", player.tickCount);
         row.put("partial", event.getPartialTick().getGameTimeDeltaPartialTick(false)); row.put("phase", machine.phase());
@@ -500,6 +545,8 @@ public final class LiveCapture {
         row.put("opponent_seen", opponentSeen);
         if (opponentSeen) opponentRenderFrames++;
         row.put("parried_hits", machine.parriedHits()); row.put("active_parry", machine.isActiveParry());
+        row.put("client_active_parry_ticks", machine.predictionState().activeParryTicks());
+        row.put("server_active_parry_ticks", server == null ? 0 : server.activeParryTicks);
         row.put("countered", machine.predictionState().countered()); row.put("thwacked", machine.isThwacked());
         row.put("health", player.getHealth());
         row.put("using_item", player.isUsingItem());
@@ -529,7 +576,7 @@ public final class LiveCapture {
             serverAttack |= sample.phase.isAttack(); serverHeavy |= sample.heavy;
             serverRelease |= sample.phase == Phase.RELEASE; serverMorph |= sample.morphed; serverGuard |= sample.phase == Phase.PARRY;
             serverCaught |= sample.parriedHits > 0;
-            serverRiposte |= SCENE.equals("riposte") && sample.activeParry && sample.phase.isAttack();
+            serverRiposte |= (SCENE.equals("riposte") || ACTIVE_PARRY) && sample.activeParry && sample.phase.isAttack();
             serverCounter |= sample.countered; serverThwack |= sample.thwacked;
             if (sample.opponent != null) {
                 if (Float.isNaN(initialOpponentHealth)) initialOpponentHealth = sample.opponent.health();
@@ -579,6 +626,18 @@ public final class LiveCapture {
             report.put("opponent_render_frames", opponentRenderFrames);
             report.put("initial_opponent_health", initialOpponentHealth); report.put("min_opponent_health", minOpponentHealth);
         }
+        if (ACTIVE_PARRY) {
+            report.put("client_active_parry", clientActiveParry);
+            report.put("server_active_parry", serverActiveParry);
+            report.put("server_active_parry_extensions", serverActiveParryExtensions);
+            report.put("server_active_parry_extension_samples", SERVER_ACTIVE_PARRY_EXTENSIONS);
+            report.put("client_active_parry_merges", ACTIVE_PARRY_MERGES);
+            report.put("client_merge_near_server_extension", hasNearbyActiveParryMerge());
+            report.put("server_secondary_jab_windup", serverSecondaryJabWindup);
+            report.put("server_secondary_jab_release", serverSecondaryJabRelease);
+            report.put("client_riposte_release", clientRelease);
+            report.put("server_riposte_release", serverRelease);
+        }
         report.put("client_serials", maxClientSerial - firstSerial); report.put("server_serials", maxServerSerial - firstServerSerial);
         Files.writeString(out.resolve("capture.json"), new GsonBuilder().serializeNulls().setPrettyPrinting().create().toJson(report));
         if (!SCENE.startsWith("mob-") && !List.of("idle", "parry", "itemuse", "drinkuse", "locomotion").contains(SCENE) && (!clientAttack || !serverAttack)) throw new IllegalStateException("Live input did not reach client and server");
@@ -599,6 +658,14 @@ public final class LiveCapture {
                 || !(minOpponentHealth < initialOpponentHealth)
                 || FRAMES.stream().anyMatch(frame -> ((Number) frame.get("health")).floatValue() < initialPlayerHealth)))
             throw new IllegalStateException("Live matching counter failed to catch and return the attack");
+        if (ACTIVE_PARRY && (!followup || !clientCaught || !serverCaught || !clientRiposte || !serverRiposte
+                || !clientActiveParry || !serverActiveParry
+                || !clientRelease || !serverRelease
+                || !serverSecondaryJabWindup || !serverSecondaryJabRelease || opponentRenderFrames == 0
+                || serverActiveParryExtensions == 0 || !hasNearbyActiveParryMerge()
+                || FRAMES.stream().anyMatch(frame -> ((Number) frame.get("health")).floatValue() < initialPlayerHealth
+                    || frame.get("server") instanceof ServerSample sample && sample.health < initialPlayerHealth)))
+            throw new IllegalStateException("Live active-parry extension did not reach the client during the ordinary riposte without interrupting release or damaging the player");
         if (SCENE.equals("hitstop") && (!clientThwack || !serverThwack || opponentRenderFrames == 0
                 || !(minOpponentHealth > 0 && minOpponentHealth < initialOpponentHealth)))
             throw new IllegalStateException("Live light blunt strike did not stop in the surviving opponent");
@@ -663,5 +730,24 @@ public final class LiveCapture {
                     || mc.player == null || !mc.player.getOffhandItem().is(net.minecraft.world.item.Items.GLASS_BOTTLE)))
                 throw new IllegalStateException("Drinking did not return a bottle on client and server");
         }
+    }
+
+    private static boolean hasNearbyActiveParryMerge() {
+        for (Map<String, Object> merge : ACTIVE_PARRY_MERGES) {
+            long mergedAt = ((Number) merge.get("time_ns")).longValue();
+            int serial = ((Number) merge.get("serial")).intValue();
+            int before = ((Number) merge.get("before")).intValue();
+            int after = ((Number) merge.get("after")).intValue();
+            int confirmed = ((Number) merge.get("confirmed")).intValue();
+            if (after <= before || after <= 0 || confirmed < after) continue;
+            for (Map<String, Object> extension : SERVER_ACTIVE_PARRY_EXTENSIONS) {
+                if (((Number) extension.get("serial")).intValue() == serial
+                        && Math.abs(mergedAt - ((Number) extension.get("time_ns")).longValue())
+                            <= MAX_ACTIVE_PARRY_SYNC_DELAY_NANOS) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

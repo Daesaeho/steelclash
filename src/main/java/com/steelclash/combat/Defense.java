@@ -145,7 +145,11 @@ public final class Defense {
                                     WeaponProfile.GuardSpec guard) {
         float staminaDamage = swing != null ? swing.staminaDamage() : Config.VANILLA_MELEE_STAMINA_DAMAGE.get().floatValue();
         data.stamina.spend(staminaDamage * guard.staminaMult());
+        int activeParryTicks = data.machine.predictionState().activeParryTicks();
         data.machine.extendActiveParry(Config.ACTIVE_PARRY_EXTEND_TICKS.get());
+        if (data.machine.predictionState().activeParryTicks() > activeParryTicks) {
+            Combat.sync(defender, data, false);
+        }
         Feedback.parry(defender, attacker);
         if (swing != null) {
             Combat.stagger(attacker, attacker.getData(ModAttachments.COMBAT), Config.PARRIED_STAGGER_TICKS.get(), true);

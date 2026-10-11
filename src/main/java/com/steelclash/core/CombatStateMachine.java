@@ -449,6 +449,15 @@ public final class CombatStateMachine {
                                   boolean counterFeinted, boolean countered, int attackSerial) {
     }
 
+    /** Identifies the current attack action, including changes that keep the same attack serial. */
+    public record AttackIdentity(int serial, AttackType type, boolean heavy, boolean morphed, boolean counterFeinted,
+                                 int variant, boolean mirrored) {
+    }
+
+    public AttackIdentity attackIdentity() {
+        return new AttackIdentity(attackSerial, type, heavy, morphed, counterFeinted, variant, mirrored);
+    }
+
     public PredictionState predictionState() {
         return new PredictionState(guardRecovery, parryCooldown, parryCooldownLeft, parriedHits, staggerAllowsParry,
                 activeParryTicks, fromGuard, counterFeinted, countered, attackSerial);
@@ -474,6 +483,28 @@ public final class CombatStateMachine {
         if (newComboAllowed) {
             allowCombo();
         }
+    }
+
+    /**
+     * Merges a delayed server confirmation that an active parry was extended. It must still describe this exact
+     * attack action, and both the client and server must still be in a phase protected by active parry.
+     */
+    public boolean mergeActiveParry(AttackIdentity confirmed, Phase serverPhase, int ticks, int latencyTicks) {
+        if (!attackIdentity().equals(confirmed)
+                || !activeParryPhase(phase)
+                || !activeParryPhase(serverPhase)) {
+            return false;
+        }
+        int adjustedTicks = Math.max(0, Math.max(0, ticks) - Math.max(0, latencyTicks));
+        if (adjustedTicks <= activeParryTicks) {
+            return false;
+        }
+        activeParryTicks = adjustedTicks;
+        return true;
+    }
+
+    private static boolean activeParryPhase(Phase phase) {
+        return phase == Phase.WINDUP || phase == Phase.RELEASE;
     }
 
     /** Progress through the current phase in [0, 1], interpolated within the tick. */

@@ -65,6 +65,14 @@ pass, and every remaining unsupported case is recorded. A frozen pose sheet alon
 
 ## 2. Fix confirmed bugs and resolve the highest-impact fidelity questions
 
+First verified checkpoint, 2026-10-11: report N07 is reproduced in the current server/client code and fixed.
+Active-parry extensions now reach the predicted owner without restarting the action. Full build: 213 JUnit passes;
+174 required GameTests pass with and without Spartan integrations; the real second-attacker capture and five
+mutants verify server dispatch, client merge and stale/expired guards. See
+[combat-rule-evidence.md](combat-rule-evidence.md) and [testing.md](testing.md#active-parry-extension-synchronization-2026-10-11).
+Step 2 remains open for live matchup measurements and reference-fidelity decisions; active-parry stamina,
+jab normalization and narrower hyperarmor windows are not changed without the required evidence.
+
 **Deliverable:** small, independently reviewable combat fixes and a measured rule table.
 
 - Fix reproduced blockers from step 1 with focused GameTests. For stagger precedence, explicitly define whether

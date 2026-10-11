@@ -1104,3 +1104,24 @@ pose, rather than blaming an absent screenshot on combat packets. The revised gu
 Hidden live capture uses an opt-in GLFW window hide and avoids MouseHandler.grabMouse, whose physical-key refresh
 would overwrite scripted key states. Client source inspection supports continued rendering while unfocused; actual
 hidden-window/FPS/input acceptance remains pending the approval-review reset. Ordinary launches keep their behavior.
+
+Follow-up baseline closure: twenty accepted cases and five caught mutants now verify the bounded step-1 gate.
+Hidden movement alone did not exercise combat input; a later attack found the mouse-grab gate and the opted-in
+diagnostic now bypasses it. Actual hidden sword/trident attacks pass with invisible windows and ungrabbed mouse.
+The original pixel-only renderer assertion also missed a restored body-space solve; the final camera-space hand
+check uses a body-aligned reference and rejects its roughly 5.6–5.9 pixel drift independently of starting yaw.
+GLFW's Win32 focus flag is thread-local GetActiveWindow, so it is not desktop-foreground proof. The initial loading
+window, LAN and other explicitly listed human checks remain open rather than being counted as passed.
+
+## Active-parry window acknowledgments (2026-10-11)
+
+The existing CombatStatePayload already contains AP remaining ticks and all action identity markers needed for a
+narrow owner merge. A non-authoritative extension must not take the full correction branch: that branch resets
+queued input, clock/presentation and lifecycle state. Same-serial morphs require comparing type and morph/counter-
+feint/variant/side markers too; new attacks increment serial. Clamp packet age and retain longer local windows.
+
+Server dispatch after a positive extension plus the matching owner timer merge resolves report N07 without new
+wire fields or balance changes. A true second-attacker jab exercises it through packets. Five mutations prove
+core guards and both ends of delivery, while codec GameTests cover riposte/counter payload identity. Full build:
+213 JUnit passes; both optional-mod GameTest variants pass all 174 required tests. Details and actual packet times
+are in [testing.md](testing.md#active-parry-extension-synchronization-2026-10-11). LAN/remote correction remains open.

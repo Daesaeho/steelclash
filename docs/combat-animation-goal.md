@@ -26,8 +26,13 @@ authorization. Releases/tags require a separate explicit instruction. Record mea
 reference claims and unresolved tuning; never mark a step complete solely from frozen poses or untested proposals.
 
 Current roadmap checkpoint: step 1's bounded baseline gate is closed (20 accepted cases, five mutation guards),
-with unsupported human/feature checks retained in the testing document. Step 2 starts with the confirmed active-parry
-extension synchronization defect (N07), then the rule/reference measurements. Steps 3–6 remain pending.
+with unsupported human/feature checks retained in the testing document. Step 2 is in progress: active-parry
+extension synchronization (N07) is fixed, while rule/reference measurements remain open. Steps 3–6 remain pending.
+
+The first step-2 checkpoint now fixes N07 with a timer-only matching-action merge, live second-attacker packet
+evidence, 213 full-build JUnit passes, both 174-test GameTest variants and five caught mutants. The
+[rule/reference evidence table](combat-rule-evidence.md) retains unresolved stamina, jab and hyperarmor questions.
+Step 2 and the overall goal remain unfinished; remaining human playtests are not converted into passed checks.
 
 ## Acceptance criteria
 

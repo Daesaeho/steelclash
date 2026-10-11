@@ -12,13 +12,17 @@ import org.jetbrains.annotations.Nullable;
 final class LiveOpponent {
     private static final String TAG = "steelclash_live_opponent";
     private static final String RUN_TAG = TAG + "_" + java.util.UUID.randomUUID();
+    private static final String SECONDARY_RUN_TAG = RUN_TAG + "_secondary";
     private static final String SCENE = System.getProperty("steelclash.liveCapture", "");
     private static final boolean INTERRUPT = SCENE.startsWith("interrupt-");
     private static final boolean MOB = SCENE.startsWith("mob-");
     private static final boolean TRACKING = SCENE.startsWith("mob-track-");
-    private static final boolean ENABLED = INTERRUPT || MOB || java.util.List.of("riposte", "counter", "hitstop").contains(SCENE);
+    private static final boolean ACTIVE_PARRY = SCENE.equals("active-parry");
+    private static final boolean ENABLED = INTERRUPT || MOB || ACTIVE_PARRY || java.util.List.of("riposte", "counter", "hitstop").contains(SCENE);
     @Nullable private static Husk opponent;
+    @Nullable private static Husk secondary;
     private static boolean started;
+    private static boolean secondaryStarted;
     @Nullable private static Phase hitPhase;
     private static float hitDamage;
     private static boolean followup;
@@ -29,7 +33,8 @@ final class LiveOpponent {
 
     record Sample(int id, Phase phase, long elapsedUs, long durationUs, int serial, float health, boolean started,
                   @Nullable Phase hitPhase, float hitDamage, AttackType type, boolean followup, boolean away, boolean returned,
-                  double x, double y, double z, int entityTick) {}
+                  double x, double y, double z, int entityTick, boolean secondaryStarted, int secondaryId,
+                  @Nullable Phase secondaryPhase, int secondarySerial, AttackType secondaryType) {}
 
     private LiveOpponent() {}
 
@@ -41,6 +46,13 @@ final class LiveOpponent {
     }
 
     @Nullable
+    static String secondSummonCommand() {
+        if (!ACTIVE_PARRY) return null;
+        return "summon minecraft:husk ~0.5 301 ~1.2 {NoAI:1b,Silent:1b,PersistenceRequired:1b,IsBaby:0b,"
+                + "Tags:[\"" + TAG + "\",\"" + SECONDARY_RUN_TAG + "\"],Rotation:[180f,0f],HandItems:[{id:\"minecraft:iron_sword\",count:1},{}]}";
+    }
+
+    @Nullable
     static Sample tick(ServerPlayer player, boolean captureActive, int captureTick) {
         if (!ENABLED || !captureActive) return null;
         if (opponent == null) {
@@ -48,6 +60,12 @@ final class LiveOpponent {
                     actor -> actor.isAlive() && actor.getTags().contains(RUN_TAG));
             if (actors.size() > 1) throw new IllegalStateException("Live opponent fixture is not unique");
             if (actors.size() == 1) opponent = actors.getFirst();
+        }
+        if (ACTIVE_PARRY && secondary == null) {
+            var actors = player.serverLevel().getEntitiesOfClass(Husk.class, player.getBoundingBox().inflate(6),
+                    actor -> actor.isAlive() && actor.getTags().contains(SECONDARY_RUN_TAG));
+            if (actors.size() > 1) throw new IllegalStateException("Live secondary opponent fixture is not unique");
+            if (actors.size() == 1) secondary = actors.getFirst();
         }
         var playerMachine = player.getData(ModAttachments.COMBAT).machine;
         if (opponent == null) {
@@ -106,9 +124,29 @@ final class LiveOpponent {
             if (machine.type()!=type) throw new IllegalStateException("Mob replacement was rejected");
             followup=true;
         }
+        if (ACTIVE_PARRY && !secondaryStarted && playerMachine.phase() == Phase.WINDUP && playerMachine.isActiveParry()) {
+            if (secondary == null) throw new IllegalStateException("Live active-parry secondary opponent was not staged");
+            if (player.isCreative() || player.isSpectator() || !secondary.isNoAi() || secondary.getTarget() != null)
+                throw new IllegalStateException("Live secondary opponent needs a survival player and a passive controlled actor");
+            double dx = player.getX() - secondary.getX();
+            double dz = player.getZ() - secondary.getZ();
+            float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+            secondary.setYRot(yaw);
+            secondary.setYHeadRot(yaw);
+            secondary.yBodyRot = yaw;
+            Combat.requestAttack(secondary, AttackType.JAB, 0, false);
+            if (secondary.getData(ModAttachments.COMBAT).machine.phase() != Phase.WINDUP
+                    || secondary.getData(ModAttachments.COMBAT).machine.type() != AttackType.JAB)
+                throw new IllegalStateException("Live secondary jab was rejected");
+            secondaryStarted = true;
+        }
+        var secondaryMachine = secondary == null ? null : secondary.getData(ModAttachments.COMBAT).machine;
         return new Sample(opponent.getId(), machine.phase(), machine.phaseElapsedUs(), machine.phaseDurationUs(),
                 machine.attackSerial(), opponent.getHealth(), started, hitPhase, hitDamage, machine.type(), followup, away, returned,
-                opponent.getX(), opponent.getY(), opponent.getZ(), opponent.tickCount);
+                opponent.getX(), opponent.getY(), opponent.getZ(), opponent.tickCount, secondaryStarted,
+                secondary == null ? -1 : secondary.getId(), secondaryMachine == null ? null : secondaryMachine.phase(),
+                secondaryMachine == null ? 0 : secondaryMachine.attackSerial(),
+                secondaryMachine == null ? AttackType.SLASH : secondaryMachine.type());
     }
 
     /** Called before the ordinary flinch listener; retain the phase in which a real damaging contact landed. */

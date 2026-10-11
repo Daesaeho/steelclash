@@ -1,6 +1,7 @@
 # Unreleased
 
 **Fixes**
+- Active-parry catches synchronize their extended protection timer to the owning client. Matching-action updates preserve the predicted attack clock and queued input; stale, expired and incompatible confirmations are ignored.
 - First-person ready hands and blades stay anchored to the view while the body lags behind a turn, including left-main-arm and two-handed grips.
 - Hotbar swaps discard the local old-weapon attack/guard pose immediately, before the server cancellation arrives. Disarm recoil and the empty-hand follow-through of a released throw remain visible.
 - Ground-slam secondary effects stop at solid collision shapes along the ground-level path, protecting targets behind walls and beneath floors.
@@ -16,6 +17,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add a two-attacker live active-parry scene with real packet-merge observations and a combat rule/reference table separating confirmed bugs from unresolved balance measurements.
 - Add opt-in hidden-window live/pose-sheet captures that avoid mouse grabbing, plus bounded Mercury/Google API assistant helpers and a local masked credential setup window. Runtime/API verification remains pending.
 - Add ordinary movement/crouch/sprint/turn, resource reload, humanoid mob attack/morph/kick and late-tracking acceptance scenes, with model, FOV/FPS, position and rendered mob-bone diagnostics.
 - Add live hotbar swaps, weapon-to-kick and buffered kick-to-attack controls, with rendered bone transforms, rig-blend state and a separate third-person player-mesh observer.

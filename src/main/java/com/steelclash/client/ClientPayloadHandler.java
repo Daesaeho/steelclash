@@ -3,12 +3,14 @@ package com.steelclash.client;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.LagMath;
+import com.steelclash.core.CombatStateMachine;
 import com.steelclash.net.CombatStatePayload;
 import com.steelclash.net.DownedPayload;
 import com.steelclash.net.FeedbackPayload;
 import com.steelclash.net.StaminaPayload;
 import com.steelclash.profile.WeaponProfiles;
 import com.steelclash.client.anim.CombatPresentation;
+import com.steelclash.client.dev.LiveCapture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.resources.ResourceKey;
@@ -32,6 +34,17 @@ public final class ClientPayloadHandler {
             // carry windows the server alone can decide (a landed hit allows a combo, a parry opens a riposte).
             if (entity == mc.player && !payload.authoritative()) {
                 data.machine.applyWindows(payload.riposteTicks(), payload.comboAllowed());
+                CombatStateMachine.PredictionState prediction = payload.predictionState();
+                int before = data.machine.predictionState().activeParryTicks();
+                CombatStateMachine.AttackIdentity identity = new CombatStateMachine.AttackIdentity(prediction.attackSerial(),
+                                payload.attackType(), payload.heavy(), payload.morphed(), prediction.counterFeinted(),
+                                payload.variant(), payload.mirrored());
+                boolean merged = data.machine.mergeActiveParry(identity, payload.phase(), prediction.activeParryTicks(),
+                        LagMath.oneWayTicks(ownLatency(mc)));
+                if (merged) {
+                    LiveCapture.recordActiveParryMerge(before, data.machine.predictionState().activeParryTicks(),
+                            prediction.activeParryTicks(), identity.serial());
+                }
                 return;
             }
             data.machine.apply(payload.phase(), payload.attackType(), payload.phaseElapsedUs(), payload.phaseDurationUs(),

@@ -281,7 +281,15 @@ the observer back while it is active. The attack scene requests the normal heavy
 keeps the actor's server clock ticking; no-gravity staging prevents unrelated falls. The prior forced flag restores
 after return. Guards require an unobserved interval followed by matching native client/server windup/guard state,
 plus actual mob rendering later. Native state is recorded separately because chunk rebuild can delay visible poses.
-The latest tracking acceptance has not run; these fixtures do not establish real LAN latency.
+The latest fixtures verify matching native state and later rendering; they do not establish real LAN latency
+or immediate visible windup while chunks rebuild.
+
+`active-parry` adds a separately tagged passive husk to the ordinary guard/riposte fixture. Its normal jab reaches
+the front of the riposting player while active parry protects them. The capture records native server extensions,
+owner packet-handler merges, actual client/server remaining ticks and relative monotonic timestamps. Acceptance
+requires a positive confirmed merge within 100 ms of the server extension, an unharmed hero and continued release;
+the earlier riposte grant alone cannot satisfy that observation. The matching-action merge preserves predicted
+phase/elapsed and queued input. This integrated-server test does not establish arbitrary network latency.
 
 `-PliveCaptureRenderer=sodium` requires an initialized `SodiumWorldRenderer`; `vanilla` requires its class to be
 absent. The default `any` only records the result. Renderer discovery and the loaded-mod list are not substitutes

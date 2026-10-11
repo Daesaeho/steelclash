@@ -959,3 +959,31 @@ client event remains possible. Normal gameplay launches retain their input gate 
 Step 1's bounded baseline gate is closed with unsupported cases documented. Remaining human/feature acceptance:
 first-person kick feet, shield-bash/other model and camera-effect variants, actual LAN and startup-window behavior.
 BodyHealth/LSO stay deferred; none of these results declare the full beta goal complete.
+
+## Active-parry extension synchronization (2026-10-11)
+
+Report N07 matches this checkout: Defense extended the server timer without dispatch, and the local
+non-authoritative handler ignored its existing payload field. Sending a full authoritative correction would clear
+queued input and reset predicted phase/clock, so the fix synchronizes the existing snapshot with a timer-only merge.
+Match serial/type, heavy/morph/counter-feint flags, variant and mirrored side; accept only windup/release on both
+sides, deduct one-way latency, and ignore expired/stale/shorter windows. No wire-format or stamina-cost change.
+
+Evidence remains under `C:/dev/steelclash-beta-audit/20261010/step1-broad`: the healthy live and mutation baseline
+run ordinary guard→riposte against one passive husk, with a separately tagged second husk starting a normal aimed
+jab. The hero stays at full HP and reaches release. The sampled server timer goes 3→4 (two added ticks minus the
+normal tick decrement); the confirmed owner handler merge goes 3→4 about 20.4 ms later. Initial grant is excluded
+from the server extension detector, and the 100 ms timestamp gate prevents that earlier grant satisfying dispatch
+acceptance. A later one-tick server confirmation can restore a locally expired timer while the same attack remains
+protected. Native visibility/mouse diagnostics remain recorded; this is integrated-server evidence, not real LAN.
+
+Verification: 67 fresh focused lifecycle/lag checks at `2026-10-11T01:52:25Z`; 174 required GameTests pass both
+with Spartan integrations (`01:54:08Z`) and without (`01:54:32Z`). Existing riposte/counter catch tests now roundtrip
+the real payload and merge into a prediction copy while preserving other lifecycle state. Those codec tests alone
+do not prove sending; the live fixture does. Five valid mutations are caught: stale-action acceptance, active-phase
+bypass, ignored packet age, omitted server dispatch and discarded owner merge. The latter two fail the intended
+real-client acceptance despite correct server catch simulation. No survivors or invalid mutants remain.
+
+After restoring source, full build at `02:00:30Z` passes all **213 fresh JUnit tests**. Costs/attack durations/damage,
+turn cap, hit sweep and authoritative correction path retain their prior behavior. Check real latency, packet timing,
+queued followups and remote views in multiplayer before extending that acceptance claim. Broader step-2 rule
+measurement and unresolved reference questions remain in [combat-rule-evidence.md](combat-rule-evidence.md).
