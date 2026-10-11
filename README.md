@@ -52,7 +52,7 @@ Weapons, mob rosters and mob gear are all data-driven: weapon profiles, item and
 ./gradlew runGameTestServer -Pbench    # combat benchmark scenes; reports in run-gametest/steelclash-bench/
 ```
 
-Developer docs: [plan](docs/PLAN.md), [findings](docs/spikes.md), [manual test checklists](docs/testing.md).
+Developer docs: [documentation map](docs/README.md), [active roadmap](docs/next-combat-animation-plan.md), [testing and acceptance](docs/testing.md).
 
 ## Releasing
 

@@ -254,7 +254,7 @@ These scripted keyboard cases do not establish mouse gestures, real LAN latency 
 and skips mouse/screen grabs. `-PposeSheetBackground` provides the same hidden-window option for frozen sheets.
 Use a windowed test client: both fail if GLFW cannot hide it. Pose sheets that finish without quitting restore
 visibility with focus-on-show temporarily disabled. The initial loading window can precede the first client tick.
-Actual hidden rendering/input/FPS acceptance is pending; existing foreground evidence does not verify this mode.
+Hidden keyboard combat/rendering and a three-shot frozen sheet are verified in the [bounded baseline](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11). The initial startup-window flash remains outside that acceptance.
 
 The `locomotion` scene uses normal movement keys for forward/backward movement, crouched strafing and sprinting,
 then turns through 192 degrees without pinning body yaw. `locomotion-attack` starts a slash while crouched.

@@ -17,8 +17,9 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Consolidate developer documentation with a navigation map, concise goal/roadmap/findings/test guides and preserved historical evidence; correct stale background-capture and Sodium acceptance notes.
 - Add a two-attacker live active-parry scene with real packet-merge observations and a combat rule/reference table separating confirmed bugs from unresolved balance measurements.
-- Add opt-in hidden-window live/pose-sheet captures that avoid mouse grabbing, plus bounded Mercury/Google API assistant helpers and a local masked credential setup window. Runtime/API verification remains pending.
+- Add opt-in hidden-window live/pose-sheet captures that avoid mouse grabbing, plus bounded Mercury/Google API assistant helpers and a local masked credential setup window. Bounded hidden live and pose-sheet captures and the configured API helpers have been verified; initial startup-window visibility remains unverified.
 - Add ordinary movement/crouch/sprint/turn, resource reload, humanoid mob attack/morph/kick and late-tracking acceptance scenes, with model, FOV/FPS, position and rendered mob-bone diagnostics.
 - Add live hotbar swaps, weapon-to-kick and buffered kick-to-attack controls, with rendered bone transforms, rig-blend state and a separate third-person player-mesh observer.
 - Add a live drink/bottle-return capture and record consuming-hand blend weight and stable item IDs alongside rendered rotations.
