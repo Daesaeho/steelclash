@@ -18,8 +18,10 @@ import com.steelclash.profile.Jabs;
 import com.steelclash.profile.Throws;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.TreeSet;
 import net.minecraft.client.CameraType;
@@ -64,6 +66,7 @@ import org.lwjgl.glfw.GLFW;
  *     <li>{@code steelclash.poseSheetArm}: main arm, {@code left} or {@code right};</li>
  *     <li>{@code steelclash.poseSheetOffhand}: offhand item id, including {@code minecraft:air} for empty;
  *     omitted arm/offhand settings preserve the subject's existing conditions;</li>
+     *     <li>{@code steelclash.poseSheetArmor}: capture-only {@code none} or full {@code iron} equipment;</li>
  *     <li>{@code steelclash.poseSheetBackground}: hide the window from the first client tick for a valid pose sheet;
  *     if the run does not quit, GLFW shows it again after capture without requesting input focus;</li>
  *     <li>{@code steelclash.poseSheetQuit}: close the game when done.</li>
@@ -117,6 +120,9 @@ public final class PoseSheet {
     private static ItemStack requestedOffhand;
     private static HumanoidArm previousPlayerArm;
     private static ItemStack previousPlayerOffhand;
+    private static final EquipmentSlot[] ARMOR_SLOTS = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
+    private static final Map<EquipmentSlot, ItemStack> previousPlayerArmor = new EnumMap<>(EquipmentSlot.class);
+    private static final Map<EquipmentSlot, ItemStack> requestedArmor = new EnumMap<>(EquipmentSlot.class);
 
     private PoseSheet() {
     }
@@ -214,6 +220,16 @@ public final class PoseSheet {
                     .orElseThrow(() -> new IllegalArgumentException("Pose sheet: unknown offhand item " + offhand)));
             previousPlayerArm = player.getMainArm();
             previousPlayerOffhand = player.getOffhandItem().copy();
+            String armor = System.getProperty("steelclash.poseSheetArmor");
+            if (armor != null) {
+                if (!armor.equals("none") && !armor.equals("iron")) throw new IllegalArgumentException("Pose sheet armor must be none or iron");
+                String[] pieces = {"iron_boots", "iron_leggings", "iron_chestplate", "iron_helmet"};
+                for (int i = 0; i < ARMOR_SLOTS.length; i++) {
+                    previousPlayerArmor.put(ARMOR_SLOTS[i], player.getItemBySlot(ARMOR_SLOTS[i]).copy());
+                    requestedArmor.put(ARMOR_SLOTS[i], armor.equals("none") ? ItemStack.EMPTY :
+                            new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(pieces[i]))));
+                }
+            }
             wait = SETTLE_TICKS;
             if (BACKGROUND) {
                 if (!pauseOnLostFocusSaved) {
@@ -400,6 +416,7 @@ public final class PoseSheet {
         if (requestedOffhand != null && !ItemStack.isSameItem(subject.getOffhandItem(), requestedOffhand)) {
             subject.setItemSlot(EquipmentSlot.OFFHAND, requestedOffhand.copy()); // capture-only client state
         }
+        requestedArmor.forEach((slot, stack) -> subject.setItemSlot(slot, stack.copy()));
         if (shot.mobYaw() != null) {
             if (subject instanceof Mob mob) {
                 mob.setAggressive(true); // as a fighter is in game: illagers only show their arms and weapon then
@@ -481,6 +498,12 @@ public final class PoseSheet {
     }
 
     private static void capture(Minecraft mc, Shot shot) {
+        if (BACKGROUND) {
+            boolean visible = GLFW.glfwGetWindowAttrib(mc.getWindow().getWindow(), GLFW.GLFW_VISIBLE) != GLFW.GLFW_FALSE;
+            boolean grabbed = mc.mouseHandler.isMouseGrabbed();
+            if (visible || grabbed) throw new IllegalStateException("Background pose sheet became visible or grabbed the mouse");
+            SteelClash.LOGGER.info("Pose sheet background: windowVisible={} mouseGrabbed={}", visible, grabbed);
+        }
         LivingEntity entity = subject(mc.player, shot);
         HumanoidArm expectedArm = requestedMainArm == null ? entity.getMainArm() : requestedMainArm;
         ResourceLocation expectedOffhand = BuiltInRegistries.ITEM.getKey(
@@ -490,6 +513,10 @@ public final class PoseSheet {
             throw new IllegalStateException("Pose sheet: requested rig conditions were not applied for " + shot.name());
         }
         List<ResourceLocation> armor = new ArrayList<>();
+        requestedArmor.forEach((slot, stack) -> {
+            if (!ItemStack.isSameItem(entity.getItemBySlot(slot), stack))
+                throw new IllegalStateException("Pose sheet: requested armor was not applied for " + shot.name());
+        });
         entity.getArmorSlots().forEach(stack -> armor.add(BuiltInRegistries.ITEM.getKey(stack.getItem())));
         String skin = entity instanceof AbstractClientPlayer p ? p.getSkin().model() + ":" + p.getSkin().texture() : "mob";
         SteelClash.LOGGER.info("Pose sheet conditions: {} entity={} arm={} offhand={} skin={} armor={} poseLeft={} twoHanded={}",
@@ -530,6 +557,7 @@ public final class PoseSheet {
     }
 
     private static void finish(Minecraft mc, LocalPlayer player) {
+        previousPlayerArmor.forEach((slot, stack) -> player.setItemSlot(slot, stack.copy()));
         if (requestedMainArm != null) player.setMainArm(previousPlayerArm);
         if (requestedOffhand != null) player.setItemSlot(EquipmentSlot.OFFHAND, previousPlayerOffhand);
         if (stagedDowned) {

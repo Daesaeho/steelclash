@@ -144,6 +144,9 @@ Review the shared bash/special motion in the actual client before refining it pe
 
 Use `-PposeSheetArm=left|right` and `-PposeSheetOffhand=minecraft:air|minecraft:shield|minecraft:torch` to
 select rig conditions (pass one item id, not the literal alternatives). Omitted settings preserve existing conditions.
+`-PposeSheetArmor=none|iron` selects empty armor slots or full iron armor for the capture; omitted preserves equipment.
+Frozen sheets also hold vanilla model age at 100 ticks, so free-hand breathing cannot vary between equivalent shots.
+Background captures verify the window is hidden and the mouse is released at each screenshot.
 The tool checks actual rendered handedness/offhand ownership and logs entity type, skin model/texture and armor;
 an occupied offhand must not enter the two-handed grip. Overrides are client-local and restored when capture finishes.
 Staging changes world gamerules, including disabling mob loot, so use a disposable world copy. Fire overlays are

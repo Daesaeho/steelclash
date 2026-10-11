@@ -38,7 +38,8 @@ public final class PalMoreRotationCompat {
     public static void beginItemFix(LivingEntity entity, HumanoidArm arm, PoseStack stack) {
         ITEM_POSE.remove();
         boolean owned = SUPPORTED && ProceduralSwingAnimation.ownsItemPose(entity);
-        if (Boolean.getBoolean("mixin.debug.export") && entity instanceof net.minecraft.client.player.AbstractClientPlayer && debugItems++ < 8)
+        if (Boolean.getBoolean("mixin.debug.export") && com.steelclash.client.dev.PoseSheet.running()
+                && com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode.isFirstPersonPass() && debugItems++ < 16)
             SteelClash.LOGGER.info("PAL prototype item capture arm={} owned={} {}", arm, owned,
                     ProceduralSwingAnimation.prototypeLayerState(entity));
         if (!owned) return;
@@ -54,8 +55,11 @@ public final class PalMoreRotationCompat {
         PlayerAnimBone bone = arm == HumanoidArm.LEFT ? bones.left : bones.right;
         bone.setToInitialPose();
         animated.playerAnimLib$getAnimManager().get3DTransform(bone);
-        if (Boolean.getBoolean("mixin.debug.export") && debugItems <= 8)
-            SteelClash.LOGGER.info("PAL prototype item apply arm={} channels=({},{},{})", arm, bone.getRotX(), bone.getRotY(), bone.getRotZ());
+        if (Boolean.getBoolean("mixin.debug.export") && com.steelclash.client.dev.PoseSheet.running()
+                && com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode.isFirstPersonPass() && debugItems <= 16)
+            SteelClash.LOGGER.info("PAL prototype item apply arm={} rotation=({},{},{}) position=({},{},{}) scale=({},{},{})",
+                    arm, bone.getRotX(), bone.getRotY(), bone.getRotZ(), bone.getPosX(), bone.getPosY(), bone.getPosZ(),
+                    bone.getScaleX(), bone.getScaleY(), bone.getScaleZ());
         // The reviewed runtime calls the addon's undo/reapply before PAL's original item rotation.
         // Keep the pre-callback hand/bend transform and apply the same-frame PAL sample once in standard axes.
         stack.last().pose().set(saved.pose);

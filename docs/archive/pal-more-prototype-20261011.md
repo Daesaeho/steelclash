@@ -51,3 +51,33 @@ Onion-skin review, tracking/reload/lifecycle and broader renderer/model combinat
 The bridge discards intervening item transforms, so other mods modifying the same render interval are an explicit
 conflict risk. No generic play/sync clock, gameplay timing, reach, collision or packet changes are introduced.
 Keep the default backend and no-addon launch usable; do not claim adoption from this initial checkpoint.
+
+## Expanded pose comparisons and capture-clock correction
+
+On 2026-10-11, 108 paired sword/trident slash poses covered both main arms, empty/torch offhands without armor,
+and shield offhands with full iron armor. Each case included windup 50%, release 35% and recovery 30%, in first
+person and both third-person views. The dev Sodium renderer and SLIM Ari skin were fixed. Evidence:
+`C:/dev/steelclash-beta-audit/20261011/pal-more-prototype/matrix-140002642334`.
+
+Seven first-person shield images initially differed; other pairs were identical or below the image-noise threshold.
+This did not establish an addon regression: repeating the default backend alone changed the sword shield images
+by 0.73% in windup and 0.99% in release. Bounded runtime diagnostics showed the shield item channels were neutral.
+The pose harness froze combat progress but allowed vanilla model age and free-arm breathing to keep advancing.
+
+The capture-only `LivingEntityRenderer#render` hook now passes age 100 to `EntityModel#setupAnim` while a pose sheet
+runs. It preserves ordinary rendering. Repeating both armored shield cases with that clock fixed produced **36
+matching pairs**: 24 pixel-identical and 12 with sub-threshold specks. Evidence:
+`C:/dev/steelclash-beta-audit/20261011/pal-more-prototype/matrix-150629002230`.
+The new armor presets and per-shot window/mouse assertions also passed in these native clients. Source hashes,
+commands, actual rendered equipment/handedness, logs, screenshots and diff reports accompany the captures.
+
+An actual-client regression guard compared 18 fresh poses with the frozen default reference. Restoring the old
+ambient-age behavior was caught by `PoseSheetShieldTest > frozenShieldMatrix`; restored source passed another
+18-shot native run. The mutation report is `shield-mutants.report.json`, and the healthy restored run is
+`shield-guard-151340516353`, under the same prototype evidence directory. Native compilation passed with both
+backend variants. No server behavior or combat timing changed, so no new GameTests were needed for this checkpoint.
+
+These comparisons establish backend pose parity for the sampled conditions. They do not prove exact world-space
+mesh hilt/tip coordinates, live transitions, low/high FPS behavior, mob fallback, lifecycle/reload, or improvement
+from bending. Those acceptance items and the adoption decision remain open. The initial unfrozen shield differences
+are exploratory evidence and must not be counted as backend failures.

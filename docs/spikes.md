@@ -45,6 +45,9 @@ held-item rotation conventions differ. Live transitions, rendered transforms and
 supplement frozen pose sheets. Current contracts and capture instructions live in [animation.md](animation.md).
 The [optional bend prototype](archive/pal-more-prototype-20261011.md) demonstrates why runtime injection order
 and actual mesh vertices must be checked alongside idealized axis tests.
+Frozen combat progress alone does not freeze vanilla free-arm breathing. Repeated shield shots differed by up to
+0.99% without any backend change; fixing the pose-sheet model age removed the discrepancy. See the expanded
+[pose comparison evidence](archive/pal-more-prototype-20261011.md#expanded-pose-comparisons-and-capture-clock-correction).
 Relevant evidence: [early presentation](archive/findings-history.md#animation-presentation-findings-2026-10-08),
 [arm motion](archive/findings-history.md#arm-motion-by-swing-type-2026-10-08),
 [view-space ready rigs](archive/findings-history.md#view-space-ready-rigs-and-humanoid-handovers-2026-10-11)

@@ -9,6 +9,11 @@ Steel Clash prefers NeoForge events. Every mixin is listed here with why it exis
 
 Access transformers (`META-INF/accesstransformer.cfg`): `LivingEntity#attackStrengthTicker` (full-strength hits through vanilla `Player#attack`), and `IllagerModel` arm/leg parts (posing vindicators).
 
+`LivingEntityRendererMixin` also modifies the age argument passed to `EntityModel#setupAnim` while the development
+pose sheet is running. It holds vanilla idle/breathing motion at 100 ticks so equivalent free-hand captures are
+comparable. Ordinary rendering receives its original age. This is a client-only capture hook; a renderer that replaces
+the `setupAnim` call needs its own capture support. No event exposes this argument between setup and rendering.
+
 ## Development-only PAL More bridge
 
 `client.PalMoreItemCaptureMixin` (priority 100) and `client.PalMoreItemApplyMixin` (priority 2000) target

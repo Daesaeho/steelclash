@@ -17,6 +17,7 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Make frozen pose comparisons reproducible by fixing vanilla idle age during capture; add verified empty/full-iron armor presets and per-shot hidden-window/mouse checks. Expand optional PAL comparisons across weapons, hands and offhand equipment.
 - Add a strict offline PAL animation importer with phase baking, solved-arm protection, handedness normalization and new-file-only candidate output. Preserve base grip/camera settings; editable Blockbench round-trip and visual acceptance remain open.
 - Add an opt-in PAL More Rotation prototype with shared item-axis conventions, a version-gated runtime-order bridge, stable weak entity ownership and read-only mesh evidence. The default backend remains unchanged; adoption awaits the full rendering/motion matrix.
 - Measure representative sword/spear/blunt attack phases, actual turn-limited sweep views and extra active-parry catch costs. Hidden diagnostics prevent loading-GUI mouse re-grabs while preserving ordinary launches.
