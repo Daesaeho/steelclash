@@ -22,7 +22,7 @@ These candidates have source/artifact reviews but no implemented or playtest-cer
 
 | Candidate | Finding | Planned decision |
 |---|---|---|
-| PAL More Rotation | Changes PAL's item-axis convention; bends need a rendered backend | [Step 3](next-combat-animation-plan.md#3-prototype-pal-more-rotation-on-the-existing-rig): optional prototype with grip/blade checks. |
+| PAL More Rotation | Dev-only prototype; runtime callback order needs a gated item bridge | [Initial item/mesh evidence](archive/pal-more-prototype-20261011.md); full step-3 matrix and adoption remain open. |
 | Countered's Accurate Hitboxes | Reviewed jar changes client picking, not the authoritative server sweep | [Step 5](next-combat-animation-plan.md#5-add-accurate-server-collision-in-two-stages): server-owned contact metadata and optional anatomical collision. |
 | CPM / CPM Animator Utils | Cosmetic rig and authoring tools; no automatic clip conversion or collision | [Step 6](next-combat-animation-plan.md#6-evaluate-cpm-after-the-default-rig-is-stable): bone ownership, lifecycle and fallback prototype. |
 | BodyHealth / Legendary Survival Overhaul | Injury systems require one damage/headshot/death owner | Deferred by user direction. |

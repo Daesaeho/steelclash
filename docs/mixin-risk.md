@@ -8,3 +8,17 @@ Steel Clash prefers NeoForge events. Every mixin is listed here with why it exis
 | `client.ItemInHandLayerMixin` | `ItemInHandLayer#renderArmWithItem`, injected just **before** `ItemInHandRenderer#renderItem` (the same point Player Animation Library turns a player's held item) | Turn a fighting mob's weapon in its hand, so it can hold the arm naturally with the blade on the traced arc. Without it the whole arm had to be pitched about 80 degrees down to aim the blade, leaving the hand at the hip and the weapon drawn well below where it hits. | **Low.** Client only. Adds a rotation for non-player entities that are mid-attack this frame; otherwise does nothing. It also records which mob types draw items through this layer: a modded mob that draws its weapon some other way keeps the old pitched-arm pose. A mod that also rotates mob items here would stack its rotation with ours. |
 
 Access transformers (`META-INF/accesstransformer.cfg`): `LivingEntity#attackStrengthTicker` (full-strength hits through vanilla `Player#attack`), and `IllagerModel` arm/leg parts (posing vindicators).
+
+## Development-only PAL More bridge
+
+`client.PalMoreItemCaptureMixin` (priority 100) and `client.PalMoreItemApplyMixin` (priority 2000) target
+`ItemInHandLayer#renderArmWithItem`, immediately before `ItemInHandRenderer#renderItem`. No NeoForge event spans
+the observed addon/PAL callback sequence. The first saves the item's pose/normal matrices; the second restores
+that hand/bend transform and applies the standard-axis item sample after PAL. Exported runtime code verifies
+capture → addon → PAL → apply order. Both require the explicit prototype property and reviewed addon 1.1.0;
+normal/absent-addon launches skip them. They use PAL's public same-frame sampler, without shadowing another
+mixin's private injected fields or starting a second animation clock.
+
+**High integration risk outside the tested dev stack:** intervening item transforms are discarded for the owned
+pose. Other item/animation/render mods need separate checks before adoption. Version changes require a new
+ordering review. See [prototype evidence and limits](archive/pal-more-prototype-20261011.md).

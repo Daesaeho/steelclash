@@ -41,6 +41,8 @@ The weapon arm follows the hit arc; authored body and free-hand motion must pres
 Ready rigs solve in camera space, including shoulder pivots, before body-space composition. Player and mob
 held-item rotation conventions differ. Live transitions, rendered transforms and focused motion comparisons
 supplement frozen pose sheets. Current contracts and capture instructions live in [animation.md](animation.md).
+The [optional bend prototype](archive/pal-more-prototype-20261011.md) demonstrates why runtime injection order
+and actual mesh vertices must be checked alongside idealized axis tests.
 Relevant evidence: [early presentation](archive/findings-history.md#animation-presentation-findings-2026-10-08),
 [arm motion](archive/findings-history.md#arm-motion-by-swing-type-2026-10-08),
 [view-space ready rigs](archive/findings-history.md#view-space-ready-rigs-and-humanoid-handovers-2026-10-11)

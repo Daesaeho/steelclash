@@ -109,6 +109,15 @@ entity and reset when the local player changes. Directional impact impulses rema
 
 The 56-item coverage table and checkpoint validation record are preserved in the [historical animation review](archive/animation-review.md).
 
+## Optional bend prototype
+
+`-PpalMoreRotation` pins the reviewed dev addon and enables its experimental item-axis/ordering bridge.
+`-PpalMoreRotationProbe` adds torso/free-arm bending driven by the existing phase clock; solved weapon/support
+arms stay undeformed. Neither flag is part of ordinary launches or a published dependency.
+`-PpalMoreMeshOut=<new absolute .jsonl path>` records bounded read-only mesh vertex evidence during posed frames.
+`-PpalMoreRotationExport` exports only the transformed item layer and bounded bridge diagnostics for inspection.
+See [prototype scope and remaining checks](archive/pal-more-prototype-20261011.md) before claiming compatibility.
+
 ## Client acceptance checks
 
 Use PAL 1.1.6 on NeoForge 1.21.1, with both default and slim skins, left/right main arm, first/third person,

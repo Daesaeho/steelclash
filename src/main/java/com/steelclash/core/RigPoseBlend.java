@@ -7,12 +7,25 @@ import java.util.Objects;
 /** Blend displayed fighter bones across weapon/leg rig changes, without modifying simulation or release poses. */
 public final class RigPoseBlend {
     public static final long DURATION_NANOS = 200_000_000L;
+    private final ItemRotationConvention itemRotationConvention;
+
+    public RigPoseBlend() { this(ItemRotationConvention.PAL_SWAPPED); }
+
+    public RigPoseBlend(ItemRotationConvention itemRotationConvention) {
+        this.itemRotationConvention = Objects.requireNonNull(itemRotationConvention);
+    }
+
     public record Bone(double rx, double ry, double rz, double x, double y, double z, double bend) {
-        Bone blend(Bone next, double f, boolean item) {
-            // PAL item channels represent hand-frame {x,y,z} as {-x,-z,-y}; interpolate in that physical frame.
-            double[] r = item ? RotationBlend.blend(-rx, -rz, -ry, new double[]{-next.rx, -next.rz, -next.ry}, f)
-                    : RotationBlend.blend(rx, ry, rz, new double[]{next.rx, next.ry, next.rz}, f);
-            if (item) r = new double[]{-r[0], -r[2], -r[1]};
+        Bone blend(Bone next, double f, ItemRotationConvention itemConvention) {
+            double[] r;
+            if (itemConvention != null) {
+                double[] fromPhysical = itemConvention.decode(rx, ry, rz);
+                double[] toPhysical = itemConvention.decode(next.rx, next.ry, next.rz);
+                r = RotationBlend.blend(fromPhysical[0], fromPhysical[1], fromPhysical[2], toPhysical, f);
+                r = itemConvention.encode(r[0], r[1], r[2]);
+            } else {
+                r = RotationBlend.blend(rx, ry, rz, new double[]{next.rx, next.ry, next.rz}, f);
+            }
             return new Bone(r[0], r[1], r[2], x+(next.x-x)*f, y+(next.y-y)*f, z+(next.z-z)*f, bend+(next.bend-bend)*f);
         }
     }
@@ -43,7 +56,8 @@ public final class RigPoseBlend {
 
     public Bone apply(String name, Bone current) {
         Bone previous = from.get(name);
-        Bone result = previous == null ? current : previous.blend(current, fraction, name.endsWith("_item"));
+        Bone result = previous == null ? current : previous.blend(current, fraction,
+                name.endsWith("_item") ? itemRotationConvention : null);
         displayed.put(name, result);
         return result;
     }

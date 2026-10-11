@@ -45,6 +45,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 | `253021b`, baseline | 20 accepted live cases, 2,937 frames; 22 focused rig tests; five caught mutants; hidden input and three-shot sheet | [Baseline record](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11) |
 | `c342391`, N07 | Full build, 213 JUnit; 174 required GameTests in each Spartan variant; live second-attacker extension/owner merge; five caught mutants | [AP record](archive/testing-history.md#active-parry-extension-synchronization-2026-10-11) |
 | Step 2 measurements, 2026-10-11 | 18 sword/spear/blunt cases, 2,496 frames; native timings, 360°/s trace caps and AP catch stamina; failed initial focus case excluded | [Measurement record](archive/rule-measurements-20261011.md) |
+| Step 3 initial dev prototype, 2026-10-11 | 218 fresh JUnit; 174 GameTests in default and addon/no-Spartan stacks; five caught mutations; one sword pose alignment and actual mesh deformation | [Scope and remaining matrix](archive/pal-more-prototype-20261011.md) |
 
 ## Focused acceptance checklists
 
@@ -87,5 +88,8 @@ Select the relevant checks below; preserve the player guide's normal controls an
 - A full modpack/co-op feel playtest and release acceptance; existing capture and suite results cover bounded fixtures.
 - PAL More Rotation, Blockbench importer, anatomical collision and CPM: apply their plan gates after implementation.
   Candidate source review alone establishes no support. BodyHealth/LSO remain deferred.
+
+PAL More Rotation has [initial item/mesh proof](archive/pal-more-prototype-20261011.md), with the full
+enabled/disabled weapon, hand, renderer and live-motion matrix still pending. Its dev bridge is not adopted support.
 
 Unresolved gameplay-reference questions remain in [combat-rule-evidence.md](combat-rule-evidence.md).

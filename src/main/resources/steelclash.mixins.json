@@ -2,11 +2,14 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.steelclash.mixin",
+  "plugin": "com.steelclash.mixin.PalMorePrototypePlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [
     "client.ItemInHandLayerMixin",
-    "client.LivingEntityRendererMixin"
+    "client.LivingEntityRendererMixin",
+    "client.PalMoreItemCaptureMixin",
+    "client.PalMoreItemApplyMixin"
   ],
   "injectors": {
     "defaultRequire": 1

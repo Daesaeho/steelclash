@@ -14,6 +14,7 @@ current verified scope and remaining acceptance are in [testing](../testing.md).
 | [Animation review](animation-review.md) | The 56-item review table and its 2026-10-08 validation scope. |
 | [Kinematics and compatibility review](kinematics-compatibility-review.md) | Pinned candidate sources and the supplied report/PDF comparison. |
 | [Representative rule measurements](rule-measurements-20261011.md) | Native sword/spear/blunt timing, trace-cap and extra AP catch cost evidence. |
+| [PAL More Rotation prototype](pal-more-prototype-20261011.md) | Pinned stack, actual callback order, item alignment and rendered-mesh evidence; remaining adoption checks. |
 
 The [deferred design backlog](design-history.md#11-backlog-ideas-for-later) remains discoverable for later decisions;
 archiving it does not mark its items complete. BodyHealth/LSO remain deferred.

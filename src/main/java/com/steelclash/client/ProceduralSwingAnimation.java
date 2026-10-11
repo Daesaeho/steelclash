@@ -10,6 +10,8 @@ import com.steelclash.combat.Downed;
 import com.steelclash.core.RotationBlend;
 import com.steelclash.core.UsePoseBlend;
 import com.steelclash.core.RigPoseBlend;
+import com.steelclash.core.WeakIdentityMap;
+import com.steelclash.compat.PalMoreRotationCompat;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Vec;
 import com.steelclash.core.WeaponRig;
@@ -50,6 +52,7 @@ public class ProceduralSwingAnimation implements IAnimation {
     private static final double SWEEP_PIXELS = 12;
     /** First-person rise of the arms per degree of swing lift, pixels. */
     private static final double LIFT_PIXELS_PER_DEGREE = 0.05;
+    private static final WeakIdentityMap<AbstractClientPlayer, ProceduralSwingAnimation> PROTOTYPE_LAYERS = new WeakIdentityMap<>();
 
     private final AbstractClientPlayer player;
     @Nullable
@@ -70,12 +73,28 @@ public class ProceduralSwingAnimation implements IAnimation {
     private final UsePoseBlend consumableBlend = new UsePoseBlend();
     private double consumableWeight;
     private Object consumableWeapon, consumableMainArm;
-    private final RigPoseBlend firstPersonRig = new RigPoseBlend(), worldRig = new RigPoseBlend();
+    private final RigPoseBlend firstPersonRig = new RigPoseBlend(PalMoreRotationCompat.itemConvention()),
+            worldRig = new RigPoseBlend(PalMoreRotationCompat.itemConvention());
     private record RigIdentity(Object weapon, Object offhand, Object mainArm, long animationGeneration) {}
     private double readyViewYaw, readyViewPitch;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
+        if (PalMoreRotationCompat.isSupported()) PROTOTYPE_LAYERS.put(player, this);
+    }
+
+    /** The experimental bridge only owns item transforms while this registered Steel Clash layer is active. */
+    public static boolean ownsItemPose(net.minecraft.world.entity.LivingEntity entity) {
+        if (!(entity instanceof AbstractClientPlayer player)) return false;
+        var animation = PROTOTYPE_LAYERS.get(player);
+        return animation != null && animation.isActive();
+    }
+
+    public static String prototypeLayerState(net.minecraft.world.entity.LivingEntity entity) {
+        if (!(entity instanceof AbstractClientPlayer player)) return "not-player";
+        var animation = PROTOTYPE_LAYERS.get(player);
+        return animation == null ? "unregistered" : "active=" + animation.isActive() + " pose="
+                + (animation.pose == null ? "none" : animation.pose.phase()) + " ready=" + (animation.ready != null);
     }
 
     /** PAL fires this once for every player as it's created (and again if it's recreated). */
@@ -205,7 +224,9 @@ public class ProceduralSwingAnimation implements IAnimation {
                 if (viewRig != null && FirstPersonMode.isFirstPersonPass()) {
                     viewSweep(bone, w);
                 }
-                bone.setBend(pose.offset(channel + "Bend", 0)); // PAL 1.21.1 has no bend drawing backend
+                // Newly visible deformation must not move a solved weapon/support hand away from its grip.
+                bone.setBend(PalMoreRotationCompat.hasBendingBackend() && (main || pose.twoHanded())
+                        ? 0 : pose.offset(channel + "Bend", 0));
                 if (main && !pose.kick()) {
                     blendRotation(bone, rig.arm(), w);
                     add(bone, channel);
@@ -262,6 +283,14 @@ public class ProceduralSwingAnimation implements IAnimation {
         bone.updateRotation((float)result.rx(), (float)result.ry(), (float)result.rz());
         bone.setPosX((float)result.x()); bone.setPosY((float)result.y()); bone.setPosZ((float)result.z());
         bone.setBend((float)result.bend());
+        if (PalMoreRotationCompat.bendProbeEnabled() && pose != null && !pose.kick() && pose.swing() != null) {
+            // Dev-only mesh probe follows the existing phase clock; it never starts another animation clock.
+            float envelope = (float)(Math.sin(Math.PI * pose.swing().progress()) * pose.weight());
+            boolean freeArm = !pose.twoHanded() && bone.getName().equals(pose.leftHanded() ? "right_arm" : "left_arm")
+                    && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK);
+            if (bone.getName().equals("torso")) bone.setBend(0.12f * envelope);
+            else if (freeArm) bone.setBend(0.3f * envelope);
+        }
         if (FirstPersonMode.isFirstPersonPass() && (pose != null || ready != null) && !player.getOffhandItem().isEmpty()
                 && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)
                 && bone.getName().equals(player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT ? "right_arm" : "left_arm"))
@@ -351,15 +380,13 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     /**
      * Held weapon, turned in the hand so the blade lies on the arc and its edge leads (solved by {@link WeaponRig} in
-     * the hand frame playerAnimator used: Z, then Y, then X). PAL applies the item bone as Z(-rotY), Y(-rotZ), X(-rotX),
-     * so each hand-frame angle goes into the matching PAL channel negated.
+     * the hand frame playerAnimator used: Z, then Y, then X). The selected backend convention is shared with
+     * displayed-rig blending: PAL swaps Y/Z; the reviewed More Rotation hook restores standard axes.
      */
     private static void itemRotation(PlayerAnimBone bone, double[] from, double[] to, float w) {
         double[] rotation = RotationBlend.blend(from[0], from[1], from[2], to, w);
-        float x = (float) rotation[0];
-        float y = (float) rotation[1];
-        float z = (float) rotation[2];
-        bone.addRot(-x, -z, -y);
+        double[] channels = PalMoreRotationCompat.itemConvention().encode(rotation[0], rotation[1], rotation[2]);
+        bone.addRot((float)channels[0], (float)channels[1], (float)channels[2]);
     }
 
     @Override

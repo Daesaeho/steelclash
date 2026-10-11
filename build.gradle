@@ -110,6 +110,19 @@ neoForge {
             if (project.hasProperty('quickPlay')) {
                 programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay').toString()
             }
+            if (project.hasProperty('palMoreRotationProbe')) {
+                systemProperty 'steelclash.palMoreRotationProbe', 'true'
+            }
+            if (project.hasProperty('palMoreRotation')) {
+                systemProperty 'steelclash.palMoreRotationPrototype', 'true'
+            }
+            if (project.hasProperty('palMoreRotationExport')) {
+                systemProperty 'mixin.debug.export', 'true'
+                systemProperty 'mixin.debug.export.filter', 'net.minecraft.client.renderer.entity.layers.ItemInHandLayer'
+            }
+            if (project.hasProperty('palMoreMeshOut')) {
+                systemProperty 'steelclash.palMoreMeshOut', project.property('palMoreMeshOut').toString()
+            }
             if (project.hasProperty('liveCapture')) {
                 ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut', 'liveCaptureRenderer', 'liveCaptureArm', 'liveCaptureFps', 'liveCaptureFov', 'liveCapturePitch'].each { name ->
                     if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
@@ -155,6 +168,12 @@ neoForge {
             client()
             gameDirectory = project.file('run-client2')
             programArguments.addAll '--username', 'Dev2'
+            if (project.hasProperty('palMoreRotation')) {
+                systemProperty 'steelclash.palMoreRotationPrototype', 'true'
+            }
+            if (project.hasProperty('palMoreRotationProbe')) {
+                systemProperty 'steelclash.palMoreRotationProbe', 'true'
+            }
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -227,6 +246,12 @@ dependencies {
     // published gson 2.11 would clash with the gson NeoForge pins.
     implementation("com.zigythebird.playeranim:PlayerAnimationLibNeo:${player_animation_library_version}") {
         transitive = false
+    }
+
+    // Reversible, reviewed 1.21.1 prototype only; not a published or ordinary-run dependency.
+    // This artifact bundles Bendable Cuboids 2.0.0+alpha.1 and MixinSquared 0.3.7-beta.3.
+    if (project.hasProperty('palMoreRotation')) {
+        localRuntime("maven.modrinth:wPBs7ljG:qhKVkTkf") { transitive = false }
     }
 
     // Optional integrations: compile against them, run with them in dev, but don't publish a dependency
