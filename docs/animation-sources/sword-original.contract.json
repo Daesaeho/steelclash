@@ -43,5 +43,5 @@
     "evidence": "C:/dev/steelclash-beta-audit/20261012/retarget-check",
     "scope": "Canonical reviewed rig only; source/export body-fold proof. Extra compensation translations are rejected."
   },
-  "next": "Fix the reproduced tick-boundary pose-cache rewind; complete rendered hilt/tip, seam/motion and lifecycle acceptance before installing the candidate."
+  "next": "The tick-boundary pose-cache rewind is fixed. Complete rendered hilt/tip, seam/motion and lifecycle acceptance before installing the candidate."
 }

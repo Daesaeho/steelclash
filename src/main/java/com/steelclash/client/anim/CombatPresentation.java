@@ -6,6 +6,7 @@ import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.core.PoseBlend;
 import com.steelclash.core.PresentationFreeze;
+import com.steelclash.core.PoseSampleStamp;
 import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
@@ -36,7 +37,7 @@ public final class CombatPresentation {
         if (player != null && millis > 0) {
             Entry entry = ENTRIES.computeIfAbsent(player, ignored -> new Entry());
             entry.freeze.request(now, millis * 1_000_000L);
-            entry.frame = -1;
+            entry.sample.clear();
         }
     }
 
@@ -44,7 +45,7 @@ public final class CombatPresentation {
         Entry entry = ENTRIES.get(entity);
         if (entry != null) {
             entry.freeze.corrected();
-            entry.frame = -1;
+            entry.sample.clear();
             entry.corrected = true;
         }
     }
@@ -74,7 +75,7 @@ public final class CombatPresentation {
         Signature signature = new Signature(data.machine.attackSerial(), data.machine.phase(), data.machine.type(),
                 data.machine.isHeavy(), data.machine.isMirrored(), data.machine.variant(), entity.getMainArm(),
                 entity.getMainHandItem().getItem(), entity.getOffhandItem().getItem());
-        if (entry.frame == frame && entry.tick == entity.tickCount && entry.partialTick == time
+        if (entry.sample.matches(frame, entity.tickCount, time, data.machine.phaseElapsedUs(), data.machine.phaseDurationUs())
                 && signature.equals(entry.signature) && entry.generation == generation) {
             return Optional.ofNullable(entry.displayed);
         }
@@ -115,9 +116,7 @@ public final class CombatPresentation {
                 displayed = live.blendFrom(entry.from, blend);
             }
         }
-        entry.frame = frame;
-        entry.tick = entity.tickCount;
-        entry.partialTick = time;
+        entry.sample.record(frame, entity.tickCount, time, data.machine.phaseElapsedUs(), data.machine.phaseDurationUs());
         entry.signature = signature;
         entry.generation = generation;
         entry.displayed = displayed;
@@ -140,10 +139,8 @@ public final class CombatPresentation {
 
     private static final class Entry {
         final PresentationFreeze<CombatPose> freeze = new PresentationFreeze<>();
-        long frame = -1;
+        final PoseSampleStamp sample = new PoseSampleStamp();
         long generation = -1;
-        int tick;
-        float partialTick;
         long transitionAt;
         boolean corrected;
         /** This windup started while the arm was still posed: it stays at full weight. */

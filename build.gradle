@@ -151,6 +151,9 @@ neoForge {
                 systemProperty 'steelclash.palMoreMeshOut', project.property('palMoreMeshOut').toString()
             }
             if (project.hasProperty('liveCapture')) {
+                if (project.hasProperty('liveCaptureClockProbe')) {
+                    systemProperty 'steelclash.liveCaptureClockProbe', 'true'
+                }
                 ['liveCapture', 'liveCaptureItem', 'liveCaptureOffhand', 'liveCaptureView', 'liveCaptureOut', 'liveCaptureRenderer', 'liveCaptureArm', 'liveCaptureFps', 'liveCaptureFov', 'liveCapturePitch'].each { name ->
                     if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
                 }

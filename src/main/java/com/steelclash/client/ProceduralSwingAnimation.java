@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.client.anim.CombatPose;
 import com.steelclash.client.anim.CombatPresentation;
+import com.steelclash.client.anim.AnimationLibrary;
 import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.client.dev.LiveCapture;
 import com.steelclash.combat.Downed;
@@ -11,11 +12,14 @@ import com.steelclash.core.RotationBlend;
 import com.steelclash.core.UsePoseBlend;
 import com.steelclash.core.RigPoseBlend;
 import com.steelclash.core.WeakIdentityMap;
+import com.steelclash.core.PoseSampleStamp;
+import com.steelclash.combat.ModAttachments;
 import com.steelclash.compat.PalMoreRotationCompat;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Vec;
 import com.steelclash.core.WeaponRig;
 import com.zigythebird.playeranim.neoforge.event.PlayerAnimationRegisterEvent;
+import com.zigythebird.playeranim.accessors.IAnimatedPlayer;
 import com.zigythebird.playeranimcore.animation.AnimationData;
 import com.zigythebird.playeranimcore.animation.layered.IAnimation;
 import com.zigythebird.playeranimcore.api.firstPerson.FirstPersonConfiguration;
@@ -75,6 +79,8 @@ public class ProceduralSwingAnimation implements IAnimation {
             worldRig = new RigPoseBlend(PalMoreRotationCompat.itemConvention());
     private record RigIdentity(Object weapon, Object offhand, Object mainArm, long animationGeneration) {}
     private double readyViewYaw, readyViewPitch;
+    private final PoseSampleStamp sampledAt = new PoseSampleStamp();
+    private long sampledGeneration = -1;
 
     public ProceduralSwingAnimation(AbstractClientPlayer player) {
         this.player = player;
@@ -122,40 +128,49 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public void setupAnim(AnimationData state) {
-        pose = CombatPresentation.get(player, state.getPartialTick()).orElse(null);
+        refreshPose(state.getPartialTick());
+    }
+
+    private void refreshPose(float partialTick) {
+        pose = CombatPresentation.get(player, partialTick).orElse(null);
         if (pose != null && !pose.kick()) {
             rig = rigFor(pose);
         }
         Minecraft mc = Minecraft.getInstance();
         viewRig = pose != null && !pose.kick() && player == mc.player && mc.options.getCameraType().isFirstPerson()
                 ? rigFor(pose.spreadForView(Config.Client.FIRST_PERSON_SWING_WIDTH.get(), Config.Client.FIRST_PERSON_SWING_LIFT.get(),
-                        player.getViewXRot(state.getPartialTick())))
+                        player.getViewXRot(partialTick)))
                 : null;
-        ready = wantsReadyStance() ? CombatPose.ready(player, state.getPartialTick()).orElse(null) : null;
+        ready = wantsReadyStance() ? CombatPose.ready(player, partialTick).orElse(null) : null;
         updateConsumable();
         if (ready != null) {
-            readyViewYaw=ready.aimYaw()-ready.relativeYaw(); readyViewPitch=player.getViewXRot(state.getPartialTick());
+            readyViewYaw=ready.aimYaw()-ready.relativeYaw(); readyViewPitch=player.getViewXRot(partialTick);
             readyRig = ready.readyRigInView(Config.Client.WEAPON_GRIP_PITCH.get(),Config.Client.BLADE_TWIST.get(),
                     WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()),readyViewPitch);
         }
         CombatPose carried = pose != null ? pose : ready;
         if (carried != null && mc.options.getCameraType().isFirstPerson()
                 && !player.getOffhandItem().isEmpty() && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)) {
-            carriedArm = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(), player.getViewXRot(state.getPartialTick()),
-                    carried.bodyDegrees(), !carried.leftHanded(), player.tickCount + (double) state.getPartialTick(),
+            carriedArm = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(), player.getViewXRot(partialTick),
+                    carried.bodyDegrees(), !carried.leftHanded(), player.tickCount + (double) partialTick,
                     pose == null ? 1 : 1 - pose.weight());
             if (consumableWeight > 0) {
                 double[] raised = WeaponRig.consumeArm(carried.aimYaw() - carried.relativeYaw(),
-                        player.getViewXRot(state.getPartialTick()), carried.bodyDegrees(), !carried.leftHanded(),
-                        player.tickCount + (double) state.getPartialTick());
+                        player.getViewXRot(partialTick), carried.bodyDegrees(), !carried.leftHanded(),
+                        player.tickCount + (double) partialTick);
                 carriedArm = RotationBlend.blend(carriedArm[0], carriedArm[1], carriedArm[2], raised, consumableWeight);
             }
             if (LiveCapture.recording()) {
                 carriedReference = WeaponRig.carryArm(carried.aimYaw() - carried.relativeYaw(),
-                        player.getViewXRot(state.getPartialTick()), carried.bodyDegrees(), !carried.leftHanded());
+                        player.getViewXRot(partialTick), carried.bodyDegrees(), !carried.leftHanded());
             }
         }
         PoseSheet.recordRenderedPose(player, pose);
+        var machine = player.hasData(ModAttachments.COMBAT) ? player.getData(ModAttachments.COMBAT).machine : null;
+        sampledAt.record(CombatPresentation.frameNumber(), player.tickCount, partialTick,
+                machine == null ? 0 : machine.phaseElapsedUs(), machine == null ? 0 : machine.phaseDurationUs());
+        sampledGeneration = AnimationLibrary.INSTANCE.generation();
+        LiveCapture.recordClockRefresh(player, partialTick);
     }
 
     private static WeaponRig rigFor(CombatPose pose) {
@@ -193,6 +208,14 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     @Override
     public PlayerAnimBone get3DTransform(@NotNull PlayerAnimBone bone) {
+        // PAL can skip setupAnim when tickCount+partial equals its earlier zero-partial tick sample.
+        // That sample precedes EntityTickEvent.Post, where our combat clock advances. Refresh our layer
+        // once for the actual render frame/clock without reticking PAL or changing camera ownership.
+        float partialTick = ((IAnimatedPlayer) player).playerAnimLib$getAnimManager().getTickDelta();
+        var machine = player.hasData(ModAttachments.COMBAT) ? player.getData(ModAttachments.COMBAT).machine : null;
+        if (!sampledAt.matches(CombatPresentation.frameNumber(), player.tickCount, partialTick,
+                machine == null ? 0 : machine.phaseElapsedUs(), machine == null ? 0 : machine.phaseDurationUs())
+                || sampledGeneration != AnimationLibrary.INSTANCE.generation()) refreshPose(partialTick);
         LiveCapture.recordRenderedPose(player, pose, ready != null, consumableWeight);
         // In first person the ready stance stands in for vanilla's arm pose: attacks blend from it and back to it.
         boolean readyBase = ready != null && FirstPersonMode.isFirstPersonPass();

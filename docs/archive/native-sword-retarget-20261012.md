@@ -69,6 +69,8 @@ At 120 FPS, the first frame after some ticks reuses an earlier pose: release pro
 even while the machine advances from 100,000 to 150,000 microseconds. The cache keys frame/entity tick/partial but
 not phase elapsed/duration; PAL's zero-partial tick sample can precede the client's combat-clock tick. This is a
 reproducible presentation defect to address next, not accepted smooth motion or a change to server timing.
+It is fixed in the subsequent [pose-clock checkpoint](pose-clock-refresh-20261012.md); this section preserves the
+original evidence and does not retroactively count the stale recordings as corrected motion.
 
 ## Exclusions and remaining gates
 

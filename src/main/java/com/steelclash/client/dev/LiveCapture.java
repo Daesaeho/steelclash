@@ -33,6 +33,7 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
@@ -40,6 +41,7 @@ import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
@@ -51,6 +53,11 @@ import org.lwjgl.glfw.GLFW;
 public final class LiveCapture {
     private static final String SCENE = System.getProperty("steelclash.liveCapture");
     private static final boolean BACKGROUND = Boolean.getBoolean("steelclash.liveCaptureBackground");
+    private static final boolean CLOCK_PROBE = Boolean.getBoolean("steelclash.liveCaptureClockProbe");
+    private static final List<Map<String, Object>> CLOCK_PROBES = new ArrayList<>();
+    private static boolean probingClock;
+    @Nullable private static CombatPose clockProbePose;
+    private static final List<Float> CLOCK_REFRESH_PARTIALS = new ArrayList<>();
     private static final boolean ACTIVE_PARRY = "active-parry".equals(SCENE);
     private static final boolean TURN_CAP = "turn-cap".equals(SCENE);
     private static final boolean FOOD_USE = "itemuse".equals(SCENE) || "use-attack".equals(SCENE);
@@ -130,6 +137,7 @@ public final class LiveCapture {
     private LiveCapture() {}
 
     public static void recordRenderedPose(AbstractClientPlayer player, @Nullable CombatPose pose, boolean ready, double useWeight) {
+        if (probingClock && player == Minecraft.getInstance().player) { clockProbePose = pose; return; }
         if (active && player == Minecraft.getInstance().player) {
             modelSeen = true;
             renderedPose = pose;
@@ -169,7 +177,7 @@ public final class LiveCapture {
     }
 
     public static void recordReadyView(AbstractClientPlayer player, double yaw, double pitch) {
-        if (active && player == Minecraft.getInstance().player) readyView = new double[]{yaw, pitch};
+        if (!probingClock && active && player == Minecraft.getInstance().player) readyView = new double[]{yaw, pitch};
     }
 
     public static void recordMob(net.minecraft.world.entity.LivingEntity entity, @Nullable CombatPose pose, String part, double[] transform) {
@@ -181,7 +189,7 @@ public final class LiveCapture {
     }
 
     public static void recordBone(AbstractClientPlayer player, com.zigythebird.playeranimcore.bones.PlayerAnimBone bone, boolean rigBlend) {
-        if (active && player == Minecraft.getInstance().player && (com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode.isFirstPersonPass()
+        if (!probingClock && active && player == Minecraft.getInstance().player && (com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode.isFirstPersonPass()
                 || !Minecraft.getInstance().options.getCameraType().isFirstPerson())) {
             renderedBones.put(bone.getName(), new double[]{bone.getRotX(), bone.getRotY(), bone.getRotZ(), bone.getPosX(), bone.getPosY(), bone.getPosZ()});
             rigBlendSeen |= rigBlend;
@@ -189,11 +197,50 @@ public final class LiveCapture {
     }
 
     public static void recordCarriedRotation(AbstractClientPlayer player, float x, float y, float z, double[] reference) {
-        if (active && player == Minecraft.getInstance().player) {
+        if (!probingClock && active && player == Minecraft.getInstance().player) {
             carriedRotation = new float[]{x, y, z};
             carriedIdleDelta = Mat3.zyx(reference[0], reference[1], reference[2]).transpose()
                     .mul(Mat3.zyx(x, y, z)).toZyx();
         }
+    }
+
+    public static void recordClockRefresh(AbstractClientPlayer player, float partial) {
+        if (probingClock && player == Minecraft.getInstance().player) CLOCK_REFRESH_PARTIALS.add(partial);
+    }
+
+    /** QA-only bone probe, distinct from screenshots: force PAL's exact zero-partial dedup case after our tick. */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    static void probeClock(EntityTickEvent.Post event) {
+        if (!CLOCK_PROBE || !active) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (event.getEntity() != mc.player) return;
+        var player = mc.player;
+        var machine = player.getData(ModAttachments.COMBAT).machine;
+        if (!"heavy".equals(SCENE) || machine.phase() != Phase.RELEASE || !machine.isHeavy()) return;
+        var access = (com.zigythebird.playeranim.accessors.IAnimatedPlayer) player;
+        var manager = access.playerAnimLib$getAnimManager();
+        if (manager.isFirstTick() || manager.getLastUpdateTime() != (float) player.tickCount) return;
+        float previousPartial = manager.getTickDelta();
+        var mode = manager.getFirstPersonMode();
+        var configuration = manager.getFirstPersonConfiguration();
+        probingClock = true; clockProbePose = null; CLOCK_REFRESH_PARTIALS.clear();
+        try {
+            // Transient render input only: restore it below. Never tick PAL or change combat state in this probe.
+            manager.setTickDelta(0);
+            access.playerAnimLib$getAnimProcessor().handleAnimations(0, false);
+            manager.get3DTransform(new com.zigythebird.playeranimcore.bones.PlayerAnimBone("body"));
+            CombatPose first = clockProbePose;
+            manager.get3DTransform(new com.zigythebird.playeranimcore.bones.PlayerAnimBone("head"));
+            Map<String,Object> row = new LinkedHashMap<>();
+            row.put("client_tick",player.tickCount); row.put("elapsed_us",machine.phaseElapsedUs());
+            row.put("expected_progress",machine.visualFrame(0).progress());
+            row.put("sampled_progress",first == null || first.swing() == null ? null : first.swing().progress());
+            row.put("same_sample_across_bones",first == clockProbePose);
+            row.put("refresh_partials",List.copyOf(CLOCK_REFRESH_PARTIALS));
+            row.put("camera_mode_stable",mode == manager.getFirstPersonMode());
+            row.put("camera_configuration_stable",configuration == manager.getFirstPersonConfiguration());
+            CLOCK_PROBES.add(row);
+        } finally { manager.setTickDelta(previousPartial); probingClock = false; clockProbePose = null; }
     }
 
     @SubscribeEvent
@@ -355,6 +402,7 @@ public final class LiveCapture {
             CONDITIONS.put("game_mode", mc.gameMode == null ? null : mc.gameMode.getPlayerMode());
             CONDITIONS.put("initial_player_health", initialPlayerHealth);
             conditionsForMeasurements(player);
+            CONDITIONS.put("zero_partial_clock_probe",CLOCK_PROBE);
             String renderer = sodiumRenderer();
             CONDITIONS.put("sodium_renderer", renderer);
             String expected = System.getProperty("steelclash.liveCaptureRenderer", "any");
@@ -671,6 +719,7 @@ public final class LiveCapture {
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("scene", SCENE); report.put("frames", FRAMES); report.put("inputs", INPUTS);
         report.put("conditions", CONDITIONS);
+        if (CLOCK_PROBE) report.put("zero_partial_clock_probes",CLOCK_PROBES);
         if (TURN_CAP) report.put("turn_requests", TURN_REQUESTS);
         report.put("reload_requested",reloadRequested); report.put("reload_completed",reloadCompleted); report.put("reload_overlay_frames",reloadOverlayFrames);
         report.put("mods", ModList.get().getMods().stream().map(m -> m.getModId() + ":" + m.getVersion()).toList());

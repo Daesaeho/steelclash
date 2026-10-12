@@ -7,6 +7,8 @@
   exclusions and the late-tracking QA shutdown failure. PAL More Rotation remains an opt-in development experiment.
 
 **Fixes**
+- Refresh combat poses when PAL reuses a pre-tick sample at a near-zero render partial, preventing a one-frame
+  attack rewind. Shared pose caching includes phase elapsed/duration; first-person camera ownership stays tick-based.
 - An absent attack variant inherits an authored generic heavy release/recovery instead of silently using its light
   phase. Existing packs without authored heavy phases retain their ordinary release/recovery behavior.
 - Active-parry catches synchronize their extended protection timer to the owning client. Matching-action updates preserve the predicted attack clock and queued input; stale, expired and incompatible confirmations are ignored.
@@ -25,6 +27,8 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add an opt-in deterministic native PAL zero-partial probe for the heavy capture, separate from screenshots,
+  checking current-clock sampling, one refresh across bones and unchanged camera mode/configuration.
 - Verify the actual selected animation resource hash, loaded clip samples and temporary capture config before
   native animation QA, so an overridden candidate pack cannot produce mislabeled acceptance evidence.
 - Make frozen pose comparisons reproducible by fixing vanilla idle age during capture; add verified empty/full-iron armor presets and per-shot hidden-window/mouse checks. Expand optional PAL comparisons across weapons, hands and offhand equipment.

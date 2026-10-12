@@ -11,6 +11,8 @@ The [authoring prototype](animation-authoring.md) defines the offline PAL conver
   hit sweeps, combat windows, damage, weapon tuning and packet codecs retain their existing behavior.
 - `CombatPresentation` owns entity pose samples. Its cache includes render frame, entity tick, partial tick,
   attack serial, phase/type/heavy/side/variant, main arm, held item identities and animation reload generation.
+  Phase elapsed/duration are also part of cache validity: PAL may sample before the client combat tick. The layer
+  refreshes a stale sample at the bone call using PAL's actual render partial, preserving tick-owned camera eligibility.
   Camera roll, the player layer, mob posing and the debug view consume this presentation path.
 - Hit-stop captures the complete pose for the current attack. Simulation and aim input keep advancing. A new
   attack, item change, resource reload, downed/dead subject or player replacement releases the old sample.
@@ -121,6 +123,13 @@ entity and reset when the local player changes. Directional impact impulses rema
 ## Review history
 
 The 56-item coverage table and checkpoint validation record are preserved in the [historical animation review](archive/animation-review.md).
+The [tick-boundary refresh record](archive/pose-clock-refresh-20261012.md) separates ordinary rendered clock checks
+from the deterministic native PAL component probe and its initial coverage gaps.
+
+For the heavy QA scene, optional `-PliveCaptureClockProbe` exercises PAL's exact zero-partial bone path after the
+combat tick. Its observations are labeled separately in `capture.json`, and its temporary manager render partial
+is restored. Use it for clock/camera assertions; it does not turn those component observations into screenshots
+or rendered mesh/alignment evidence. Ordinary launches and other capture scenes do not use the probe.
 
 ## Optional bend prototype
 

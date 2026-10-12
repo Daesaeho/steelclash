@@ -59,6 +59,9 @@ protected weapon-arm channel. [Source-aware retargeting](animation-authoring.md#
 now validates that complete fold against the canonical project before recovering separate channels; the
 PAL-only path continues to reject it. [Runtime evidence](archive/native-sword-retarget-20261012.md) records
 active resource provenance and the corrected generic-heavy fallback; mesh/motion acceptance remains open.
+The [tick-boundary pose refresh](archive/pose-clock-refresh-20261012.md) fixes stale pre-combat-tick samples when PAL
+deduplicates a near-zero render partial. A deterministic native component probe complements ordinary captures;
+it keeps PAL's clock and first-person ownership unchanged.
 PAL's [live checkpoint](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12)
 adds heavy/morph, mob and reload evidence while retaining tracking/shutdown and alignment limits.
 

@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Pose clock refresh, 2026-10-12 | 245 fresh JUnit; four caught mutations including a native PAL probe; 2,313 restored screenshots; nine deterministic zero-partial samples; 18 identical legacy pose pairs | [Clock ordering, coverage and limits](archive/pose-clock-refresh-20261012.md) |
 | Native sword retarget, 2026-10-12 | 241 fresh JUnit; nine caught mutations; 112 source/runtime authored bone matrices; 2,117 candidate screenshots; legacy 18-pair pose parity; mesh/motion gates open | [Retarget evidence and exclusions](archive/native-sword-retarget-20261012.md) |
 | Native sword source, 2026-10-12 | Two editable light/heavy takes, 56 keys, 420 unchanged native bone matrices after save/reopen; PAL-only import still rejects the body-folded export safely | [Source/export scope](animation-authoring.md#native-sword-source-checkpoint-2026-10-12) |
 | PAL live checkpoint, 2026-10-12 | 16 clean native captures across original/repeated heavy/morph, mob morph and reload cases; 5,051 complete frames; late-tracking shutdown excluded | [Live evidence and limits](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12) |
@@ -94,8 +95,8 @@ Select the relevant checks below; preserve the player guide's normal controls an
   capture stalled in chunk-unload future rescheduling during shutdown and required stopping its disposable JVM.
 - Reproduce the intermittent `shieldbearingbotblocks` failure seen after one of three unchanged-code combat
   benchmark passes; the other two passes completed all 174 required tests. Its cause is not diagnosed.
-- Correct the live tick-boundary pose-cache rewind exposed by the native sword high-FPS replay, then repeat
-  source-aware candidate seam/motion and rendered hilt/tip acceptance. [Reproducer](archive/native-sword-retarget-20261012.md#reproduced-selection-and-clock-issues).
+- Broaden the verified tick-boundary pose refresh to feedback hit-stop, modpack/renderer, altered model and remote
+  cases; complete source-aware candidate seam/motion and rendered hilt/tip acceptance. [Clock scope](archive/pose-clock-refresh-20261012.md).
 - A full modpack/co-op feel playtest and release acceptance; existing capture and suite results cover bounded fixtures.
 - PAL More Rotation, Blockbench importer, anatomical collision and CPM: apply their plan gates after implementation.
   Candidate source review alone establishes no support. BodyHealth/LSO remain deferred.

@@ -110,7 +110,7 @@ source X/Y and preserves Z. The exporter must contain exactly the six child rota
 the sampled body plus local child at the exact union of source key times. Extra compensation or rig data is rejected,
 not discarded. This is a validated canonical-rig subset, not general-purpose retargeting.
 
-Recovered body motion stays separate from child motion. Native phases use `clip_interpolation: "linear"` per key
+Recovered body motion stays separate from child motion. Native phases use per-clip `clip_interpolation` values of `"linear"`
 so sampled rotations remain exactly linear; the current sword candidate needs three keys per phase. Each phase
 also authors `hipLag: [0,0,0]` to suppress the runtime's legacy extra leg counter-turn. Missing `hipLag` preserves
 the old behavior, and transitions resolve both policies before blending. Weapon arms remain arc-solved.
@@ -137,3 +137,7 @@ The new-file and unchanged-gameplay constraints of the PAL-only command also app
 checkpoint compares 112 actual Blockbench bone matrices/joint positions and checks phase seams, selection and
 protected blade orientation. [Runtime evidence and exclusions](archive/native-sword-retarget-20261012.md) keep
 mesh alignment, smoothness and wider lifecycle acceptance distinct from conversion success.
+
+The subsequent [pose-clock fix](archive/pose-clock-refresh-20261012.md) removes the sampled tick-boundary rewind.
+The current first-person heavy preparation still leaves the blade offscreen; resolve that readability limitation
+and finish mesh/seam acceptance before adopting this style or extending the validated workflow to other families.
