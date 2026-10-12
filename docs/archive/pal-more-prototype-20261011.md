@@ -81,3 +81,45 @@ These comparisons establish backend pose parity for the sampled conditions. They
 mesh hilt/tip coordinates, live transitions, low/high FPS behavior, mob fallback, lifecycle/reload, or improvement
 from bending. Those acceptance items and the adoption decision remain open. The initial unfrozen shield differences
 are exploratory evidence and must not be counted as backend failures.
+
+## Live transitions and lifecycle checkpoint, 2026-10-12
+
+The original eight live runs under `live-151648572057` completed 3,324 frames: heavy iron-sword/right-main/torch
+in first person and morphing trident/left-main/empty offhand in third person, each at 20/120 FPS caps with default
+and bend-probe backends. Client/server heavy and morph outcomes agreed. Actual median frame intervals were about
+50 ms at the low cap and 8.5–8.7 ms at the high cap; these are capture conditions, not a performance comparison.
+
+Four original recordings had gaps unsuitable for a 100 ms motion grid. Repeats under
+`C:/dev/steelclash-beta-audit/20261012/pal-live/capture-062444778621` retained the ordinary render-frame screenshot
+capture and omitted the additional reflective mesh diagnostic. The poor recordings remain excluded; this condition
+change does not establish that the diagnostic caused their gaps. The repeated heavy-20 bend and morph-20
+default/bend/morph-120 bend runs all met the existing unique-frame, 20 ms maximum grid-error rule. Their maximum
+grid errors were 7.21/11.27/18.59/4.39 ms respectively. Onion-skin sheets and timestamp selections accompany them.
+The high-FPS morph's flagged steps match the earlier default backend's 1/3/4/11/12 flags. Inspection shows the fast
+windup/morph and release movements; no addon-only cut was established. This is not a full motion/alignment pass.
+
+Four additional native runs exercised ordinary humanoid mob morphing and resource reload with the addon absent
+and enabled. Both stacks rendered the requested mob transition and completed reload with a new animation
+generation and client/server return to idle. Reload overlays interrupt screenshot collection for several seconds,
+so those recordings are functional reload evidence, not uniformly timed motion evidence. The addon mob-morph
+recording also has a 483 ms gap and remains unsuitable for a whole-sequence motion comparison.
+
+Across the original eight and eight completed repeat/lifecycle runs, **16 native functional captures and 5,051
+complete screenshots** are retained. The actual dev Sodium renderer was active; captured windows were hidden and
+the mouse released. Main arm, items, FOV, armor, model, commands, source hashes, timestamps and outcomes are in
+each report. Initial loading-window behavior and a full renderer/modpack matrix remain unsupported.
+
+Live post-render mesh data from the original addon runs confirms visible free-arm deformation in first person
+(maximum bend approximately 0.3, local vertex displacement approximately 1.89024), and visible body deformation
+in third person (approximately 0.12 / 0.75847). The weapon arm had zero bend/displacement. The left-main spear's
+support arm also remained unbent, as required by the prototype. These are actual posed mesh vertices, not just
+channel values; they do not establish world-space blade endpoints or a production style improvement.
+
+The next default late-guard-tracking run recorded 139 screenshots, then stalled while the integrated server
+rescheduled chunk-unload futures during shutdown. Two `jcmd` thread dumps confirmed that loop while FastQuit
+waited for the server. The exact owned disposable JVM was stopped after retaining the capture and diagnostics;
+world-save completion and clean exit were not established. Its addon counterpart was not started, and neither is
+counted in the 16 completed runs. This is a QA stack/lifecycle limitation, not a diagnosed PAL or Steelclash cause.
+
+The bridge's intervening-transform conflict, exact hilt/tip alignment, clean tracking/lifecycle comparison and
+broader acceptance remain open. PAL More Rotation is still not adopted; the normal backend remains the default.

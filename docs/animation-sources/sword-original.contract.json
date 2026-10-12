@@ -1,0 +1,39 @@
+{
+  "status": "native editable source verified; exporter retarget and Minecraft acceptance pending",
+  "source": "sword-original.bbmodel",
+  "native_export": "sword-original-native-export.pal.json",
+  "blockbench_version": "5.2.2",
+  "pal_plugin_sha256": "4d1cd3e3aac7ac7e47c1a041ee66a321ea84e87f1c619a3bb02d00461b2bab7e",
+  "source_sha256": "ba589cba332c2ac9ddf224f0150f81a503c3a61103c93108c94535e4ccf8bbf3",
+  "export_sha256": "2cffdece38e8198598064045b8157c371fd3ce926a3e433656389b3e54fcf900",
+  "animations": [
+    "steelclash.sword.slash.light.right",
+    "steelclash.sword.slash.heavy.right"
+  ],
+  "main_arm": "right",
+  "authored_bones": [
+    "body",
+    "left_arm",
+    "left_leg",
+    "right_leg"
+  ],
+  "protected_bones": [
+    "right_arm",
+    "right_item"
+  ],
+  "animation_seconds": 1.675,
+  "release_start_seconds": 0.5,
+  "recovery_start_seconds": 0.925,
+  "curve": "linear Blockbench rotation tracks; PAL facing conversion negates X/Y",
+  "native_roundtrip": {
+    "animations": 2,
+    "keyframes": 56,
+    "poses_per_animation": 14,
+    "bone_matrices_compared": 420,
+    "max_matrix_element_difference": 0
+  },
+  "preview": "Helper geometry from PAL Bend Player Tools; original attached sword preview. The preview does not execute Steelclash ArmAim.",
+  "runtime_installed": false,
+  "evidence": "C:/dev/steelclash-beta-audit/20261012/blockbench-authoring",
+  "next": "Retarget body folding without dropping authored body motion, compensation transforms, or derived weapon-arm constraints; validate source/runtime matrices and live motion."
+}

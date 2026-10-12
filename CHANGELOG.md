@@ -1,5 +1,10 @@
 # Unreleased
 
+- Add the first original editable Blockbench sword source with light/heavy body/free-arm/leg tracks and verified
+  native save/reopen preservation. Keep its body-folded PAL export as a rejected retarget fixture; runtime styles are pending.
+- Record native PAL heavy/morph checks at low/high FPS, mob fallback and resource reload evidence, including timing
+  exclusions and the late-tracking QA shutdown failure. PAL More Rotation remains an opt-in development experiment.
+
 **Fixes**
 - Active-parry catches synchronize their extended protection timer to the owning client. Matching-action updates preserve the predicted attack clock and queued input; stale, expired and incompatible confirmations are ignored.
 - First-person ready hands and blades stay anchored to the view while the body lags behind a turn, including left-main-arm and two-handed grips.

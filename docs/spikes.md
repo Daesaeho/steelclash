@@ -53,6 +53,12 @@ Relevant evidence: [early presentation](archive/findings-history.md#animation-pr
 [view-space ready rigs](archive/findings-history.md#view-space-ready-rigs-and-humanoid-handovers-2026-10-11)
 and [baseline acceptance](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11).
 
+The first [native Blockbench sword source](animation-authoring.md#native-sword-source-checkpoint-2026-10-12)
+survives save/reopen with explicit body/free-arm/leg tracks. The installed exporter folds body motion into the
+protected weapon-arm channel, so its actual export is rejected until retargeting preserves that constraint.
+PAL's [live checkpoint](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12)
+adds heavy/morph, mob and reload evidence while retaining tracking/shutdown and alignment limits.
+
 ## Bug audit and active-parry acknowledgments
 
 The [earlier bug audit](archive/findings-history.md#bug-audit-and-fixes-2026-10-08) records input, prediction,

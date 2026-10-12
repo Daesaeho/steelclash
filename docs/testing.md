@@ -42,6 +42,8 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Native sword source, 2026-10-12 | Two editable light/heavy takes, 56 keys, 420 unchanged native bone matrices after save/reopen; native export rejected safely | [Source/export scope](animation-authoring.md#native-sword-source-checkpoint-2026-10-12) |
+| PAL live checkpoint, 2026-10-12 | 16 clean native captures across original/repeated heavy/morph, mob morph and reload cases; 5,051 complete frames; late-tracking shutdown excluded | [Live evidence and limits](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12) |
 | PAL pose matrix, 2026-10-11 | 36 stable paired armored sword/spear poses; both main arms; captured old idle-clock mutant and healthy restored 18-shot guard | [Capture-clock correction](archive/pal-more-prototype-20261011.md#expanded-pose-comparisons-and-capture-clock-correction) |
 | Authoring prototype, 2026-10-11 | Compile/full build; 226 fresh unit tests including eight importer tests; five caught mutations; actual offline candidate command | [Importer checkpoint](archive/roadmap-checkpoints.md#offline-authoring-prototype-2026-10-11) |
 | `253021b`, baseline | 20 accepted live cases, 2,937 frames; 22 focused rig tests; five caught mutants; hidden input and three-shot sheet | [Baseline record](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11) |
@@ -87,6 +89,10 @@ Select the relevant checks below; preserve the player guide's normal controls an
 - First-person kick feet, shield-bash and other/custom-model variants, broader camera effects, swimming/riding
   and renderer/shader combinations outside the recorded cases.
 - Initial startup-window visibility/focus behavior before the first capture event.
+- Clean exit and addon comparison for late guard tracking in the current QA loading-mod stack: one completed
+  capture stalled in chunk-unload future rescheduling during shutdown and required stopping its disposable JVM.
+- Reproduce the intermittent `shieldbearingbotblocks` failure seen after one of three unchanged-code combat
+  benchmark passes; the other two passes completed all 174 required tests. Its cause is not diagnosed.
 - A full modpack/co-op feel playtest and release acceptance; existing capture and suite results cover bounded fixtures.
 - PAL More Rotation, Blockbench importer, anatomical collision and CPM: apply their plan gates after implementation.
   Candidate source review alone establishes no support. BodyHealth/LSO remain deferred.

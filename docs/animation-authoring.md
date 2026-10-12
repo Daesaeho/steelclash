@@ -4,7 +4,9 @@
 Steel Clash phase clips. The [roadmap](next-combat-animation-plan.md#4-build-a-blockbench-authoring-workflow-and-refine-weapon-styles)
 still requires editable Blockbench projects, an actual exporter round-trip and rendered alignment/motion acceptance.
 The original [sword sample](animation-sources/sword-slash-linear.pal.json) is a hand-authored regression fixture,
-not a Blockbench export or a shipped style replacement.
+not a Blockbench export or a shipped style replacement. The first [native sword source](animation-sources/sword-original.bbmodel)
+is now saved and reopened in Blockbench; its [contract](animation-sources/sword-original.contract.json) records the
+remaining exporter-retarget and Minecraft acceptance work.
 
 ## Accepted contract
 
@@ -62,9 +64,32 @@ authoring time; gameplay phases continue to use the server's resolved weapon tim
 
 ## Acceptance still required
 
-Save the first original sword project as `.bbmodel`, export through the reviewed plugin, identify its supported
-coordinate/metadata path and round-trip into a candidate. Prove source/runtime axes and mesh poses before replacing
+Retarget the first native sword export into a candidate without losing its body motion or derived transforms.
+Prove source/runtime axes and mesh poses before replacing
 the shipped sword clip. Compare matched old/new live transitions, hilt/tip alignment and evenly timed motion;
 verify phase seams, heavy/mirrored behavior, F3+T and invalid-file retention. Continue dagger/spear/blunt and the
 remaining families only after that workflow succeeds. Use [animation acceptance](animation.md#client-acceptance-checks)
 and keep the optional bend adoption decision separate from importer unit results.
+
+## Native sword source checkpoint, 2026-10-12
+
+`sword-original.bbmodel` contains original light/heavy right-main takes, each 1.675 seconds long, with explicit
+release/recovery keys at 0.5/0.925 seconds. Its 56 linear keys animate a real body-root group, free arm and legs;
+the weapon arm/item have no authored tracks. The attached preview sword does not run `ArmAim` and cannot prove
+runtime grip or hilt/tip alignment. Helper geometry comes from the installed PAL Bend Player Tools project.
+
+Blockbench 5.2.2's native project codec saved/reopened both takes with unchanged keys and **420 identical sampled
+bone matrices** (14 poses per take). A private viewport rendered 34 evenly spaced source frames. Onion-skin flags
+were inspected; this authoring preview does not establish Minecraft motion acceptance. Captures explicitly select
+the source project UUID; an earlier series without that identity check is exploratory and excluded.
+
+The installed PAL action produced the unchanged [native export](animation-sources/sword-original-native-export.pal.json).
+It removes `body` and folds its values into all six rendered child tracks, including `right_arm`. The existing
+import task rejects that protected weapon-arm track and creates no output. Do not remove it merely to force a pass:
+the export no longer separates authored body motion from the weapon constraint. The next implementation must use
+the saved source hierarchy/track provenance to recover and validate those transforms.
+
+The plugin's default helper import can also keep virtual-root tracks in transient animation fields. The committed
+source instead stores its body keys on a real bone, avoiding reliance on those fields surviving project saves.
+Evidence, exact plugin hash, native action results, manifests, images and the rejection log are under
+`C:/dev/steelclash-beta-audit/20261012/blockbench-authoring`. Neither take is installed in runtime assets.

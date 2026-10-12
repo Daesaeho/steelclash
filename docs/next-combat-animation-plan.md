@@ -11,8 +11,8 @@ Target: Minecraft 1.21.1, NeoForge 21.1.252, Java 21, PAL 1.1.6. Preserve unrela
 |---|---|---|
 | 1. Baseline | Bounded gate closed at `253021b`; unsupported cases stay explicit | [20-case baseline](testing.md#current-verified-checkpoints), [remaining checks](testing.md#remaining-unsupported-checks) |
 | 2. Rules and fidelity | Bounded measurement gate closed; N07 fixed; unresolved reference tuning stays explicit | [Measured rule table](combat-rule-evidence.md#measured-representative-weapons) and remaining fidelity questions |
-| 3. PAL More Rotation | In progress; item/mesh proof and stable armored pose comparisons | [Evidence and open live/mob/adoption checks](archive/pal-more-prototype-20261011.md) |
-| 4. Blockbench/styles | Preparatory importer verified; full gate open | [Strict offline contract](animation-authoring.md); next: actual sword `.bbmodel` export/round-trip and visual acceptance |
+| 3. PAL More Rotation | In progress; live heavy/morph, mob and reload evidence added; adoption remains open | [Evidence and tracking/shutdown limits](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12) |
+| 4. Blockbench/styles | Native sword source saved/reopened; exporter retarget required; full gate open | [Source/export checkpoint](animation-authoring.md#native-sword-source-checkpoint-2026-10-12); next: preserve body/weapon constraints through conversion, then Minecraft acceptance |
 | 5. Server collision | Pending | Contact metadata, then optional anatomical narrow phase |
 | 6. CPM | Pending | Cosmetics/model lifecycle after the default rig is stable |
 
