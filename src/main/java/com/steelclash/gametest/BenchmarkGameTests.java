@@ -9,6 +9,7 @@ import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.CombatProfiler;
+import com.steelclash.combat.LiveAttacks;
 import com.steelclash.core.AttackType;
 import com.steelclash.entity.ModEntities;
 import com.steelclash.entity.TrainingDummy;
@@ -200,6 +201,7 @@ public final class BenchmarkGameTests {
         Scene[] scene = new Scene[1];
         long[] startTick = new long[1];
         long[] gcBefore = new long[1];
+        long[] levelQueriesBefore = new long[1];
         boolean[] done = new boolean[1];
         helper.onEachTick(() -> {
             if (done[0]) {
@@ -217,11 +219,13 @@ public final class BenchmarkGameTests {
             long warmup = order == 0 ? FIRST_WARMUP_TICKS : WARMUP_TICKS;
             if (t == warmup) {
                 gcBefore[0] = gcMillis();
+                levelQueriesBefore[0] = LiveAttacks.levelQueries();
                 CombatProfiler.start();
             } else if (t >= warmup + MEASURE_TICKS) {
                 done[0] = true;
                 CombatProfiler.stop();
-                String text = format(name, fighterCount, CombatProfiler.report(), gcMillis() - gcBefore[0]);
+                String text = format(name, fighterCount, CombatProfiler.report(), gcMillis() - gcBefore[0],
+                        LiveAttacks.levelQueries() - levelQueriesBefore[0]);
                 SteelClash.LOGGER.info("\n{}", text);
                 write(helper, name, text);
                 scene[0].fighters().forEach(LivingEntity::discard);
@@ -256,7 +260,7 @@ public final class BenchmarkGameTests {
 
     // ------------------------------------------------------------------ report
 
-    private static String format(String name, int fighters, CombatProfiler.Report r, long gcMs) {
+    private static String format(String name, int fighters, CombatProfiler.Report r, long gcMs, long levelQueries) {
         StringBuilder out = new StringBuilder();
         out.append(String.format(Locale.ROOT, "Steel Clash combat benchmark: %s (%d fighters, %d ticks measured)%n",
                 name, fighters, r.ticks()));
@@ -272,6 +276,9 @@ public final class BenchmarkGameTests {
         out.append(String.format(Locale.ROOT, "live blades/tick %.2f, candidates/tick %.2f, contacts/tick %.2f, packets/tick %.2f%n",
                 r.perTick(CombatProfiler.Counter.RELEASES), r.perTick(CombatProfiler.Counter.CANDIDATES),
                 r.perTick(CombatProfiler.Counter.CONTACTS), r.perTick(CombatProfiler.Counter.PACKETS)));
+        // The live-attack list answers a defender that has none or one attack in reach; several send it to the level.
+        out.append(String.format(Locale.ROOT, "defenders asking the level/tick %.2f%n",
+                r.ticks() == 0 ? 0 : levelQueries / (double) r.ticks()));
         out.append(String.format(Locale.ROOT, "GC during the run: %d ms (whole JVM)%s%n", gcMs,
                 r.allocationsMeasured() ? "" : "; allocation sampling not supported on this JVM"));
         return out.toString();

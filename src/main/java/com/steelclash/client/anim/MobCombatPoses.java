@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.steelclash.Config;
 import com.steelclash.client.dev.PoseSheet;
+import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.WeaponRig;
 import com.steelclash.core.RigPoseBlend;
 import com.steelclash.core.Phase;
@@ -61,6 +62,9 @@ public final class MobCombatPoses {
     public static void apply(LivingEntity entity, EntityModel<?> model, float partialTick) {
         if (entity instanceof Player) {
             return; // players use the Player Animation Library layer
+        }
+        if (!entity.hasData(ModAttachments.COMBAT)) {
+            return; // never fought (most rendered mobs, every frame): no pose, and nothing kept that needs forgetting
         }
         ITEM_TURNS.remove(entity);
         Parts parts = parts(model);
@@ -160,6 +164,11 @@ public final class MobCombatPoses {
      */
     public static void applyBodyRotation(LivingEntity entity, PoseStack poseStack, float partialTick) {
         if (entity instanceof Player) {
+            return;
+        }
+        if (!entity.hasData(ModAttachments.COMBAT)) {
+            posedEntity = null; // as apply would leave it: no pose is handed on
+            posed = null;
             return;
         }
         CombatPose pose = CombatPresentation.get(entity, partialTick).orElse(null);

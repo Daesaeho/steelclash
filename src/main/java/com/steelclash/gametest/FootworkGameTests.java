@@ -16,6 +16,7 @@ import com.steelclash.combat.CombatData;
 import com.steelclash.combat.Disarm;
 import com.steelclash.combat.Dodge;
 import com.steelclash.combat.HealthRegen;
+import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
@@ -24,8 +25,10 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.living.LivingEvent;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -208,6 +211,31 @@ public final class FootworkGameTests {
         NeoForge.EVENT_BUS.post(new LivingEvent.LivingJumpEvent(player));
         float spent = d.stamina.max() - d.stamina.current();
         check(helper, Math.abs(spent - 12) < 0.01, "a jump mid-fight costs 12 stamina, cost " + spent);
+        helper.succeed();
+    }
+
+    /** Being hurt is remembered for players and fighters (regeneration, jump cost, revives), and only for them. */
+    @GameTest(template = ARENA)
+    public static void onlyPlayersAndFightersRememberBeingHurt(GameTestHelper helper) {
+        long now = helper.getLevel().getGameTime();
+        var generic = helper.getLevel().damageSources().generic();
+
+        Cow cow = helper.spawnWithNoFreeWill(EntityType.COW, 3, 2, 2);
+        cow.hurt(generic, 2);
+        check(helper, isHurt(cow), "premise: the cow took the damage");
+        check(helper, !cow.hasData(ModAttachments.COMBAT),
+                "a hurt bystander must not get combat state: it would tick and sync as a fighter from then on");
+
+        TrainingDummy fighter = dummy(helper, 3, 6, FACING_NEGATIVE_X);
+        data(fighter).lastHurtAt = now - 200;
+        fighter.hurt(generic, 2);
+        check(helper, data(fighter).lastHurtAt == now, "a fighter remembers when it was hurt");
+
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        check(helper, !player.hasData(ModAttachments.COMBAT), "premise: this player has no combat state yet");
+        player.hurt(generic, 2);
+        check(helper, player.hasData(ModAttachments.COMBAT) && data(player).lastHurtAt == now,
+                "a player remembers it even before its first combat tick");
         helper.succeed();
     }
 

@@ -4,6 +4,8 @@ import com.steelclash.core.AttackType;
 import com.steelclash.core.BotStyle;
 import com.steelclash.core.OpponentMemory;
 import com.steelclash.core.SwingTurn;
+import com.steelclash.profile.WeaponProfile;
+import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
 /** A mob's bot-brain state, kept in its combat data. Server only. */
@@ -55,4 +57,15 @@ public class BrainState {
     public int comboRolledFor = -1;
     /** Accel or drag planned for the current attack (turning the head during the release). */
     public SwingTurn.Trick trick = SwingTurn.Trick.NONE;
+
+    /**
+     * The weapon profile (null = none) the brain resolved on {@link #profileTick} for the item the mob held then. The
+     * spacing goal runs first in the next tick and uses it while the mob holds the same item, instead of resolving the
+     * same weapon a second time. Trusted for that one tick only: the brain resolves afresh every tick.
+     */
+    @Nullable
+    public WeaponProfile profile;
+    @Nullable
+    public Item profileItem;
+    public int profileTick = Integer.MIN_VALUE;
 }

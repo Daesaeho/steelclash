@@ -12,8 +12,10 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import java.util.UUID;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -23,6 +25,29 @@ import org.jetbrains.annotations.Nullable;
 public class CombatData {
     public final CombatStateMachine machine = new CombatStateMachine();
     public final Stamina stamina = new Stamina(Config.MAX_STAMINA.get().floatValue());
+
+    /** The server-side entity this state belongs to; null on clients and for state made without an entity. */
+    @Nullable
+    private final LivingEntity owner;
+    /** Already in {@link LiveAttacks}' list. */
+    boolean liveAttackListed;
+
+    public CombatData() {
+        this(null);
+    }
+
+    /** As an entity's attachment. On the server its attacks are reported to {@link LiveAttacks} as they start. */
+    public CombatData(@Nullable IAttachmentHolder holder) {
+        owner = holder instanceof LivingEntity entity && !entity.level().isClientSide() ? entity : null;
+        if (owner != null) {
+            machine.onAttackStart(() -> LiveAttacks.started(this));
+        }
+    }
+
+    /** The fighter, for state in {@link LiveAttacks}' list (always a server-side entity's). */
+    public LivingEntity owner() {
+        return owner;
+    }
 
     /** Profile of the weapon the current attack or parry was started with. */
     @Nullable

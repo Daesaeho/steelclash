@@ -6,6 +6,18 @@
 - Record native PAL heavy/morph checks at low/high FPS, mob fallback and resource reload evidence, including timing
   exclusions and the late-tracking QA shutdown failure. PAL More Rotation remains an opt-in development experiment.
 
+**Performance**
+- Big fights cost the server less. Bots no longer search the level around them every tick for an incoming attack:
+  fighters whose attack is live are listed as it starts, and a bot checks that short list. Which attack a bot
+  answers is unchanged. In the 150-bot benchmark the bot AI's garbage fell from about 58 to 13 KB per tick; its time
+  fell as well, but the benchmark machine was too busy to put a number on it.
+- Animals, villagers and other bystanders no longer become fighters just by taking damage. They used to keep
+  combat state from the first hit and were then updated every tick, and sent to clients, like a fighter. Kicks,
+  slams and specials still stagger them as before.
+- A bot holding its distance reuses the weapon profile its brain resolved a tick earlier instead of looking the
+  same weapon up twice per tick. A swapped, dropped or thrown weapon is still noticed at once.
+- Mobs that have never fought skip the combat-pose hooks on the client.
+
 **Fixes**
 - Refresh combat poses when PAL reuses a pre-tick sample at a near-zero render partial, preventing a one-frame
   attack rewind. Shared pose caching includes phase elapsed/duration; first-person camera ownership stays tick-based.

@@ -3,7 +3,6 @@ package com.steelclash.ai;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.BotStyle;
-import com.steelclash.profile.WeaponProfiles;
 import java.util.EnumSet;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -72,7 +71,7 @@ public class ClashSpacingGoal extends Goal {
 
         BotStyle style = BotStyles.of(mob);
         double jitter = BotStyle.jitter(mob.getUUID().getLeastSignificantBits());
-        double reach = WeaponProfiles.resolveFor(mob).map(r -> ClashBrain.reach(mob, r.profile())).orElse(2.0);
+        double reach = ClashBrain.spacingReach(mob, brain);
         double hold = reach + style.holdExtra() + jitter * 0.3;
         double distance = ClashBrain.edgeDistance(mob, target);
         float keepDistance = distance > hold + 0.4 ? 0.5f : distance < hold - 0.4 ? -0.6f : 0f;
