@@ -108,6 +108,52 @@ public final class BotGameTests {
         helper.succeed();
     }
 
+    /**
+     * The spacing goal takes its reach from the profile the brain resolved a tick earlier, for as long as the mob holds
+     * the same weapon, and looks the weapon up itself otherwise.
+     */
+    @GameTest(template = ARENA)
+    public static void spacingReachFollowsTheWeaponInHand(GameTestHelper helper) {
+        TrainingDummy target = dummy(helper, 5, 4, FACING_NEGATIVE_X);
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 2, 2, 4);
+        zombie.setTarget(target);
+        CombatData z = data(zombie);
+        z.brain = new BrainState();
+        z.brain.cooldown = 100; // spacing only: no attack of its own
+        // What a fresh lookup gives for each hand (a brain that has resolved nothing yet has nothing to hand on).
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.TRIDENT));
+        double spear = ClashBrain.spacingReach(zombie, new BrainState());
+        WeaponProfile spearProfile = WeaponProfiles.resolveFor(zombie).orElseThrow().profile();
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        double claws = ClashBrain.spacingReach(zombie, new BrainState());
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        double sword = ClashBrain.spacingReach(zombie, new BrainState());
+        check(helper, spear > sword + 0.5 && spear > claws + 0.5 && sword != 2.0,
+                "premise: the reaches differ (spear " + spear + ", sword " + sword + ", claws " + claws + ")");
+
+        ClashBrain.tick(zombie, z);
+        zombie.tickCount++; // goals run at the start of the next tick, before the brain
+        check(helper, ClashBrain.spacingReach(zombie, z.brain) == sword, "the same weapon a tick later: the sword's reach");
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.TRIDENT));
+        check(helper, ClashBrain.spacingReach(zombie, z.brain) == spear, "a swapped weapon counts at once, not a tick late");
+
+        ClashBrain.tick(zombie, z);
+        zombie.tickCount++;
+        zombie.getMainHandItem().shrink(1); // thrown: the same stack, now empty
+        check(helper, ClashBrain.spacingReach(zombie, z.brain) == claws, "an emptied hand counts at once too");
+
+        // A profile from longer ago than the last tick is not trusted; one from the last tick is used as it is.
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        z.brain.profile = spearProfile; // stands in for a profile that has changed since (a datapack reload)
+        z.brain.profileItem = Items.IRON_SWORD;
+        z.brain.profileTick = zombie.tickCount - 2;
+        check(helper, ClashBrain.spacingReach(zombie, z.brain) == sword, "an older profile is looked up again");
+        z.brain.profileTick = zombie.tickCount - 1;
+        check(helper, ClashBrain.spacingReach(zombie, z.brain) == spear,
+                "last tick's profile is used without a second lookup (what the hand-over saves)");
+        helper.succeed();
+    }
+
     private static Zombie zombie(GameTestHelper helper, int x, int z, TrainingDummy target) {
         Zombie zombie = helper.spawn(EntityType.ZOMBIE, x, 2, z);
         zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET)); // no burning in daylight

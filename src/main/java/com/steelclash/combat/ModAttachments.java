@@ -15,7 +15,7 @@ public final class ModAttachments {
 
     /** Not serialized: an attack in progress is simply dropped on save/unload. */
     public static final Supplier<AttachmentType<CombatData>> COMBAT =
-            ATTACHMENT_TYPES.register("combat", () -> AttachmentType.builder(CombatData::new).build());
+            ATTACHMENT_TYPES.register("combat", () -> AttachmentType.builder(holder -> new CombatData(holder)).build());
 
     /** Server only, not serialized: recent positions for lag-compensated hit detection. */
     public static final Supplier<AttachmentType<PositionHistory>> POSITION_HISTORY = ATTACHMENT_TYPES.register(

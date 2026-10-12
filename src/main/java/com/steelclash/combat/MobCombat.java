@@ -104,13 +104,32 @@ public final class MobCombat {
         if (parryChance <= 0 || !data.machine.canParry()) {
             return;
         }
+        // Who is winding up within reach, from the live-attack list: usually nobody, and then there is nothing to do.
+        LivingEntity only = null;
+        boolean several = false;
+        for (int i = 0; i < LiveAttacks.size() && !several; i++) {
+            CombatData attack = LiveAttacks.get(i);
+            LivingEntity attacker = attack.owner();
+            if (attacker != mob && attack.machine.phase() == Phase.WINDUP && LiveAttacks.inReach(attacker, mob, THREAT_RADIUS)) {
+                several = only != null;
+                only = attacker;
+            }
+        }
+        if (only == null) {
+            return;
+        }
         Optional<WeaponProfile.GuardSpec> guard = WeaponProfiles.resolveFor(mob).flatMap(r -> r.profile().guard());
         if (guard.isEmpty()) {
             return;
         }
-        List<LivingEntity> threats = mob.level().getEntitiesOfClass(LivingEntity.class, mob.getBoundingBox().inflate(THREAT_RADIUS),
-                e -> e != mob && e.hasData(ModAttachments.COMBAT)
-                        && e.getData(ModAttachments.COMBAT).machine.phase() == Phase.WINDUP);
+        List<LivingEntity> threats = List.of(only);
+        if (several) {
+            // The level's order decides which of them the mob reacts to, as it always has.
+            LiveAttacks.askingTheLevel();
+            threats = mob.level().getEntitiesOfClass(LivingEntity.class, mob.getBoundingBox().inflate(THREAT_RADIUS),
+                    e -> e != mob && e.hasData(ModAttachments.COMBAT)
+                            && e.getData(ModAttachments.COMBAT).machine.phase() == Phase.WINDUP);
+        }
         for (LivingEntity attacker : threats) {
             if (!Guard.inCone(CombatMath.viewYaw(attacker), attacker.getX(), attacker.getZ(), mob.getX(), mob.getZ(), THREAT_CONE)) {
                 continue;

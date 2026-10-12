@@ -197,7 +197,11 @@ public final class CombatEvents {
     static void onDamageTaken(LivingDamageEvent.Post event) {
         LivingEntity entity = event.getEntity();
         if (event.getNewDamage() > 0) {
-            entity.getData(ModAttachments.COMBAT).lastHurtAt = entity.level().getGameTime();
+            // Players and fighters only: stamping a bystander (a cow, a villager) would give it combat state, and it
+            // would tick and sync as a fighter from then on.
+            if (entity instanceof Player || entity.hasData(ModAttachments.COMBAT)) {
+                entity.getData(ModAttachments.COMBAT).lastHurtAt = entity.level().getGameTime();
+            }
             if (entity instanceof Player player && !entity.level().isClientSide()) {
                 Downed.onReviverHurt(player);
             }
@@ -342,6 +346,7 @@ public final class CombatEvents {
         ClashBrain.TOKENS.clear();
         LagCompensation.clear();
         Interrupts.clear();
+        LiveAttacks.clear();
     }
 
     @SubscribeEvent
@@ -356,6 +361,12 @@ public final class CombatEvents {
     static void onServerTick(ServerTickEvent.Post event) {
         LagCompensation.tick();
         Interrupts.apply(); // after held hits, which may interrupt too
+        CombatProfiler.begin(CombatProfiler.Section.AI);
+        try {
+            LiveAttacks.sweep(); // last: held hits and interrupts end attacks too
+        } finally {
+            CombatProfiler.end(CombatProfiler.Section.AI);
+        }
         CombatProfiler.endTick();
     }
 

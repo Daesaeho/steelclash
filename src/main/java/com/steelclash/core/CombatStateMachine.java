@@ -66,6 +66,24 @@ public final class CombatStateMachine {
     private boolean thwacked;
     /** Release progress the recovery starts from: 1 normally, the contact point after a thwack. */
     private double recoverFrom = 1;
+    /** Told when this machine becomes a live attack; see {@link #onAttackStart}. */
+    @Nullable
+    private Runnable attackStartListener;
+
+    /**
+     * Calls {@code listener} whenever this machine goes from not attacking into a windup or release: an attack starting,
+     * or a snapshot ({@link #apply}) of one. Those are the only ways in, so whoever keeps a list of live attacks (the
+     * server, for bots looking for something to answer) never has to poll every fighter. It may be called again while
+     * the attack is already live.
+     */
+    public void onAttackStart(@Nullable Runnable listener) {
+        attackStartListener = listener;
+    }
+
+    /** In its windup or release: an attack someone may still have to answer. */
+    public boolean isLiveAttack() {
+        return phase == Phase.WINDUP || phase == Phase.RELEASE;
+    }
 
     public boolean canStartAttack() {
         // From a raised guard: a riposte after catching a hit, otherwise a counter attempt that drops the guard.
@@ -99,6 +117,7 @@ public final class CombatStateMachine {
         this.counterFeinted = false;
         this.countered = false;
         enterUs(Phase.WINDUP, attackTimings.windupUs());
+        announceLiveAttack();
         return true;
     }
 
@@ -441,6 +460,13 @@ public final class CombatStateMachine {
         this.heavy = newHeavy;
         this.morphed = newMorphed;
         this.comboAllowed = newComboAllowed;
+        announceLiveAttack();
+    }
+
+    private void announceLiveAttack() {
+        if (attackStartListener != null && isLiveAttack()) {
+            attackStartListener.run();
+        }
     }
 
     /** State needed to continue an authoritative snapshot with the same parry and attack rules as the server. */

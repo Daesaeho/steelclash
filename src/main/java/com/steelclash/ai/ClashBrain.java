@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
 import com.steelclash.combat.CombatMath;
+import com.steelclash.combat.LiveAttacks;
 import com.steelclash.combat.MobCombat;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.AttackTokens;
@@ -24,9 +25,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.InteractionHand;
 import net.neoforged.neoforge.common.ItemAbilities;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Chivalry 2-style bot behaviour for fighter mobs, layered on top of their vanilla AI (vanilla still does pathing
@@ -95,6 +98,9 @@ public final class ClashBrain {
             // Other mods can replace the weapon from shield-use or attack callbacks during defense.
             profile = WeaponProfiles.resolveFor(mob).map(WeaponProfiles.Resolved::profile);
         }
+        brain.profile = profile.orElse(null);
+        brain.profileItem = mob.getMainHandItem().getItem();
+        brain.profileTick = mob.tickCount;
         offend(mob, data, brain, skill, target, profile);
         steerSwing(mob, data, brain, target);
     }
@@ -148,7 +154,8 @@ public final class ClashBrain {
         if (profile.flatMap(WeaponProfile::guard).isEmpty() && !hasShield(mob)) {
             return; // claws and beasts can't parry
         }
-        for (LivingEntity attacker : threats(mob, brain)) {
+        LivingEntity attacker = threat(mob, brain); // one threat at a time
+        if (attacker != null) {
             CombatStateMachine incoming = attacker.getData(ModAttachments.COMBAT).machine;
             if (brain.answeredAttacker != attacker.getId() || brain.answeredSerial != incoming.attackSerial()) {
                 brain.answeredAttacker = attacker.getId();
@@ -228,7 +235,6 @@ public final class ClashBrain {
                 case NONE -> {
                 }
             }
-            return; // answer one threat at a time
         }
     }
 
@@ -284,14 +290,42 @@ public final class ClashBrain {
         return false;
     }
 
-    private static List<LivingEntity> threats(PathfinderMob mob, BrainState brain) {
+    /**
+     * The attack the bot answers this tick, if any: the first one the level finds around it that is a threat and faces
+     * it. {@link LiveAttacks} says who that can be without a level query; only when two qualify at once does the level
+     * get asked, because its order is the bot's established priority.
+     */
+    @Nullable
+    private static LivingEntity threat(PathfinderMob mob, BrainState brain) {
+        LivingEntity found = null;
+        for (int i = 0; i < LiveAttacks.size(); i++) {
+            CombatData attack = LiveAttacks.get(i);
+            LivingEntity attacker = attack.owner();
+            if (attacker != mob && isThreat(attacker.getId(), attack.machine, brain)
+                    && LiveAttacks.inReach(attacker, mob, THREAT_RADIUS) && facesBot(attacker, mob)) {
+                if (found != null) {
+                    return firstThreatInLevelOrder(mob, brain);
+                }
+                found = attacker;
+            }
+        }
+        return found;
+    }
+
+    @Nullable
+    private static LivingEntity firstThreatInLevelOrder(PathfinderMob mob, BrainState brain) {
+        LiveAttacks.askingTheLevel();
         List<LivingEntity> result = new ArrayList<>();
         // defend answers only the first threat. Filter the cone before the limit, and preserve the level query's order.
         mob.level().getEntities(EntityTypeTest.forClass(LivingEntity.class), mob.getBoundingBox().inflate(THREAT_RADIUS),
                 e -> e != mob && e.hasData(ModAttachments.COMBAT) && isThreat(e.getId(), e.getData(ModAttachments.COMBAT).machine, brain)
-                        && Guard.inCone(CombatMath.viewYaw(e), e.getX(), e.getZ(), mob.getX(), mob.getZ(), THREAT_CONE),
+                        && facesBot(e, mob),
                 result, 1);
-        return result;
+        return result.isEmpty() ? null : result.get(0);
+    }
+
+    private static boolean facesBot(LivingEntity attacker, PathfinderMob mob) {
+        return Guard.inCone(CombatMath.viewYaw(attacker), attacker.getX(), attacker.getZ(), mob.getX(), mob.getZ(), THREAT_CONE);
     }
 
     /**
@@ -454,6 +488,20 @@ public final class ClashBrain {
         }
         // Guard-only profiles are valid, including after a datapack reload while the spacing goal is running.
         return spec == null ? 2.0 : CombatMath.bladeLength(mob, spec);
+    }
+
+    /**
+     * Reach for the spacing goal. Goals run before the brain in a tick, so the profile the brain resolved at the end of
+     * the previous tick is the newest there is: it is used while the mob still holds that item (a profile depends on
+     * nothing else about the stack). A changed hand (swap, disarm, throw) or a tick the brain sat out gets a fresh
+     * lookup; a datapack reload shows a tick later, when the brain has resolved again.
+     */
+    public static double spacingReach(Mob mob, BrainState brain) {
+        Item held = mob.getMainHandItem().getItem();
+        if (brain.profileTick == mob.tickCount - 1 && brain.profileItem == held) {
+            return brain.profile == null ? 2.0 : reach(mob, brain.profile);
+        }
+        return WeaponProfiles.resolveFor(mob).map(r -> reach(mob, r.profile())).orElse(2.0);
     }
 
     /** Distance from the mob's pivot to the near edge of the target's hitbox, horizontally. */

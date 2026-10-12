@@ -35,6 +35,17 @@ See [cleave/thwack](archive/findings-history.md#cleave-and-thwack-architecture-p
 [release interrupts](archive/findings-history.md#report-gaps-step-b-release-interrupts-report-28-2026-10-08)
 and [bug audit](archive/findings-history.md#bug-audit-and-fixes-2026-10-08).
 
+## Server combat cost
+
+Being hurt does not give an entity combat state. Players and fighter mobs have it; a bystander gets it only from
+what staggers it (a kick, a slam, a special). Code that needs a target's state must create it with `getData`,
+not assume an earlier hit did. Defenders find incoming attacks in `combat/LiveAttacks`, which every server-side
+`CombatStateMachine` feeds as an attack starts: a new route into a windup must announce itself there, or bots and
+guarding dummies will not see it. The list is not in the level's order, so the choice between two simultaneous
+attacks still asks the level. The spacing goal trusts the brain's weapon profile for one tick and one item.
+The [2026-10-12 performance record](archive/combat-performance-20261012.md) has the equivalence checks, a
+benchmark whose timings were too noisy to quote, and what was deliberately left alone.
+
 ## Animation presentation and first-person rigs
 
 The weapon arm follows the hit arc; authored body and free-hand motion must preserve grip and blade alignment.

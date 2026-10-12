@@ -639,8 +639,9 @@ public final class Combat {
     /** Successful-hit consequences use the captured hit, even if the attacker starts another action during grace. */
     private static void onDamagingHit(LivingEntity attacker, LivingEntity target, Hit hit) {
         Feedback.hit(attacker, target, hit.heavy());
-        if (hit.type() == AttackType.SPECIAL && target.hasData(ModAttachments.COMBAT)) {
-            // Specials stagger what they hit (Chivalry 2), so the attacker keeps the initiative.
+        if (hit.type() == AttackType.SPECIAL) {
+            // Specials stagger what they hit (Chivalry 2), so the attacker keeps the initiative. Whatever it is: like a
+            // kick, the stagger gives a bystander its combat state (being hurt alone no longer does).
             stagger(target, target.getData(ModAttachments.COMBAT), Config.SPECIAL_HIT_STAGGER_TICKS.get(), true);
         }
     }
