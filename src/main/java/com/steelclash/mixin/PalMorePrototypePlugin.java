@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import net.neoforged.fml.loading.FMLLoader;
 
-/** Applies only the development hook-order bridge for the reviewed PAL More Rotation release. */
+/** Gates development-only mesh diagnostics and the reviewed PAL More Rotation hook-order bridge. */
 public final class PalMorePrototypePlugin implements IMixinConfigPlugin {
     private static final String PROPERTY = "steelclash.palMoreRotationPrototype";
     private static final String MOD_ID = "playeranimationlibrarymorerotation";
@@ -25,6 +25,8 @@ public final class PalMorePrototypePlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.contains("BladeMeshContextMixin") || mixinClassName.contains("BladeMeshQuadsMixin"))
+            return System.getProperty("steelclash.bladeMeshOut") != null;
         return !mixinClassName.contains("PalMoreItemCaptureMixin")
                 && !mixinClassName.contains("PalMoreItemApplyMixin") || ENABLED;
     }

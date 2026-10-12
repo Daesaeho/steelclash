@@ -16,6 +16,15 @@ the `setupAnim` call needs its own capture support. No event exposes this argume
 
 ## Development-only PAL More bridge
 
+`client.BladeMeshContextMixin` wraps `ItemInHandRenderer#renderItem` with a `finally`-restored diagnostic scope.
+`client.BladeMeshQuadsMixin` (priority 2000) wraps `ItemRenderer#renderModelLists`' quad-submission call to
+`renderQuadList`. Both load only with `-PbladeMeshOut=<new absolute .jsonl path>`. They read the actual iron-sword
+quads and final draw matrices without changing the pose stack, buffers, model, clock or gameplay. No event exposes
+those submission arguments. The callsite wrapper is required because Sodium 0.8.13 can bypass the original
+`renderQuadList` method through its fast encoder. The reviewed active/absent Sodium stacks produce evidence;
+other render replacements and custom item renderers remain unsupported. Risk is limited to opt-in diagnostics:
+other wrappers may change their ordering or bypass the submission path, which must fail evidence validation.
+
 `client.PalMoreItemCaptureMixin` (priority 100) and `client.PalMoreItemApplyMixin` (priority 2000) target
 `ItemInHandLayer#renderArmWithItem`, immediately before `ItemInHandRenderer#renderItem`. No NeoForge event spans
 the observed addon/PAL callback sequence. The first saves the item's pose/normal matrices; the second restores

@@ -625,6 +625,7 @@ public final class LiveCapture {
             if (mouseGrabbed) throw new IllegalStateException("Background capture unexpectedly grabbed the mouse");
         }
         row.put("frame", frames); row.put("time_ns", System.nanoTime() - startNanos); row.put("client_tick", player.tickCount);
+        row.put("presentation_frame",com.steelclash.client.anim.CombatPresentation.frameNumber());
         row.put("partial", event.getPartialTick().getGameTimeDeltaPartialTick(false)); row.put("phase", machine.phase());
         row.put("phase_duration_us", machine.phaseDurationUs());
         row.put("resolved_timings", timingsMap(machine.timings()));

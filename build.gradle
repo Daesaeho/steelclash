@@ -125,6 +125,7 @@ neoForge {
     runs {
         client {
             client()
+            if (project.hasProperty('bladeMeshOut')) systemProperty 'steelclash.bladeMeshOut', project.property('bladeMeshOut').toString()
             ['captureAnimationHash','captureAnimationFamily','captureTwoHandedSwords','captureCameraMotion'].each { name ->
                 if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
             }

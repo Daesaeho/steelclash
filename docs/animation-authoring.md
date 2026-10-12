@@ -141,3 +141,6 @@ mesh alignment, smoothness and wider lifecycle acceptance distinct from conversi
 The subsequent [pose-clock fix](archive/pose-clock-refresh-20261012.md) removes the sampled tick-boundary rewind.
 The current first-person heavy preparation still leaves the blade offscreen; resolve that readability limitation
 and finish mesh/seam acceptance before adopting this style or extending the validated workflow to other families.
+The [actual baked-mesh checkpoint](archive/blade-mesh-20261012.md) now measures submitted sword geometry and
+tests first-person placement candidates while preserving world-view poses. It distinguishes physical mesh landmarks,
+intentional view composition and the longer gameplay reach ray.

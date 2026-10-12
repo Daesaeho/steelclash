@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Sword mesh probe, 2026-10-12 | 245 fresh JUnit; native missing-evidence mutation caught; actual standard/Sodium geometry; 36 unchanged world-view placement poses; candidate adoption open | [Baked mesh and placement evidence](archive/blade-mesh-20261012.md) |
 | Pose clock refresh, 2026-10-12 | 245 fresh JUnit; four caught mutations including a native PAL probe; 2,313 restored screenshots; nine deterministic zero-partial samples; 18 identical legacy pose pairs | [Clock ordering, coverage and limits](archive/pose-clock-refresh-20261012.md) |
 | Native sword retarget, 2026-10-12 | 241 fresh JUnit; nine caught mutations; 112 source/runtime authored bone matrices; 2,117 candidate screenshots; legacy 18-pair pose parity; mesh/motion gates open | [Retarget evidence and exclusions](archive/native-sword-retarget-20261012.md) |
 | Native sword source, 2026-10-12 | Two editable light/heavy takes, 56 keys, 420 unchanged native bone matrices after save/reopen; PAL-only import still rejects the body-folded export safely | [Source/export scope](animation-authoring.md#native-sword-source-checkpoint-2026-10-12) |

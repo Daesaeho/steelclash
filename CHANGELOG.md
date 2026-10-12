@@ -27,6 +27,8 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Add opt-in actual iron-sword baked-mesh capture for standard and Sodium quad submission, with camera/draw
+  matrices, vertex projection validation and explicit limits for custom renderers and gameplay reach.
 - Add an opt-in deterministic native PAL zero-partial probe for the heavy capture, separate from screenshots,
   checking current-clock sampling, one refresh across bones and unchanged camera mode/configuration.
 - Verify the actual selected animation resource hash, loaded clip samples and temporary capture config before

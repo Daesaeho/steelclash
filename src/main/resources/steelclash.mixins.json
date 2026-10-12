@@ -8,6 +8,8 @@
   "client": [
     "client.ItemInHandLayerMixin",
     "client.LivingEntityRendererMixin",
+    "client.BladeMeshContextMixin",
+    "client.BladeMeshQuadsMixin",
     "client.PalMoreItemCaptureMixin",
     "client.PalMoreItemApplyMixin"
   ],

@@ -62,6 +62,9 @@ active resource provenance and the corrected generic-heavy fallback; mesh/motion
 The [tick-boundary pose refresh](archive/pose-clock-refresh-20261012.md) fixes stale pre-combat-tick samples when PAL
 deduplicates a near-zero render partial. A deterministic native component probe complements ordinary captures;
 it keeps PAL's clock and first-person ownership unchanged.
+The [baked sword mesh probe](archive/blade-mesh-20261012.md) records actual submission matrices/vertices in
+standard and Sodium paths. Sprite landmarks establish mesh axes and projected visibility; they do not turn the
+debug reach ray into a physical mesh endpoint or prove palm/support-hand attachment.
 PAL's [live checkpoint](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12)
 adds heavy/morph, mob and reload evidence while retaining tracking/shutdown and alignment limits.
 
