@@ -207,6 +207,7 @@ public final class PoseSheet {
             return;
         }
         if (shots == null) {
+            AnimationCaptureChecks.prepare(mc);
             shots = plan();
             String arm = System.getProperty("steelclash.poseSheetArm");
             requestedMainArm = arm == null ? null : switch (arm.toLowerCase(Locale.ROOT)) {
@@ -557,6 +558,7 @@ public final class PoseSheet {
     }
 
     private static void finish(Minecraft mc, LocalPlayer player) {
+        AnimationCaptureChecks.restore();
         previousPlayerArmor.forEach((slot, stack) -> player.setItemSlot(slot, stack.copy()));
         if (requestedMainArm != null) player.setMainArm(previousPlayerArm);
         if (requestedOffhand != null) player.setItemSlot(EquipmentSlot.OFFHAND, previousPlayerOffhand);

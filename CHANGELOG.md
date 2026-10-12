@@ -1,11 +1,14 @@
 # Unreleased
 
 - Add the first original editable Blockbench sword source with light/heavy body/free-arm/leg tracks and verified
-  native save/reopen preservation. Keep its body-folded PAL export as a rejected retarget fixture; runtime styles are pending.
+  native save/reopen preservation. Validate its body-folded PAL export against the source before recovering local
+  body/free-arm/foot motion. Add exact linear phases and an explicit hip counter-turn policy; runtime styles are pending.
 - Record native PAL heavy/morph checks at low/high FPS, mob fallback and resource reload evidence, including timing
   exclusions and the late-tracking QA shutdown failure. PAL More Rotation remains an opt-in development experiment.
 
 **Fixes**
+- An absent attack variant inherits an authored generic heavy release/recovery instead of silently using its light
+  phase. Existing packs without authored heavy phases retain their ordinary release/recovery behavior.
 - Active-parry catches synchronize their extended protection timer to the owning client. Matching-action updates preserve the predicted attack clock and queued input; stale, expired and incompatible confirmations are ignored.
 - First-person ready hands and blades stay anchored to the view while the body lags behind a turn, including left-main-arm and two-handed grips.
 - Hotbar swaps discard the local old-weapon attack/guard pose immediately, before the server cancellation arrives. Disarm recoil and the empty-hand follow-through of a released throw remain visible.
@@ -22,6 +25,8 @@
 - Finishing off a downed player clears crawling and revive progress; an ally cannot revive a dead player through stale downed state.
 
 **Development**
+- Verify the actual selected animation resource hash, loaded clip samples and temporary capture config before
+  native animation QA, so an overridden candidate pack cannot produce mislabeled acceptance evidence.
 - Make frozen pose comparisons reproducible by fixing vanilla idle age during capture; add verified empty/full-iron armor presets and per-shot hidden-window/mouse checks. Expand optional PAL comparisons across weapons, hands and offhand equipment.
 - Add a strict offline PAL animation importer with phase baking, solved-arm protection, handedness normalization and new-file-only candidate output. Preserve base grip/camera settings; editable Blockbench round-trip and visual acceptance remain open.
 - Add an opt-in PAL More Rotation prototype with shared item-axis conventions, a version-gated runtime-order bridge, stable weak entity ownership and read-only mesh evidence. The default backend remains unchanged; adoption awaits the full rendering/motion matrix.

@@ -16,6 +16,14 @@ tasks.register('palAnimationImport', JavaExec) {
             'palImportAttack', 'palImportArm', 'palImportRelease', 'palImportRecovery', 'palImportTolerance'].collect { name ->
         providers.gradleProperty(name).getOrElse('')
     }
+    if (providers.gradleProperty('palImportProject').isPresent()) {
+        args providers.gradleProperty('palImportProject').get()
+        if (providers.gradleProperty('palImportHeavyAnimation').isPresent()) {
+            args providers.gradleProperty('palImportHeavyAnimation').get()
+        }
+    } else if (providers.gradleProperty('palImportHeavyAnimation').isPresent()) {
+        throw new GradleException('palImportHeavyAnimation requires palImportProject')
+    }
     doFirst {
         if (args.any { it.isEmpty() }) throw new GradleException('Missing palImport property; see docs/animation-authoring.md')
     }
@@ -117,6 +125,9 @@ neoForge {
     runs {
         client {
             client()
+            ['captureAnimationHash','captureAnimationFamily','captureTwoHandedSwords','captureCameraMotion'].each { name ->
+                if (project.hasProperty(name)) systemProperty "steelclash.${name}", project.property(name).toString()
+            }
             programArguments.addAll '--username', project.findProperty('liveCaptureUsername') ?: 'Dev1'
             // Optional dev switches: -PclientMemory=1536M (heap cap), -PquickPlay="New World" (load straight into a
             // world), -PposeSheet=slash,overhead,stab (photograph frozen combat poses, then quit; see client/dev/PoseSheet)

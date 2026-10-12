@@ -223,6 +223,7 @@ public final class LiveCapture {
                 }
                 done = true;
                 SteelClash.LOGGER.info("Live capture completed: {} actual frames in {}", frames, out);
+                AnimationCaptureChecks.restore();
                 mc.stop();
             } else if (++drainTicks > 200) {
                 throw new IllegalStateException("Live screenshots did not finish: " + SAVED.get() + "/" + frames);
@@ -235,6 +236,7 @@ public final class LiveCapture {
             if (PoseSheet.running()) throw new IllegalStateException("Live capture cannot run with frozen pose sheets");
             if (!validScene())
                 throw new IllegalArgumentException("Unknown live capture scene: " + SCENE);
+            AnimationCaptureChecks.prepare(mc);
             String item = item("steelclash.liveCaptureItem", DEFAULT_ITEM);
             String offhand = item("steelclash.liveCaptureOffhand", DEFAULT_OFFHAND);
             if (ITEM_USE && !offhand.equals(DEFAULT_OFFHAND))

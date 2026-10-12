@@ -42,7 +42,8 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
-| Native sword source, 2026-10-12 | Two editable light/heavy takes, 56 keys, 420 unchanged native bone matrices after save/reopen; native export rejected safely | [Source/export scope](animation-authoring.md#native-sword-source-checkpoint-2026-10-12) |
+| Native sword retarget, 2026-10-12 | 241 fresh JUnit; nine caught mutations; 112 source/runtime authored bone matrices; 2,117 candidate screenshots; legacy 18-pair pose parity; mesh/motion gates open | [Retarget evidence and exclusions](archive/native-sword-retarget-20261012.md) |
+| Native sword source, 2026-10-12 | Two editable light/heavy takes, 56 keys, 420 unchanged native bone matrices after save/reopen; PAL-only import still rejects the body-folded export safely | [Source/export scope](animation-authoring.md#native-sword-source-checkpoint-2026-10-12) |
 | PAL live checkpoint, 2026-10-12 | 16 clean native captures across original/repeated heavy/morph, mob morph and reload cases; 5,051 complete frames; late-tracking shutdown excluded | [Live evidence and limits](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12) |
 | PAL pose matrix, 2026-10-11 | 36 stable paired armored sword/spear poses; both main arms; captured old idle-clock mutant and healthy restored 18-shot guard | [Capture-clock correction](archive/pal-more-prototype-20261011.md#expanded-pose-comparisons-and-capture-clock-correction) |
 | Authoring prototype, 2026-10-11 | Compile/full build; 226 fresh unit tests including eight importer tests; five caught mutations; actual offline candidate command | [Importer checkpoint](archive/roadmap-checkpoints.md#offline-authoring-prototype-2026-10-11) |
@@ -93,6 +94,8 @@ Select the relevant checks below; preserve the player guide's normal controls an
   capture stalled in chunk-unload future rescheduling during shutdown and required stopping its disposable JVM.
 - Reproduce the intermittent `shieldbearingbotblocks` failure seen after one of three unchanged-code combat
   benchmark passes; the other two passes completed all 174 required tests. Its cause is not diagnosed.
+- Correct the live tick-boundary pose-cache rewind exposed by the native sword high-FPS replay, then repeat
+  source-aware candidate seam/motion and rendered hilt/tip acceptance. [Reproducer](archive/native-sword-retarget-20261012.md#reproduced-selection-and-clock-issues).
 - A full modpack/co-op feel playtest and release acceptance; existing capture and suite results cover bounded fixtures.
 - PAL More Rotation, Blockbench importer, anatomical collision and CPM: apply their plan gates after implementation.
   Candidate source review alone establishes no support. BodyHealth/LSO remain deferred.

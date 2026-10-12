@@ -55,7 +55,10 @@ and [baseline acceptance](archive/testing-history.md#broader-baseline-and-backgr
 
 The first [native Blockbench sword source](animation-authoring.md#native-sword-source-checkpoint-2026-10-12)
 survives save/reopen with explicit body/free-arm/leg tracks. The installed exporter folds body motion into the
-protected weapon-arm channel, so its actual export is rejected until retargeting preserves that constraint.
+protected weapon-arm channel. [Source-aware retargeting](animation-authoring.md#source-aware-native-import)
+now validates that complete fold against the canonical project before recovering separate channels; the
+PAL-only path continues to reject it. [Runtime evidence](archive/native-sword-retarget-20261012.md) records
+active resource provenance and the corrected generic-heavy fallback; mesh/motion acceptance remains open.
 PAL's [live checkpoint](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12)
 adds heavy/morph, mob and reload evidence while retaining tracking/shutdown and alignment limits.
 

@@ -18,6 +18,7 @@ import java.util.TreeSet;
  * A keyframe where a part reverses direction still holds it there for an instant, and nothing overshoots a key.
  */
 public final class PoseClip {
+    public enum Interpolation { MONOTONE_CUBIC, LINEAR }
     public record Keyframe(double t, Map<String, double[]> parts) {
     }
 
@@ -25,8 +26,14 @@ public final class PoseClip {
 
     private final List<Keyframe> keyframes;
     private final Set<String> partNames;
+    private final Interpolation interpolation;
 
     public PoseClip(List<Keyframe> keyframes) {
+        this(keyframes, Interpolation.MONOTONE_CUBIC);
+    }
+
+    public PoseClip(List<Keyframe> keyframes, Interpolation interpolation) {
+        this.interpolation = java.util.Objects.requireNonNull(interpolation);
         List<Keyframe> sorted = new ArrayList<>(keyframes);
         sorted.sort(Comparator.comparingDouble(Keyframe::t));
         this.keyframes = List.copyOf(sorted);
@@ -81,13 +88,15 @@ public final class PoseClip {
         for (String part : partNames) {
             double[] v = new double[3];
             for (int axis = 0; axis < 3; axis++) {
-                v[axis] = (h00 * value(ia, part, axis) + h01 * value(ib, part, axis)
+                v[axis] = interpolation == Interpolation.LINEAR
+                        ? (value(ia, part, axis) + (value(ib, part, axis) - value(ia, part, axis)) * s) * scale
+                        : (h00 * value(ia, part, axis) + h01 * value(ib, part, axis)
                         + (span <= 1e-9 ? 0 : h10 * tangent(ia, part, axis) + h11 * tangent(ib, part, axis))) * scale;
             }
             double x = v[0];
             double y = v[1];
             double z = v[2];
-            if (mirrored && (part.equals("body") || part.equals("head") || part.equals("torso"))) {
+            if (mirrored && (part.equals("body") || part.equals("head") || part.equals("torso") || part.equals("hipLag"))) {
                 y = -y;
                 z = -z;
             }

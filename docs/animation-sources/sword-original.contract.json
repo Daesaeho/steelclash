@@ -1,5 +1,5 @@
 {
-  "status": "native editable source verified; exporter retarget and Minecraft acceptance pending",
+  "status": "native editable source and canonical retarget verified; full Minecraft mesh/motion acceptance pending",
   "source": "sword-original.bbmodel",
   "native_export": "sword-original-native-export.pal.json",
   "blockbench_version": "5.2.2",
@@ -35,5 +35,13 @@
   "preview": "Helper geometry from PAL Bend Player Tools; original attached sword preview. The preview does not execute Steelclash ArmAim.",
   "runtime_installed": false,
   "evidence": "C:/dev/steelclash-beta-audit/20261012/blockbench-authoring",
-  "next": "Retarget body folding without dropping authored body motion, compensation transforms, or derived weapon-arm constraints; validate source/runtime matrices and live motion."
+  "retarget": {
+    "authored_bone_matrices_and_joints_compared": 112,
+    "phase_interpolation": "linear",
+    "hipLag": [0, 0, 0],
+    "candidate_sha256": "54b52baa1c43147351a378adc262f39996b7db859f4d599dcf646493ed52610c",
+    "evidence": "C:/dev/steelclash-beta-audit/20261012/retarget-check",
+    "scope": "Canonical reviewed rig only; source/export body-fold proof. Extra compensation translations are rejected."
+  },
+  "next": "Fix the reproduced tick-boundary pose-cache rewind; complete rendered hilt/tip, seam/motion and lifecycle acceptance before installing the candidate."
 }

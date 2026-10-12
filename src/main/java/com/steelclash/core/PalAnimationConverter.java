@@ -30,6 +30,13 @@ public final class PalAnimationConverter {
     public static JsonObject convert(JsonObject source, String animationName, AttackType attack, boolean leftMain,
                                      boolean protectSupport, double releaseStart, double recoveryStart,
                                      double toleranceDegrees) {
+        return convert(source, animationName, attack, leftMain, protectSupport, releaseStart, recoveryStart, toleranceDegrees,
+                PoseClip.Interpolation.MONOTONE_CUBIC);
+    }
+
+    public static JsonObject convert(JsonObject source, String animationName, AttackType attack, boolean leftMain,
+                                     boolean protectSupport, double releaseStart, double recoveryStart,
+                                     double toleranceDegrees, PoseClip.Interpolation interpolation) {
         if (source == null || animationName == null || attack == null) throw new IllegalArgumentException("source, animationName and attack are required");
         for (String key : source.keySet()) if (!ROOT_KEYS.contains(key)) fail("root", key, "unknown metadata");
         if (source.has("format_version") && !string(source.get("format_version"), "format_version").equals("1.8.0")) fail("root", "format_version", "only PAL animations format 1.8.0 is supported");
@@ -103,7 +110,7 @@ public final class PalAnimationConverter {
             double start = edges[p], end = edges[p + 1], span = end - start;
             TreeSet<Double> times = new TreeSet<>(); times.add(start); times.add(end);
             for (Track t : tracks.values()) for (double time : t.times) if (time > start && time < end) times.add(time);
-            int subdivisions = (int)Math.ceil(span / maxStep);
+            int subdivisions = interpolation == PoseClip.Interpolation.LINEAR ? 1 : (int)Math.ceil(span / maxStep);
             if (subdivisions > MAX_KEYS_PER_PHASE) fail("animation " + animationName, phases[p], "adaptive bake exceeds " + MAX_KEYS_PER_PHASE + " keys");
             for (int i = 1; i < subdivisions; i++) times.add(start + span * i / subdivisions);
             if (times.size() > MAX_KEYS_PER_PHASE) fail("animation " + animationName, phases[p], "phase exceeds " + MAX_KEYS_PER_PHASE + " keys");
@@ -115,7 +122,12 @@ public final class PalAnimationConverter {
             }
             clips.add(attack.serializedName() + "." + phases[p], keys);
         }
-        JsonObject out = new JsonObject(); out.addProperty("format_version", 1); out.add("clips", clips); return out;
+        JsonObject out = new JsonObject(); out.addProperty("format_version", 1); out.add("clips", clips);
+        if (interpolation == PoseClip.Interpolation.LINEAR) {
+            JsonObject curves = new JsonObject(); clips.keySet().forEach(key -> curves.addProperty(key,"linear"));
+            out.add("clip_interpolation",curves);
+        }
+        return out;
     }
 
     private static Track parseTrack(JsonElement json, String context, String channel, double length, boolean bend) {

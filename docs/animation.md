@@ -96,6 +96,18 @@ grip gap greater than 0 and at most 10, heavy scale 0..5. Keyframe times must be
 part arrays must have 1..3 finite axes. Channels are body, torso, head, right/leftArm, right/leftLeg and
 right/leftArmBend. Bend channels remain accepted but PAL's current 1.21.1 backend still does not draw elbows.
 
+An optional `clip_interpolation` object maps existing clip keys to `linear` or `monotone_cubic`; omitted keys use
+the existing monotone cubic. It preserves exact native linear motion without a dense cubic bake. The optional
+`hipLag: [0,yaw,0]` keyframe channel controls the extra leg counter-turn in degrees; X/Z must be zero. Omission
+retains half the weighted body yaw. Source-aware native imports use explicit zero so body parenting is applied once.
+Player and humanoid mob rendering share this policy, including transitions between explicit and legacy clips.
+
+Optional `<attack>.heavy_release` and `.heavy_recovery` keys keep a paired heavy take continuous after its windup.
+Specific heavy variants use `<attack>.variant_<index>.heavy_release` / `.heavy_recovery`. A present ordinary variant
+retains its own phase unless its heavy override exists; an absent variant inherits the generic heavy phase, then
+the ordinary phase if no heavy key exists. Explicit empty release/recovery overrides stay empty. Existing shipped
+sets have no heavy release/recovery keys and preserve their original behavior.
+
 Optional specialized action keys use `bash.<phase>`, `special.lunge.<phase>`, `special.slam.<phase>`,
 `special.sweep.<phase>` and `<attack>.variant_<index>.<phase>` for nonzero variants. Phases are windup,
 release and recovery. Missing specialized keys use the generic action. The shipped default supplies bash and

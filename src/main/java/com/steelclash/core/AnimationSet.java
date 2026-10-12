@@ -22,10 +22,11 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gr
     public static final double DEFAULT_GRIP_GAP = 2.5;
     public static final AnimationSet NONE = new AnimationSet(false, 1, DEFAULT_GRIP_GAP, Map.of());
     private static final Set<String> PARTS = Set.of("body", "torso", "head", "rightArm", "leftArm", "rightLeg", "leftLeg",
-            "rightArmBend", "leftArmBend");
+            "rightArmBend", "leftArmBend", "hipLag");
     private static final String[][] CLIP_KEYS = createClipKeys();
     private static final String[] HEAVY_KEYS = java.util.Arrays.stream(AttackType.values())
             .map(t -> t.serializedName() + ".heavy_windup").toArray(String[]::new);
+    private static final String[][] HEAVY_PHASE_KEYS = createHeavyPhaseKeys();
 
     /** Pixels in model space; retraction is first-person-only, so rigid third-person shoulders stay attached. */
     public record FirstPerson(double forward, double down, double retraction, double readyYaw, double readyPitch) {
@@ -51,6 +52,20 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gr
     /** An explicit empty clip disables the action; an absent specialized key inherits its generic action. */
     public PoseClip clip(String key, String genericKey) {
         return clips.getOrDefault(key, clip(genericKey));
+    }
+
+    /** Authored heavy release/recovery fall back to the ordinary action unless explicitly present. */
+    public PoseClip phaseClip(Phase phase, AttackType type, boolean heavy, String selectedKey) {
+        String generic = clipKey(phase,type);
+        PoseClip ordinary = clip(selectedKey,generic);
+        if (!heavy || phase != Phase.RELEASE && phase != Phase.RECOVERY) return ordinary;
+        String key = selectedKey.equals(generic) ? HEAVY_PHASE_KEYS[phase.ordinal()][type.ordinal()]
+                : selectedKey.substring(0,selectedKey.lastIndexOf('.')+1) + "heavy_" + selectedKey.substring(selectedKey.lastIndexOf('.')+1);
+        PoseClip specializedHeavy = clips.get(key);
+        if (specializedHeavy != null) return specializedHeavy;
+        // A missing ordinary variant inherits the generic action's heavy take, not its light phase.
+        if (!selectedKey.equals(generic) && clips.containsKey(selectedKey)) return ordinary;
+        return clips.getOrDefault(HEAVY_PHASE_KEYS[phase.ordinal()][type.ordinal()],ordinary);
     }
 
     public AnimationSet withFallback(AnimationSet fallback) {
@@ -82,6 +97,15 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gr
         }
         Map<String, PoseClip> clips = new HashMap<>();
         JsonObject clipsJson = json.getAsJsonObject("clips");
+        if (json.has("clip_interpolation") && !json.get("clip_interpolation").isJsonObject())
+            throw new IllegalArgumentException("clip_interpolation: expected an object");
+        JsonObject interpolation = json.has("clip_interpolation") ? json.getAsJsonObject("clip_interpolation") : new JsonObject();
+        for (var entry : interpolation.entrySet()) {
+            if (clipsJson == null || !clipsJson.has(entry.getKey())) throw new IllegalArgumentException("clip_interpolation references missing clip " + entry.getKey());
+            if (!entry.getValue().isJsonPrimitive() || !entry.getValue().getAsJsonPrimitive().isString()
+                    || !Set.of("linear", "monotone_cubic").contains(entry.getValue().getAsString()))
+                throw new IllegalArgumentException("clip_interpolation." + entry.getKey() + ": expected linear or monotone_cubic");
+        }
         if (clipsJson != null) {
             for (Map.Entry<String, JsonElement> clip : clipsJson.entrySet()) {
                 List<PoseClip.Keyframe> keyframes = new ArrayList<>();
@@ -112,12 +136,15 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gr
                                     throw new IllegalArgumentException(clip.getKey() + "." + part.getKey() + ": non-finite angle");
                                 }
                             }
+                            if (part.getKey().equals("hipLag") && (axes[0] != 0 || axes[2] != 0))
+                                throw new IllegalArgumentException(clip.getKey() + ": hipLag supports yaw only");
                             parts.put(part.getKey(), axes);
                         }
                     }
                     keyframes.add(new PoseClip.Keyframe(t, parts));
                 }
-                clips.put(clip.getKey(), new PoseClip(keyframes));
+                boolean linear = interpolation.has(clip.getKey()) && interpolation.get(clip.getKey()).getAsString().equals("linear");
+                clips.put(clip.getKey(), new PoseClip(keyframes, linear ? PoseClip.Interpolation.LINEAR : PoseClip.Interpolation.MONOTONE_CUBIC));
             }
         }
         return new AnimationSet(twoHanded, heavyScale, gripGap, clips, firstPerson);
@@ -143,6 +170,13 @@ public record AnimationSet(boolean twoHanded, double heavyWindupScale, double gr
                 };
             }
         }
+        return keys;
+    }
+
+    private static String[][] createHeavyPhaseKeys() {
+        String[][] keys = new String[Phase.values().length][AttackType.values().length];
+        for (Phase phase : new Phase[]{Phase.RELEASE,Phase.RECOVERY}) for (AttackType type : AttackType.values())
+            keys[phase.ordinal()][type.ordinal()] = type.serializedName()+".heavy_"+phase.name().toLowerCase(java.util.Locale.ROOT);
         return keys;
     }
 

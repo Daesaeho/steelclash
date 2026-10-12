@@ -44,8 +44,6 @@ import org.jetbrains.annotations.Nullable;
 public class ProceduralSwingAnimation implements IAnimation {
     /** Above ordinary emote/animation layers, as with playerAnimator. */
     public static final int PRIORITY = 1000;
-    /** Share of the whole-body turn the legs take back (see {@link #hipsLag}). */
-    private static final float HIP_LAG = 0.5f;
     private static final FirstPersonConfiguration[] FIRST_PERSON = firstPersonConfigurations();
     private static final double[] NO_TURN = {0, 0, 0};
     /** First-person sideways travel of the arms at full spread (width 2) and the swing at 90 degrees, pixels. */
@@ -367,7 +365,7 @@ public class ProceduralSwingAnimation implements IAnimation {
      * the target, so the twist reads as shoulders over hips rather than the fighter pivoting on the spot.
      */
     private void hipsLag(PlayerAnimBone bone) {
-        bone.addRot(0, HIP_LAG * pose.offset("body", 1), 0);
+        bone.addRot(0, pose.hipLagOffset(), 0);
     }
 
     /**

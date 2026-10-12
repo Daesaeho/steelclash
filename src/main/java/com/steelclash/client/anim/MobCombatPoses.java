@@ -32,8 +32,6 @@ import org.joml.Quaternionf;
  * leaves the hand low.
  */
 public final class MobCombatPoses {
-    /** Share of the whole-body turn the legs take back, as for players (shoulders twist over the hips). */
-    private static final float HIP_LAG = 0.5f;
     /** Whole-body rotation pivot height, blocks above the feet (as Player Animation Library uses for players). */
     private static final float BODY_PIVOT = 0.75f;
 
@@ -113,8 +111,8 @@ public final class MobCombatPoses {
         add(parts.leftLeg, pose, "leftLeg");
         // The whole model turns (applyBodyRotation); turning the legs part of the way back keeps the feet planted.
         // ModelPart yaw is in model space, where the body's turn is -y (see WeaponRig.bodyRotation).
-        parts.rightLeg.yRot += HIP_LAG * pose.offset("body", 1);
-        parts.leftLeg.yRot += HIP_LAG * pose.offset("body", 1);
+        parts.rightLeg.yRot += pose.hipLagOffset();
+        parts.leftLeg.yRot += pose.hipLagOffset();
         add(parts.head, pose, "head");
         if (parts.body != null) {
             add(parts.body, pose, "torso"); // the torso part only gets the clip's extra torso motion

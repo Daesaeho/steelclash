@@ -13,6 +13,7 @@ import com.steelclash.core.AttackType;
 import com.steelclash.core.Phase;
 import com.steelclash.core.Mat3;
 import com.steelclash.core.PoseClip;
+import com.steelclash.core.PoseChannels;
 import com.steelclash.core.Vec;
 import com.steelclash.core.WeaponRig;
 import com.steelclash.profile.WeaponProfile;
@@ -151,7 +152,8 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
                 selected = pose.type().serializedName() + ".variant_" + data.machine.variant() + "." + phaseName;
             }
         }
-        return animation.clip(selected, key);
+        Phase selectedPhase = key.endsWith(".release") ? Phase.RELEASE : key.endsWith(".recovery") ? Phase.RECOVERY : pose.phase();
+        return animation.phaseClip(selectedPhase,pose.type(),data.machine.isHeavy(),selected);
     }
 
     /** Edge into the cut for the whole attack: set during the windup, follows the arc, held through recovery. */
@@ -183,6 +185,8 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
         double sign = leftHanded && limb && axis > 0 ? -1 : 1;
         return v == null ? 0f : (float) Math.toRadians(v[axis] * weight * sign);
     }
+
+    public float hipLagOffset() { return PoseChannels.hipLagRadians(offsets, weight); }
 
     /**
      * Weapon arm and in-hand weapon rotation (players): the blade on the arc, the hand drawn in toward the chest by
@@ -241,8 +245,8 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
         var parts = new HashSet<>(previous.offsets.keySet());
         parts.addAll(offsets.keySet());
         for (String part : parts) {
-            double[] from = previous.offsets.getOrDefault(part, NO_OFFSET);
-            double[] to = offsets.getOrDefault(part, NO_OFFSET);
+            double[] from = PoseChannels.value(previous.offsets, part);
+            double[] to = PoseChannels.value(offsets, part);
             double[] result = new double[3];
             for (int axis = 0; axis < 3; axis++) {
                 result[axis] = (from[axis] * previous.weight * (1 - f) + to[axis] * weight * f) / nextWeight;
