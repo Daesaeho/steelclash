@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Melee knockback setting, 2026-10-13 | 195 required GameTests in each Spartan variant (one new); four of four mutations caught; default unchanged; not played in a client | [Playtest list](#melee-knockback-setting) |
 | Ranged stamina, 2026-10-13 | 194 required GameTests in each Spartan variant (seven new); nine of nine mutations caught; full build; not played in a client | [Rule and findings](spikes.md#ranged-stamina), [playtest list](#ranged-stamina) |
 | Player grip and Vector API, 2026-10-13 | Compile/full build; 254 fresh JUnit; three caught mutations; 108 existing native draws, incomplete right-main support contact; SIMD timing inconclusive | [Reach constraint, rendered gaps and benchmark limits](archive/grip-and-vector-checkpoint-20261013.md) |
 | Sword mesh probe, 2026-10-12 | 245 fresh JUnit; native missing-evidence mutation caught; actual standard/Sodium geometry; 36 unchanged world-view placement poses; candidate adoption open | [Baked mesh and placement evidence](archive/blade-mesh-20261012.md) |
@@ -85,6 +86,13 @@ Select the relevant checks below; preserve the player guide's normal controls an
   will arrive exhausted: check that this reads as fair and that it still throws. Soldier archers and pillagers are
   not in the fighter roster and pay nothing. Spartan longbow, heavy crossbow and javelin behave the same. On a LAN
   client the bow should not twitch up while exhausted.
+
+### Melee knockback setting
+
+- In game, not yet played: with `meleeKnockback = 0`, sword hits and punches leave zombies and players where they
+  stand while kicks, shield bashes and the mace slam still push them; a Knockback-enchanted sword does not push
+  either. Judge whether hordes become too hard when nothing is knocked away, and whether 0 or a low value such as
+  0.25 should become the default.
 
 ### M5: bot brain and M6c-2 encounters
 

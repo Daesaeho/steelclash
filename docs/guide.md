@@ -183,6 +183,7 @@ The login sync does not broadcast later file edits to players already connected.
 
 - Disarm mode (drop or holster)
 - Stamina costs
+- Melee knockback (`meleeKnockback`: 1 = vanilla, 0 = weapon swings and punches don't shove; kicks, bashes and slams always do)
 - Parry and riposte windows
 - Mob parry chances and attacker counts
 - Armed mob chances
