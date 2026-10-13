@@ -5,6 +5,10 @@ measurements and earlier checkpoints are retained in [findings history](archive/
 The [roadmap](next-combat-animation-plan.md) owns progress; [combat-rule evidence](combat-rule-evidence.md)
 owns reference confidence and unresolved fidelity questions.
 
+The [player grip and Vector API checkpoint](archive/grip-and-vector-checkpoint-20261013.md) records a bounded
+player reach constraint, remaining rendered/mob grip gaps, and an isolated clip-sampling experiment. Overlapping,
+noisy timings establish no Vector API benefit; the runtime retains its existing sampler.
+
 ## Mod IDs and Spartan integration
 
 Spartan Weaponry is `spartan_weaponry_unofficial`; Spartan Shields is `spartanshieldsunofficial`.

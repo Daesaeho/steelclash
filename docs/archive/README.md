@@ -6,6 +6,7 @@ current verified scope and remaining acceptance are in [testing](../testing.md).
 
 | Record | Contents |
 |---|---|
+| [Player grip and Vector API checkpoint](grip-and-vector-checkpoint-20261013.md) | Bounded player reach math, actual hand-matrix capture, incomplete rendered/mob acceptance and isolated SIMD results. |
 | [Design history](design-history.md) | Original milestones, setup notes, fidelity checklist and deferred backlog. |
 | [Implementation findings](findings-history.md) | API research, combat/animation fixes, benchmarks and runtime investigations. |
 | [Test history](testing-history.md) | Full milestone checklists, fixture details and measured verification checkpoints. |

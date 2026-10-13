@@ -17,6 +17,8 @@ Target: Minecraft 1.21.1, NeoForge 21.1.252, Java 21, PAL 1.1.6. Preserve unrela
 | 6. CPM | Pending | Cosmetics/model lifecycle after the default rig is stable |
 
 Detailed earlier progress is retained in [checkpoint history](archive/roadmap-checkpoints.md).
+The [bounded player grip checkpoint](archive/grip-and-vector-checkpoint-20261013.md) adds reach math and actual hand
+capture; right-main-arm rendered support misses, mob support integration and the full motion/style gates remain open.
 Verification procedures and unsupported acceptance are centralized in [testing.md](testing.md).
 
 ## 1. Close the important baseline gaps

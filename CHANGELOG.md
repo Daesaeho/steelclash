@@ -19,6 +19,8 @@
 - Mobs that have never fought skip the combat-pose hooks on the client.
 
 **Fixes**
+- Constrain two-handed player hand placement to the support arm's bounded reach while preserving blade orientation.
+  Add opt-in actual arm-matrix capture; remaining rendered support-grip and mob acceptance is documented.
 - Refresh combat poses when PAL reuses a pre-tick sample at a near-zero render partial, preventing a one-frame
   attack rewind. Shared pose caching includes phase elapsed/duration; first-person camera ownership stays tick-based.
 - An absent attack variant inherits an authored generic heavy release/recovery instead of silently using its light

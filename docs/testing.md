@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Player grip and Vector API, 2026-10-13 | Compile/full build; 254 fresh JUnit; three caught mutations; 108 existing native draws, incomplete right-main support contact; SIMD timing inconclusive | [Reach constraint, rendered gaps and benchmark limits](archive/grip-and-vector-checkpoint-20261013.md) |
 | Sword mesh probe, 2026-10-12 | 245 fresh JUnit; native missing-evidence mutation caught; actual standard/Sodium geometry; 36 unchanged world-view placement poses; candidate adoption open | [Baked mesh and placement evidence](archive/blade-mesh-20261012.md) |
 | Combat performance pass, 2026-10-12 | 249 fresh JUnit; 187 required GameTests in each Spartan variant; 27 of 27 mutations caught; bot-AI garbage down in five alternating benchmark rounds, timings too noisy to quote; client early exit compiled only | [Changes, equivalence checks and limits](archive/combat-performance-20261012.md) |
 | Pose clock refresh, 2026-10-12 | 245 fresh JUnit; four caught mutations including a native PAL probe; 2,313 restored screenshots; nine deterministic zero-partial samples; 18 identical legacy pose pairs | [Clock ordering, coverage and limits](archive/pose-clock-refresh-20261012.md) |
@@ -89,6 +90,9 @@ Select the relevant checks below; preserve the player guide's normal controls an
 
 ## Remaining unsupported checks
 
+- Finish right-main-arm support grip, first-person composition, ordinary-input motion and occupied-offhand controls
+  for the bounded player reach solve. The mob support-arm path still needs integration; custom/bent rigs and other
+  weapon families need their own acceptance. [Grip and Vector API scope](archive/grip-and-vector-checkpoint-20261013.md).
 - Actual LAN/remote-player latency, packet ordering/correction and immediate visible windup after chunk return.
 - First-person kick feet, shield-bash and other/custom-model variants, broader camera effects, swimming/riding
   and renderer/shader combinations outside the recorded cases.

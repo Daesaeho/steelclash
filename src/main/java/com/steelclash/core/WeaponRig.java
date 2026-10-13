@@ -30,6 +30,8 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
     public static final Vec RIGHT_SHOULDER = new Vec(-5, 2, 0);
     public static final Vec LEFT_SHOULDER = new Vec(5, 2, 0);
     public static final double HAND_DISTANCE = 10;
+    /** Centre of the support hand's last two model pixels, instead of its fingertip edge. */
+    public static final double SUPPORT_GRIP_DISTANCE = 9;
     /** Furthest the off shoulder slides toward the grip (pixels). */
     public static final double MAX_SHOULDER_REACH = 4;
 
@@ -102,6 +104,12 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
     /** @param gripGap pixels between the hands on a two-handed grip, the off hand toward the pommel */
     public static WeaponRig solve(double bladeYaw, double bladePitch, double gripDegrees, double twistDegrees, TwistAxis twistAxis,
                                   double[] body, double relax, double gripGap) {
+        return solve(bladeYaw,bladePitch,gripDegrees,twistDegrees,twistAxis,body,relax,gripGap,false);
+    }
+
+    /** Two-handed solves also keep the support target inside the rigid arm's bounded reach. */
+    public static WeaponRig solve(double bladeYaw, double bladePitch, double gripDegrees, double twistDegrees, TwistAxis twistAxis,
+                                  double[] body, double relax, double gripGap, boolean twoHanded) {
         Mat3 straight = armToward(bladeYaw, bladePitch);
         double gx = Math.toRadians(gripDegrees), gy = 0, gz = 0;
         double twist = Math.toRadians(twistDegrees);
@@ -116,11 +124,15 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
 
         Vec bladeDir = ArmAim.modelDirection(bladeYaw, clampPitch(bladePitch));
         Vec handDir = towards(bladeDir, ArmAim.modelDirection(HOME_YAW, HOME_PITCH), relax);
+        Mat3 bodyRot = bodyRotation(body);
+        if (twoHanded) {
+            Vec constrained = reachableGripHand(bodyRot.transpose().apply(handDir), bodyRot.transpose().apply(bladeDir), gripGap);
+            handDir = bodyRot.apply(constrained);
+        }
         double handYaw = Math.toDegrees(Math.atan2(-handDir.x(), -handDir.z()));
         double handPitch = Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, handDir.y()))));
         Mat3 armWorld = armToward(handYaw, handPitch);
 
-        Mat3 bodyRot = bodyRotation(body);
         Mat3 arm = bodyRot.transpose().mul(armWorld);
         // armWorld · HAND · item = blade  →  item = HANDᵀ · armWorldᵀ · blade
         Mat3 item = HAND.transpose().mul(armWorld.transpose()).mul(blade);
@@ -129,9 +141,34 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
         Vec weaponHand = RIGHT_SHOULDER.add(arm.apply(new Vec(0, HAND_DISTANCE, 0)));
         Vec grip = weaponHand.subtract(bladeInBody.scale(gripGap));
         Vec toGrip = grip.subtract(LEFT_SHOULDER);
-        double shortBy = toGrip.length() - HAND_DISTANCE;
+        double supportDistance = twoHanded ? SUPPORT_GRIP_DISTANCE : HAND_DISTANCE;
+        double shortBy = toGrip.length() - supportDistance;
         Vec shoulder = shortBy > 0 ? toGrip.scale(Math.min(shortBy, MAX_SHOULDER_REACH) / toGrip.length()) : Vec.ZERO;
         return new WeaponRig(arm.toZyx(), item.toZyx(), reach(LEFT_SHOULDER, grip), shoulder);
+    }
+
+    /** Closest main-arm direction whose support target needs 0..MAX_SHOULDER_REACH of shoulder travel. */
+    private static Vec reachableGripHand(Vec desired, Vec blade, double gap) {
+        Vec centre = LEFT_SHOULDER.add(blade.scale(gap)).subtract(RIGHT_SHOULDER);
+        double distance = centre.length();
+        if (distance < 1e-9) return desired;
+        Vec axis = centre.scale(1 / distance);
+        double arm = HAND_DISTANCE, support = SUPPORT_GRIP_DISTANCE, maximum = support + MAX_SHOULDER_REACH;
+        double lower = Math.max(-1, (arm * arm + distance * distance - maximum * maximum) / (2 * arm * distance));
+        double upper = Math.min(1, (arm * arm + distance * distance - support * support) / (2 * arm * distance));
+        double projection = desired.dot(axis);
+        if (projection >= lower && projection <= upper) return desired;
+        double target = Math.max(lower, Math.min(upper, projection));
+        Vec perpendicular = desired.subtract(axis.scale(projection));
+        if (perpendicular.length() < 1e-9) {
+            Vec preferred = new Vec(0, 0, -1);
+            perpendicular = preferred.subtract(axis.scale(preferred.dot(axis)));
+            if (perpendicular.length() < 1e-9) {
+                preferred = new Vec(0, 1, 0);
+                perpendicular = preferred.subtract(axis.scale(preferred.dot(axis)));
+            }
+        }
+        return axis.scale(target).add(perpendicular.scale(Math.sqrt(Math.max(0, 1 - target * target)) / perpendicular.length()));
     }
 
     /** Arm rotation (no roll) pointing an arm from its shoulder at a point (pixels, model space). */

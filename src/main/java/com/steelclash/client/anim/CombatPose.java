@@ -199,7 +199,7 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
         double[] body = bodyDegrees();
         WeaponRig solved = WeaponRig.solve(leftHanded ? -aimYaw : aimYaw, aimPitch, gripDegrees,
                 bladeTwist * twistScale * (leftHanded ? -1 : 1), twistAxis,
-                leftHanded ? WeaponRig.mirrorAngles(body) : body, WRIST_RELAX, gripGap);
+                leftHanded ? WeaponRig.mirrorAngles(body) : body, WRIST_RELAX, gripGap, twoHanded);
         return leftHanded ? solved.mirrored() : solved;
     }
 

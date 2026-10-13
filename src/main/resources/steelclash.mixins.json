@@ -10,6 +10,7 @@
     "client.LivingEntityRendererMixin",
     "client.BladeMeshContextMixin",
     "client.BladeMeshQuadsMixin",
+    "client.BladeMeshArmMixin",
     "client.PalMoreItemCaptureMixin",
     "client.PalMoreItemApplyMixin"
   ],

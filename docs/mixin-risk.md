@@ -16,6 +16,12 @@ the `setupAnim` call needs its own capture support. No event exposes this argume
 
 ## Development-only PAL More bridge
 
+`client.BladeMeshArmMixin` reads `ItemInHandLayer#renderArmWithItem` at method entry, only with `-PbladeMeshOut`.
+It copies the current parent matrix and the actual PlayerRenderer main/support arm transforms without mutating
+render state. No event exposes this exact item-layer context. Other item-layer replacements can bypass the hook;
+custom/non-player rigs are unsupported. Missing or mismatched transforms are flagged in the evidence rather than
+substituting an inferred hand transform. Ordinary launches skip the mixin.
+
 `client.BladeMeshContextMixin` wraps `ItemInHandRenderer#renderItem` with a `finally`-restored diagnostic scope.
 `client.BladeMeshQuadsMixin` (priority 2000) wraps `ItemRenderer#renderModelLists`' quad-submission call to
 `renderQuadList`. Both load only with `-PbladeMeshOut=<new absolute .jsonl path>`. They read the actual iron-sword

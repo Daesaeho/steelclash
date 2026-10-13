@@ -25,7 +25,8 @@ public final class PalMorePrototypePlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (mixinClassName.contains("BladeMeshContextMixin") || mixinClassName.contains("BladeMeshQuadsMixin"))
+        if (mixinClassName.contains("BladeMeshContextMixin") || mixinClassName.contains("BladeMeshQuadsMixin")
+                || mixinClassName.contains("BladeMeshArmMixin"))
             return System.getProperty("steelclash.bladeMeshOut") != null;
         return !mixinClassName.contains("PalMoreItemCaptureMixin")
                 && !mixinClassName.contains("PalMoreItemApplyMixin") || ENABLED;

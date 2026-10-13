@@ -31,6 +31,8 @@ public final class BladeMeshProbe {
     private static final String OUTPUT = System.getProperty("steelclash.bladeMeshOut");
     private static final int MAX_SAMPLES = 512;
     private static final ThreadLocal<Scope> ACTIVE = new ThreadLocal<>();
+    private record ArmPose(long frame, int tick, int entityId, boolean left, Matrix4f matrix, Matrix4f otherMatrix, String skin) {}
+    private static final ThreadLocal<ArmPose> ARM = new ThreadLocal<>();
     private static final Set<String> FROZEN_SAMPLES = new HashSet<>();
     private static int samples;
     private static Path output;
@@ -42,6 +44,19 @@ public final class BladeMeshProbe {
         final JsonArray quads = new JsonArray();
         final Set<String> unique = new HashSet<>();
         Scope(Scope previous) { this.previous = previous; }
+    }
+
+    /** The actual arm transform before vanilla's hand/socket and PAL item rotations. */
+    public static void arm(LivingEntity entity, ItemStack stack, boolean left, PoseStack pose) {
+        if(OUTPUT==null||samples>=MAX_SAMPLES||entity!=Minecraft.getInstance().player||!stack.is(Items.IRON_SWORD))return;
+        net.minecraft.client.renderer.entity.EntityRenderer<?> renderer=Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
+        if(!(renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer playerRenderer))return;
+        var part=left?playerRenderer.getModel().leftArm:playerRenderer.getModel().rightArm;
+        PoseStack armPose=new PoseStack();armPose.mulPose(pose.last().pose());part.translateAndRotate(armPose);
+        var other=left?playerRenderer.getModel().rightArm:playerRenderer.getModel().leftArm;
+        PoseStack otherPose=new PoseStack();otherPose.mulPose(pose.last().pose());other.translateAndRotate(otherPose);
+        String skin=entity instanceof net.minecraft.client.player.AbstractClientPlayer player?player.getSkin().model().name():"unknown";
+        ARM.set(new ArmPose(CombatPresentation.frameNumber(),entity.tickCount,entity.getId(),left,new Matrix4f(armPose.last().pose()),new Matrix4f(otherPose.last().pose()),skin));
     }
 
     public static Scope begin(LivingEntity entity, ItemStack stack, ItemDisplayContext context, boolean left, PoseStack pose) {
@@ -61,6 +76,11 @@ public final class BladeMeshProbe {
         scope.data.addProperty("time_ns",System.nanoTime());scope.data.addProperty("entity_tick",entity.tickCount);
         scope.data.addProperty("entity_id",entity.getId());scope.data.addProperty("context",context.name());
         scope.data.addProperty("left",left);scope.data.addProperty("first_person_pass",FirstPersonMode.isFirstPersonPass());
+        ArmPose arm=ARM.get();
+        if(arm!=null&&arm.frame==CombatPresentation.frameNumber()&&arm.tick==entity.tickCount&&arm.entityId==entity.getId()&&arm.left==left) {
+            scope.data.add("arm_draw_matrix",matrix(arm.matrix));scope.data.addProperty("arm_skin",arm.skin);
+            scope.data.add("other_arm_draw_matrix",matrix(arm.otherMatrix));
+        } else scope.data.addProperty("arm_transform_missing",true);
         scope.data.addProperty("camera_type",mc.options.getCameraType().name());scope.data.addProperty("main_arm",entity.getMainArm().name());
         scope.data.addProperty("phase",machine.phase().name());scope.data.addProperty("elapsed_us",machine.phaseElapsedUs());
         scope.data.addProperty("duration_us",machine.phaseDurationUs());scope.data.addProperty("heavy",machine.isHeavy());
@@ -74,6 +94,8 @@ public final class BladeMeshProbe {
         scope.data.addProperty("fp_lift",Config.Client.FIRST_PERSON_SWING_LIFT.get());
         scope.data.addProperty("grip_pitch",Config.Client.WEAPON_GRIP_PITCH.get());
         scope.data.addProperty("twist_axis",Config.Client.BLADE_TWIST_AXIS.get().name());
+        scope.data.addProperty("two_handed_swords",Config.Client.TWO_HANDED_SWORDS.get());
+        scope.data.addProperty("offhand_empty",entity.getOffhandItem().isEmpty());
         SwingPose.of(entity,entity.getData(ModAttachments.COMBAT),partial).ifPresent(swing->{
             scope.data.addProperty("render_phase",swing.phase().name());scope.data.addProperty("progress",swing.progress());
             scope.data.addProperty("weight",swing.weight());scope.data.addProperty("arc_yaw",swing.yaw());
