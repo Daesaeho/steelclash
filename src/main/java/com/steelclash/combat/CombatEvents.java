@@ -370,13 +370,20 @@ public final class CombatEvents {
         CombatProfiler.endTick();
     }
 
-    /** Two-handed weapons need both hands: no raising a shield in the offhand. */
+    /**
+     * An exhausted fighter can't draw a bow, load a crossbow or ready a throw ({@link RangedStamina}). Two-handed
+     * weapons need both hands: no raising a shield in the offhand.
+     */
     @SubscribeEvent
     static void onStartUsingItem(LivingEntityUseItemEvent.Start event) {
+        LivingEntity entity = event.getEntity();
+        if (RangedStamina.refuses(entity, event.getItem())) {
+            event.setCanceled(true);
+            return;
+        }
         if (!event.getItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)) {
             return;
         }
-        LivingEntity entity = event.getEntity();
         WeaponProfiles.resolve(entity.getMainHandItem(), entity.level().registryAccess())
                 .filter(resolved -> TWO_HANDED.contains(resolved.profile().archetype()))
                 .ifPresent(resolved -> event.setCanceled(true));

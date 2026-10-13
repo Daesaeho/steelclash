@@ -6,6 +6,14 @@
 - Record native PAL heavy/morph checks at low/high FPS, mob fallback and resource reload evidence, including timing
   exclusions and the late-tracking QA shutdown failure. PAL More Rotation remains an opt-in development experiment.
 
+**Combat**
+- Archery costs stamina. Drawing a bow and holding it drawn, loading a crossbow, and holding a trident or javelin back
+  each drain 12 stamina a second, and stamina doesn't come back meanwhile. Run out and the weapon is lowered without
+  a shot (a half-loaded crossbow stays empty), and you can't start again until you are no longer exhausted. A loaded
+  crossbow costs nothing to carry or fire. Skeletons and other mobs in the fighter roster pay the same; mobs outside it (pillagers, Soldier archers) do not. Spartan Weaponry longbows,
+  heavy crossbows and throwing weapons follow the rule too. Three new settings under `stamina`
+  (`bowDrawStaminaPerSecond`, `crossbowLoadStaminaPerSecond`, `throwChargeStaminaPerSecond`); 0 turns one off.
+
 **Performance**
 - Big fights cost the server less. Bots no longer search the level around them every tick for an incoming attack:
   fighters whose attack is live are listed as it starts, and a bot checks that short list. Which attack a bot

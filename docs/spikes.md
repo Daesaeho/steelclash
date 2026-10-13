@@ -39,6 +39,17 @@ See [cleave/thwack](archive/findings-history.md#cleave-and-thwack-architecture-p
 [release interrupts](archive/findings-history.md#report-gaps-step-b-release-interrupts-report-28-2026-10-08)
 and [bug audit](archive/findings-history.md#bug-audit-and-fixes-2026-10-08).
 
+## Ranged stamina
+
+`combat/RangedStamina` tells ranged weapons apart by use animation, not class: `BOW` is a draw, `CROSSBOW` a load
+(a loaded crossbow fires from `use` without ever being "in use"), `SPEAR` a held-back throw. Spartan Weaponry's
+longbows, heavy crossbows, javelins, throwing knives, tomahawks and boomerangs report those same animations
+(GameTest `spartanRangedWeaponsFollowTheSameRule`). The drain runs in `Combat.tickServer`, so only entities with
+combat state pay: players and the fighter roster, which does not include pillagers or Soldier archers. Running out
+calls `stopUsingItem`, never `releaseUsingItem`, so nothing is shot or loaded. The owning client is told with the
+existing `DRAW_INTERRUPTED` feedback at strength 0, which needed no protocol change. Vanilla's drowned keeps
+`startUsingItem` active for its whole trident goal, so it pays the throw rate for as long as it has a target.
+
 ## Server combat cost
 
 Being hurt does not give an entity combat state. Players and fighter mobs have it; a bystander gets it only from

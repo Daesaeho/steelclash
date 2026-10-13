@@ -47,6 +47,18 @@ public class Config {
     public static final ModConfigSpec.DoubleValue PROJECTILE_STAMINA_DAMAGE = BUILDER
             .comment("Stamina lost when a shield blocks a projectile")
             .defineInRange("projectileStaminaDamage", 5.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue BOW_DRAW_STAMINA_PER_SECOND = BUILDER
+            .comment("Stamina drained per second while a bow is drawn or held drawn; it doesn't regenerate meanwhile.",
+                    "Out of stamina the bow is lowered without a shot, and it can't be drawn again while exhausted. 0 = off")
+            .defineInRange("bowDrawStaminaPerSecond", 12.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue CROSSBOW_LOAD_STAMINA_PER_SECOND = BUILDER
+            .comment("Stamina drained per second while a crossbow is being loaded (about 1.25 s without Quick Charge).",
+                    "A loaded crossbow costs nothing to carry or fire; running out mid-load loses the load. 0 = off")
+            .defineInRange("crossbowLoadStaminaPerSecond", 12.0, 0.0, 1000.0);
+    public static final ModConfigSpec.DoubleValue THROW_CHARGE_STAMINA_PER_SECOND = BUILDER
+            .comment("Stamina drained per second while a trident, javelin or other charged throwing weapon is held back",
+                    "ready to throw. Out of stamina it is lowered without a throw. 0 = off")
+            .defineInRange("throwChargeStaminaPerSecond", 12.0, 0.0, 1000.0);
 
     static {
         BUILDER.pop().push("defense");
