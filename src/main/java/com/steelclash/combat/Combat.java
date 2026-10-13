@@ -336,6 +336,7 @@ public final class Combat {
             // Holding a guard drains stamina slowly and keeps it from regenerating (Chivalry 2).
             data.stamina.spend(Config.HELD_BLOCK_DRAIN_PER_SECOND.get().floatValue() / 20f);
         }
+        RangedStamina.tick(entity, data);
         boolean crouchPause = Config.CROUCH_PAUSES_STAMINA_REGEN.get() && entity.isCrouching();
         data.stamina.tick(crouchPause ? 0f : Config.STAMINA_REGEN_PER_SECOND.get().floatValue() / 20f,
                 Config.STAMINA_REGEN_DELAY_TICKS.get(), Config.EXHAUSTION_RECOVER_FRACTION.get().floatValue());

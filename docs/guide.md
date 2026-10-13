@@ -60,6 +60,7 @@ Turning while you swing drags the arc with you, as in Chivalry 2:
   - *Weapon block:* a held weapon guard facing it takes 30% off the damage. It costs a little stamina but never breaks your guard or disarms you.
   - *Shield:* a raised shield stops it outright.
   - *Headshots:* arrows, bolts and thrown weapons that hit the head deal 25% more, and you hear a ding when yours do.
+- **Shooting costs stamina:** drawing a bow (and holding it drawn), loading a crossbow, and holding a trident or javelin back each drain 12 stamina a second, with no regeneration meanwhile. If you run out, the weapon comes down without a shot and you can't draw again until you've recovered from exhaustion. Loose quickly instead of walking around at full draw. A loaded crossbow is free to carry and fire.
   - *Drawing a bow:* getting hurt while drawing a bow or loading a crossbow loses the draw, for you and for skeletons. Rush archers. Arrows don't interrupt a weapon throw, though.
 
 ## Footwork
@@ -86,7 +87,7 @@ All of this is in the `movement` and `health` sections of the common config.
 
 As in Chivalry 2: **jumping costs 12 stamina while you're fighting** (within 5 seconds of attacking, guarding or being hit; jumping around outside a fight is free), and **crouching pauses stamina regeneration**. Chop weapons drain 10% more stamina from a guard, blunt ones 25% more.
 
-Attacking, whiffing, feinting, parrying and blocking all cost stamina (the bar above your hotbar). It regenerates after a short pause. **Parrying or blocking with no stamina left breaks your guard.** A parry knocks your weapon out of your hand (walk over it to pick it back up); a shield is lowered and goes on cooldown. Mobs follow the same rule, so drain a knight's stamina to disarm him. A disarmed mob runs back for its own weapon (it gives up after 10 seconds): punish it on the way, or walk over the weapon first and it's yours.
+Attacking, whiffing, feinting, parrying, blocking and readying a ranged weapon all cost stamina (the bar above your hotbar). It regenerates after a short pause. **Parrying or blocking with no stamina left breaks your guard.** A parry knocks your weapon out of your hand (walk over it to pick it back up); a shield is lowered and goes on cooldown. Mobs follow the same rule, so drain a knight's stamina to disarm him. A disarmed mob runs back for its own weapon (it gives up after 10 seconds): punish it on the way, or walk over the weapon first and it's yours.
 
 ## Weapons
 

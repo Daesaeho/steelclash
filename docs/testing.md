@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Ranged stamina, 2026-10-13 | 194 required GameTests in each Spartan variant (seven new); nine of nine mutations caught; full build; not played in a client | [Rule and findings](spikes.md#ranged-stamina), [playtest list](#ranged-stamina) |
 | Player grip and Vector API, 2026-10-13 | Compile/full build; 254 fresh JUnit; three caught mutations; 108 existing native draws, incomplete right-main support contact; SIMD timing inconclusive | [Reach constraint, rendered gaps and benchmark limits](archive/grip-and-vector-checkpoint-20261013.md) |
 | Sword mesh probe, 2026-10-12 | 245 fresh JUnit; native missing-evidence mutation caught; actual standard/Sodium geometry; 36 unchanged world-view placement poses; candidate adoption open | [Baked mesh and placement evidence](archive/blade-mesh-20261012.md) |
 | Combat performance pass, 2026-10-12 | 249 fresh JUnit; 187 required GameTests in each Spartan variant; 27 of 27 mutations caught; bot-AI garbage down in five alternating benchmark rounds, timings too noisy to quote; client early exit compiled only | [Changes, equivalence checks and limits](archive/combat-performance-20261012.md) |
@@ -74,6 +75,16 @@ Select the relevant checks below; preserve the player guide's normal controls an
 - Readable ready/windup, arc-aligned release, continuous recovery/morph/heavy/weapon-kick. [Client contract](animation.md#client-acceptance-checks), [mob arms](archive/testing-history.md#mob-arms-and-windups-added-2026-10-08), [baseline](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11).
 - Torch/shield/empty, eat/drink/cancel/bottle return, hotbar swaps, both main arms. [Consumption](archive/testing-history.md#offhand-consumable-blend-2026-10-10), [swaps](archive/testing-history.md#hotbar-swaps-and-player-kick-rig-handover-2026-10-10).
 - Nine families, light/heavy/mirrored, controlled model/armor/handedness, hilt/tip alignment. [Family motion](archive/testing-history.md#representative-motion-coverage-by-family-2026-10-10), [capture integrity](archive/testing-history.md#trustworthy-pose-sheet-captures-2026-10-09).
+
+### Ranged stamina
+
+- In game, not yet played: the stamina bar falls while a bow is drawn, a crossbow is loaded and a trident is held
+  back; at zero the weapon visibly comes down, no arrow flies, and holding the button does not raise it again until
+  the bar stops pulsing. A loaded crossbow fires at any stamina. Skeletons, strays and bogged still shoot, with a
+  short pause when they run dry; piglins still load. A drowned keeps its trident raised for a whole fight, so it
+  will arrive exhausted: check that this reads as fair and that it still throws. Soldier archers and pillagers are
+  not in the fighter roster and pay nothing. Spartan longbow, heavy crossbow and javelin behave the same. On a LAN
+  client the bow should not twitch up while exhausted.
 
 ### M5: bot brain and M6c-2 encounters
 
