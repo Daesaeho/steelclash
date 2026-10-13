@@ -246,6 +246,11 @@ public class Config {
     public static final ModConfigSpec.IntValue CLANK_STAGGER_TICKS = BUILDER
             .comment("How long the attacker is staggered when their blade hits a wall")
             .defineInRange("clankStaggerTicks", 10, 0, 100);
+    public static final ModConfigSpec.DoubleValue MELEE_KNOCKBACK = BUILDER
+            .comment("How hard weapon swings and punches shove their target: 1 = vanilla knockback, 0 = none (as in",
+                    "Chivalry 2, so a hit never pushes the target out of reach). Scales the Knockback enchantment and",
+                    "sprint hits too. Kicks, shield bashes and the slam always shove; arrows and other mobs' attacks are untouched")
+            .defineInRange("meleeKnockback", 1.0, 0.0, 1.0);
     public static final ModConfigSpec.DoubleValue TURN_CAP = BUILDER
             .comment("Turn speed limit (degrees per second) while winding up and releasing an attack, as in Chivalry 2.",
                     "Accels and drags still work; 180° flicks don't. 0 = no limit.")

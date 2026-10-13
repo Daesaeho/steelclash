@@ -162,6 +162,7 @@
   "steelclash.configuration.bladeTwistAxis": "Blade Twist Axis",
   "steelclash.configuration.sideFromMovement": "Attack Side From Movement",
   "steelclash.configuration.turnCapDegreesPerSecond": "Turn Cap (degrees per second)",
+  "steelclash.configuration.meleeKnockback": "Melee Knockback",
   "steelclash.configuration.attackMoveSpeed": "Attack Move Speed",
   "steelclash.configuration.recoveryMoveSpeed": "Recovery Move Speed",
   "steelclash.configuration.guardMoveSpeed": "Guard Move Speed",

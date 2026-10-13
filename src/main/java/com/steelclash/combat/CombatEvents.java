@@ -36,6 +36,7 @@ import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import net.neoforged.neoforge.event.entity.living.LivingEvent;
 import net.neoforged.neoforge.event.entity.living.LivingHealEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingKnockBackEvent;
 import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.CriticalHitEvent;
@@ -302,7 +303,15 @@ public final class CombatEvents {
     static void onAttackEntity(AttackEntityEvent event) {
         if (Downed.isDowned(event.getEntity())) {
             event.setCanceled(true);
+            return;
         }
+        MeleeKnockback.attackStarting(event.getEntity(), event.getTarget());
+    }
+
+    /** The {@code meleeKnockback} setting: weapon swings and punches shove less, or not at all. */
+    @SubscribeEvent
+    static void onKnockback(LivingKnockBackEvent event) {
+        MeleeKnockback.onKnockback(event);
     }
 
     private static void cancelIfDowned(PlayerInteractEvent event) {
@@ -361,6 +370,7 @@ public final class CombatEvents {
     static void onServerTick(ServerTickEvent.Post event) {
         LagCompensation.tick();
         Interrupts.apply(); // after held hits, which may interrupt too
+        MeleeKnockback.endTick();
         CombatProfiler.begin(CombatProfiler.Section.AI);
         try {
             LiveAttacks.sweep(); // last: held hits and interrupts end attacks too

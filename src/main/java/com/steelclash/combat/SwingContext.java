@@ -35,6 +35,12 @@ public final class SwingContext {
         }
     }
 
+    /** The swing whose hit is being delivered right now, whoever swings it. */
+    @Nullable
+    static Active active() {
+        return current;
+    }
+
     @Nullable
     public static Active forAttacker(@Nullable Entity attacker) {
         Active active = current;

@@ -14,6 +14,11 @@
   heavy crossbows and throwing weapons follow the rule too. Three new settings under `stamina`
   (`bowDrawStaminaPerSecond`, `crossbowLoadStaminaPerSecond`, `throwChargeStaminaPerSecond`); 0 turns one off.
 
+- New setting `offense.meleeKnockback` (0 to 1, default 1 = vanilla). It scales how hard weapon swings and a player's
+  punch shove their target; at 0 a hit no longer pushes the target out of reach, as in Chivalry 2. It also scales the
+  Knockback enchantment and sprint hits. Kicks, shield bashes and the mace slam always shove, and arrows and other
+  mobs' attacks are untouched.
+
 **Performance**
 - Big fights cost the server less. Bots no longer search the level around them every tick for an incoming attack:
   fighters whose attack is live are listed as it starts, and a bot checks that short list. Which attack a bot
