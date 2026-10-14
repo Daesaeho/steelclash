@@ -6,6 +6,10 @@ public final class Blade {
     }
 
     public record Segment(Vec hilt, Vec tip) {
+        /** The point a fraction {@code s} of the way from the hilt to the tip. */
+        public Vec along(double s) {
+            return hilt.add(tip.subtract(hilt).scale(s));
+        }
     }
 
     /** Unit look vector for a Minecraft yaw/pitch in degrees. */
@@ -37,6 +41,15 @@ public final class Blade {
     /** Scalar bounds let callers use an existing hitbox without allocating two temporary vectors. */
     public static boolean intersectsBox(Vec a, Vec b, double minX, double minY, double minZ,
                                         double maxX, double maxY, double maxZ) {
+        return !Double.isNaN(entry(a, b, minX, minY, minZ, maxX, maxY, maxZ));
+    }
+
+    /**
+     * Where the segment a→b first enters the box [min, max], as a fraction of the way from a to b (0 when a is already
+     * inside), or NaN when it misses. For a blade from hilt to tip, that's the first point of the blade in the body.
+     */
+    public static double entry(Vec a, Vec b, double minX, double minY, double minZ,
+                               double maxX, double maxY, double maxZ) {
         double tMin = 0;
         double tMax = 1;
         // This runs for every candidate at every blade sub-step; keep the slab data in scalars.
@@ -67,7 +80,7 @@ public final class Blade {
             }
             if (Math.abs(delta) < 1e-9) {
                 if (start < lo || start > hi) {
-                    return false;
+                    return Double.NaN;
                 }
             } else {
                 double inv = 1.0 / delta;
@@ -81,10 +94,10 @@ public final class Blade {
                 tMin = Math.max(tMin, t1);
                 tMax = Math.min(tMax, t2);
                 if (tMin > tMax) {
-                    return false;
+                    return Double.NaN;
                 }
             }
         }
-        return true;
+        return tMin;
     }
 }

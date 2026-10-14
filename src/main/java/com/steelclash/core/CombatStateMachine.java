@@ -66,6 +66,8 @@ public final class CombatStateMachine {
     private boolean thwacked;
     /** Release progress the recovery starts from: 1 normally, the contact point after a thwack. */
     private double recoverFrom = 1;
+    /** How long the current (or just finished) release actually lasts, after any drag ({@link #slowRelease}). */
+    private long releaseSpanUs;
     /** Told when this machine becomes a live attack; see {@link #onAttackStart}. */
     @Nullable
     private Runnable attackStartListener;
@@ -222,6 +224,49 @@ public final class CombatStateMachine {
         return true;
     }
 
+    /**
+     * The blade drags through a body it cut: the rest of the release takes {@code extraUs} longer, at the same
+     * progress, so the blade slows rather than jumping back. A release never grows past twice its own length.
+     *
+     * @return whether the release slowed
+     */
+    public boolean slowRelease(long extraUs) {
+        if (phase != Phase.RELEASE || extraUs <= 0 || phaseElapsedUs >= phaseDurationUs) {
+            return false;
+        }
+        double done = phaseElapsedUs / (double) phaseDurationUs;
+        long remaining = phaseDurationUs - phaseElapsedUs;
+        return stretchRelease(Math.round((remaining + extraUs) / (1 - done)));
+    }
+
+    /**
+     * Merges a server confirmation that this attack's release was slowed ({@link #slowRelease}): the local prediction
+     * keeps its blade where it is and takes the server's longer release from there, so nothing jumps back and queued
+     * input survives. It must still describe this exact attack, and both sides must still be releasing.
+     *
+     * @return whether the local release lengthened
+     */
+    public boolean mergeRelease(AttackIdentity confirmed, Phase serverPhase, long serverDurationUs) {
+        if (!attackIdentity().equals(confirmed) || phase != Phase.RELEASE || serverPhase != Phase.RELEASE
+                || phaseElapsedUs >= phaseDurationUs) {
+            return false;
+        }
+        return stretchRelease(serverDurationUs);
+    }
+
+    /** Lengthens the release to {@code durationUs} (at most twice its own length) at the same progress. */
+    private boolean stretchRelease(long durationUs) {
+        long duration = Math.min(durationUs, 2L * timings.releaseUs());
+        if (duration <= phaseDurationUs) {
+            return false;
+        }
+        double done = phaseElapsedUs / (double) phaseDurationUs;
+        phaseElapsedUs = Math.round(done * duration);
+        phaseDurationUs = duration;
+        releaseSpanUs = duration;
+        return true;
+    }
+
     /** Starts the active parry that comes with a riposte. */
     public void startActiveParry(int ticks) {
         if (isAttacking()) {
@@ -281,7 +326,8 @@ public final class CombatStateMachine {
         if (phase == Phase.RELEASE) {
             sinceContact = phaseElapsedUs - Math.round(contact * phaseDurationUs);
         } else if (phase == Phase.RECOVERY) {
-            sinceContact = Math.round((1 - contact) * timings.releaseUs()) + phaseElapsedUs;
+            long release = releaseSpanUs > 0 ? releaseSpanUs : timings.releaseUs();
+            sinceContact = Math.round((1 - contact) * release) + phaseElapsedUs;
         } else {
             return false;
         }
@@ -420,7 +466,10 @@ public final class CombatStateMachine {
     /** The current phase has run its course: on to the next. */
     private void endPhase() {
         switch (phase) {
-            case WINDUP -> enterUs(Phase.RELEASE, timings.releaseUs());
+            case WINDUP -> {
+                enterUs(Phase.RELEASE, timings.releaseUs());
+                releaseSpanUs = phaseDurationUs;
+            }
             case RELEASE -> {
                 enterUs(Phase.RECOVERY, timings.recoveryUs());
                 // Chivalry 2: any attack that ends unblocked can be comboed, a whiff included (a blocked one is
@@ -456,6 +505,7 @@ public final class CombatStateMachine {
         this.phaseElapsedUs = newElapsedUs;
         this.phaseDurationUs = newDurationUs;
         this.timings = newTimings;
+        this.releaseSpanUs = newPhase == Phase.RELEASE ? newDurationUs : newTimings.releaseUs();
         this.riposteTicks = newRiposteTicks;
         this.heavy = newHeavy;
         this.morphed = newMorphed;

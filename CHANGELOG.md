@@ -6,7 +6,42 @@
 - Record native PAL heavy/morph checks at low/high FPS, mob fallback and resource reload evidence, including timing
   exclusions and the late-tracking QA shutdown failure. PAL More Rotation remains an opt-in development experiment.
 
+**Hit feel** (Chivalry 2-style dynamic hits; every part has its own setting)
+- Hits land where the blade actually crossed the body. The tracer now records that point and which way the blade
+  was moving there. Blood sprays from the wound the way the blade went, parry sparks fly where the blade met the
+  guard, and the hit sounds come from there (`tracedContacts`). A hit that lag compensation holds for a lagged
+  defender lands on the body where it then stands.
+- The blade is swept between samples, as Chivalry 2 traces its weapons from frame to frame: where the tip would jump
+  more than half a block between two samples (a fast flick, a long reach), more samples are taken along its path,
+  so it can't pass through a body unnoticed (`sweptBlade`). `bladeSamplesPerTick` sets the regular samples (6, as
+  before; 2 to 20).
+- The game works out which part was struck: head, chest, an arm or a leg (`hitLocations`). Watching players see
+  the struck part thrown the way the blade travelled and the body tip with it (client `hitReactions`, 0 to 2).
+  Damage doesn't depend on where a hit lands.
+- Hits on mail or plate ring like metal, pitched by damage type: blunt lowest, cuts highest (`armourHitSounds`).
+  The armour that counts is on the struck part: helmet, chestplate or leggings.
+- A killing cut or chop to a bare head takes it off, and the head flies away with the blow (`decapitation`): the
+  body's own head, so a husk's is a husk's and a player's wears their skin. It is visual only: nothing drops, and a
+  helmet keeps the head on. Zombies, skeletons, piglins, illagers, soldiers and players can lose theirs (tag
+  `#steelclash:can_lose_head`).
+- A killing blow throws the body along the blade (`deathPush`), and it falls the way the blow went instead of
+  always onto its left side (client `deathFallFollowsBlow`).
+- A slash or overhead that cuts through a body slows down: the rest of the swing takes 40 ms longer per body,
+  never more than twice the swing (`cleaveDragMs`, 0 = off). Stabs keep their pace. Blunt hits still stop in the
+  first body as before. Your own client slows the blade where you see it, so nothing jumps back and a combo you
+  already pressed still comes.
+- A parried blade bounces back along its own path from where it met the guard before the stagger takes over
+  (`parryBounce`). A blocked special only sparks: its attacker isn't staggered.
+- While attacking, fighters' upper bodies lean with where they look (client `aimLean`). While moving, the legs
+  keep walking under the attack instead of being carried by its stance and twist (client `legsKeepFootwork`).
+- Network protocol 12: players need the same version as the server.
+
 **Combat**
+- Mobs swing a weapon as fast as a player does. Most mobs have no attack speed of their own, so they used to swing
+  every weapon at its profile's reference speed, ignoring the weapon: a zombie with a mace attacked about 22% sooner
+  than a player with the same mace, and axes and tridents were 5 to 11% quicker. Swords were already equal. Spartan
+  Weaponry's speeds now reach mobs too: lances, glaives, scythes and lead weapons are as slow in a mob's hands as in
+  yours, and katanas and aluminum weapons as quick. Bare-handed mobs keep their claw timings.
 - Archery costs stamina. Drawing a bow and holding it drawn, loading a crossbow, and holding a trident or javelin back
   each drain 12 stamina a second, and stamina doesn't come back meanwhile. Run out and the weapon is lowered without
   a shot (a half-loaded crossbow stays empty), and you can't start again until you are no longer exhausted. A loaded

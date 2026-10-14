@@ -20,6 +20,11 @@ public record SwingPose(Phase phase, AttackType type, double yaw, double pitch, 
     private static final double GUARD_YAW = -15;
     private static final double GUARD_PITCH = -35;
     private static final int GUARD_RAISE_TICKS = 3;
+    /** Stagger: the weapon thrown up and out to the side. */
+    private static final double STAGGER_YAW = 50;
+    private static final double STAGGER_PITCH = -60;
+    /** A parried blade rebounds this far back along its arc (fraction of the release) before the stagger takes over. */
+    private static final double REBOUND = 0.3;
 
     public static Optional<SwingPose> of(LivingEntity entity, CombatData data, float partialTick) {
         var frame = data.machine.visualFrame(partialTick);
@@ -59,7 +64,20 @@ public record SwingPose(Phase phase, AttackType type, double yaw, double pitch, 
                     yield new SwingPose(phase, type, GUARD_YAW, GUARD_PITCH, 0.8, smooth(raise), 0, progress, elapsed, spec, path);
                 }
                 case GUARD_RECOVERY -> new SwingPose(phase, type, GUARD_YAW, GUARD_PITCH, 0.8, 1 - smooth(progress), 0, progress, elapsed, spec, path);
-                case STAGGER -> new SwingPose(phase, type, 50, -60, 0.8, 1 - smooth(progress), 0, progress, elapsed, spec, path);
+                case STAGGER -> {
+                    double parriedAt = HitReactions.bounce(entity, data.machine.attackSerial());
+                    if (Double.isNaN(parriedAt)) {
+                        yield new SwingPose(phase, type, STAGGER_YAW, STAGGER_PITCH, 0.8, 1 - smooth(progress), 0, progress,
+                                elapsed, spec, path);
+                    }
+                    // Parried: the blade bounces back along its own path from where it met the guard, then the arm
+                    // goes on into the stagger.
+                    ArcPath.Keyframe back = path.sample(parriedAt - REBOUND * smooth(Math.min(1, progress / 0.35)));
+                    double over = smooth(Math.max(0, Math.min(1, (progress - 0.25) / 0.45)));
+                    yield new SwingPose(phase, type, back.yaw() + (STAGGER_YAW - back.yaw()) * over,
+                            back.pitch() + (STAGGER_PITCH - back.pitch()) * over, back.extension() + (0.8 - back.extension()) * over,
+                            1 - smooth(progress), parriedAt, progress, elapsed, spec, path);
+                }
                 default -> {
                     // Recovery returns from the end of the arc, or from where a thwack stopped the blade.
                     double from = data.machine.recoverFrom();

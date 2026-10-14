@@ -130,7 +130,7 @@ public final class LagGameTests {
         check(helper, m.isFromGuard(), "the expired attempt retains its guard origin");
         LagCompensation.forceLatency(defender, PING);
         var spec = Combat.currentSpec(attacker, data(attacker)).orElseThrow();
-        var hit = new Combat.Hit(AttackType.SLASH, spec, 1f, spec.staminaDamage(), false);
+        var hit = new Combat.Hit(AttackType.SLASH, spec, 1f, spec.staminaDamage(), false, null, null);
         check(helper, LagCompensation.hold(attacker, defender, hit), "an expired counter cannot end the grace early");
         LagCompensation.tick();
         check(helper, !isHurt(defender), "keep waiting for a real defense or the deadline");

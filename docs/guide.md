@@ -109,6 +109,17 @@ Damage types (**cut**, **blunt**, **chop**) do more or less damage depending on 
 - **Throw** (G): throws your weapon. It does real damage and drops where it lands.
 - **Mounted:** attacks from a moving mount hit harder the faster you ride: stabs and specials the most (couched lance), slashes and overheads half as much.
 
+## Hit feel
+
+Hits react to where the blade actually met the body, as in Chivalry 2. Each part can be turned off in the `hitFeel` section of the common config, or on your own screen in the client config.
+
+- **Where it lands.** Blood sprays from the wound the way the blade was moving, and parry sparks fly where the blade met the guard.
+- **What it hit.** The struck part is thrown the way the blade went (a head snaps, an arm is flung, a leg kicked out) and the body tips with it. Damage is the same wherever a hit lands.
+- **What it sounds like.** Hits on mail or plate ring like metal: blunt weapons lowest, cuts highest. The armour on the struck part counts, so a helmet rings when you hit the head.
+- **Killing blows.** The body is thrown along the blade and falls the way the blow went. A killing cut or chop to a bare head takes the head off, and it flies away. A helmet keeps it on, and nothing drops.
+- **The blade reacts.** A slash or overhead slows a little each time it cuts through a body and carries on. A blunt light swing still stops in the first body. A parried blade bounces back along its path before you reel.
+- **Bodies follow the aim and the feet.** Fighters lean over when they attack low and straighten when they attack high. If they move while attacking, their legs keep walking under the swing.
+
 ## Enemies
 
 Zombies, skeletons, piglins, vindicators, endermen, spiders, ravagers, golems and others **telegraph their attacks** and can be parried. With the bot brain on (the default), they:
@@ -184,6 +195,7 @@ The login sync does not broadcast later file edits to players already connected.
 - Disarm mode (drop or holster)
 - Stamina costs
 - Melee knockback (`meleeKnockback`: 1 = vanilla, 0 = weapon swings and punches don't shove; kicks, bashes and slams always do)
+- Hit feel (`hitFeel` section: traced contacts, swept blade, hit locations, armour sounds, decapitation, death push, cleave drag, parry bounce; client: `hitReactions`, `deathFallFollowsBlow`, `aimLean`, `legsKeepFootwork`)
 - Parry and riposte windows
 - Mob parry chances and attacker counts
 - Armed mob chances

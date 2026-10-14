@@ -14,8 +14,9 @@ import org.jetbrains.annotations.Nullable;
  * @param staminaDamage stamina a parrying/blocking defender loses (attack × heavy)
  */
 public final class SwingContext {
+    /** @param contact where the blade met the body being hit, when the swing was traced */
     public record Active(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
-                         float staminaDamage) {
+                         float staminaDamage, @Nullable SwingTracer.Contact contact) {
     }
 
     @Nullable
@@ -26,8 +27,13 @@ public final class SwingContext {
 
     public static void run(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
                            float staminaDamage, Runnable action) {
+        run(attacker, type, spec, damageMult, staminaDamage, null, action);
+    }
+
+    public static void run(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
+                           float staminaDamage, @Nullable SwingTracer.Contact contact, Runnable action) {
         Active previous = current;
-        current = new Active(attacker, type, spec, damageMult, staminaDamage);
+        current = new Active(attacker, type, spec, damageMult, staminaDamage, contact);
         try {
             action.run();
         } finally {
