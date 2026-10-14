@@ -328,4 +328,38 @@ public final class MechanicsGameTests {
         }
         return ticks;
     }
+
+    @GameTest(template = ARENA)
+    public static void mobsSwingAtTheirWeaponsSpeed(GameTestHelper helper) {
+        for (net.minecraft.world.item.Item item : new net.minecraft.world.item.Item[]{Items.IRON_SWORD, Items.STONE_AXE,
+                Items.MACE, Items.TRIDENT}) {
+            Player player = swordsman(helper, new ItemStack(item), FACING_POSITIVE_X);
+            Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+            zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(item));
+            check(helper, !zombie.getAttributes().hasAttribute(Attributes.ATTACK_SPEED), "premise: zombies have no attack speed");
+            AttackTimings players = slashTimings(player);
+            AttackTimings zombies = slashTimings(zombie);
+            check(helper, players.equals(zombies), item + ": a zombie swings as fast as a player with it, " + zombies + " vs " + players);
+            zombie.discard();
+        }
+        Zombie bare = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        var claws = WeaponProfiles.resolveFor(bare).orElseThrow();
+        WeaponProfile.AttackSpec spec = claws.profile().attack(AttackType.SLASH).orElseThrow();
+        check(helper, slashTimings(bare).equals(spec.timings()), "bare hands keep their profile's own timings");
+        // A weapon that sets no attack speed (a modded one, or this sword stripped of its modifiers) keeps its profile's.
+        ItemStack plain = new ItemStack(Items.IRON_SWORD);
+        plain.set(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS,
+                net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY);
+        bare.setItemSlot(EquipmentSlot.MAINHAND, plain);
+        var sword = WeaponProfiles.resolve(plain, helper.getLevel().registryAccess()).orElseThrow();
+        check(helper, slashTimings(bare).equals(sword.profile().attack(AttackType.SLASH).orElseThrow().timings()),
+                "a weapon without a speed swings at its profile's own timings: " + slashTimings(bare));
+        helper.succeed();
+    }
+
+    private static AttackTimings slashTimings(net.minecraft.world.entity.LivingEntity entity) {
+        var resolved = WeaponProfiles.resolve(entity.getMainHandItem(), entity.level().registryAccess())
+                .or(() -> WeaponProfiles.resolveFor(entity)).orElseThrow();
+        return com.steelclash.combat.CombatMath.timings(entity, resolved.profile(), resolved.profile().attack(AttackType.SLASH).orElseThrow());
+    }
 }

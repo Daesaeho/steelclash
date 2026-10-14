@@ -6,7 +6,9 @@ import com.steelclash.core.AttackTimings;
 import com.steelclash.core.Vec;
 import com.steelclash.profile.WeaponProfile;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -61,12 +63,29 @@ public final class CombatMath {
         return Math.max(0.5, base + spec.reachBonus());
     }
 
-    /** Phase timings for this wielder, rescaled by their ATTACK_SPEED attribute (Spartan heavy/lightweight traits). */
+    /** Phase timings for this wielder, rescaled by their attack speed (Spartan heavy/lightweight traits too). */
     public static AttackTimings timings(LivingEntity entity, WeaponProfile profile, WeaponProfile.AttackSpec spec) {
-        double attackSpeed = entity.getAttributes().hasAttribute(Attributes.ATTACK_SPEED)
-                ? entity.getAttributeValue(Attributes.ATTACK_SPEED)
-                : profile.referenceAttackSpeed();
-        return spec.timings().scaledForSpeed(attackSpeed, profile.referenceAttackSpeed(), profile.speedScaling());
+        return spec.timings().scaledForSpeed(attackSpeed(entity, profile), profile.referenceAttackSpeed(), profile.speedScaling());
+    }
+
+    /**
+     * The wielder's attack speed. Players have the ATTACK_SPEED attribute, with their weapon's modifiers in it. Most mobs
+     * don't have it, so they swing as fast as a player would with the same weapon: the weapon's modifiers applied to a
+     * fresh attack speed attribute, so vanilla combines them exactly as it does for players. A weapon that sets no
+     * speed (or bare claws) swings at the profile's reference speed. Only worked out when an attack starts.
+     */
+    static double attackSpeed(LivingEntity entity, WeaponProfile profile) {
+        if (entity.getAttributes().hasAttribute(Attributes.ATTACK_SPEED)) {
+            return entity.getAttributeValue(Attributes.ATTACK_SPEED);
+        }
+        AttributeInstance speed = new AttributeInstance(Attributes.ATTACK_SPEED, ignored -> {
+        });
+        entity.getMainHandItem().forEachModifier(EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+            if (attribute.value() == Attributes.ATTACK_SPEED.value()) {
+                speed.addOrUpdateTransientModifier(modifier);
+            }
+        });
+        return speed.getModifiers().isEmpty() ? profile.referenceAttackSpeed() : speed.getValue();
     }
 
     public static Vec toVec(Vec3 v) {

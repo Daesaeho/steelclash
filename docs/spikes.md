@@ -54,6 +54,20 @@ calls `stopUsingItem`, never `releaseUsingItem`, so nothing is shot or loaded. T
 existing `DRAW_INTERRUPTED` feedback at strength 0, which needed no protocol change. Vanilla's drowned keeps
 `startUsingItem` active for its whole trident goal, so it pays the throw rate for as long as it has a target.
 
+## Mob weapon speed
+
+Zombies, skeletons, piglins and the other fighters have no `ATTACK_SPEED` attribute, so a held weapon's speed
+modifier never reached them and `CombatMath.timings` fell back to the profile's `reference_attack_speed`. Players
+have the attribute (base 4.0) with the weapon's modifier applied. `CombatMath.attackSpeed` now applies the main-hand
+stack's `ATTACK_SPEED` modifiers to a fresh `AttributeInstance` and reads its value, so vanilla combines them exactly
+as for players (only when an attack starts, so the allocation doesn't matter). A stack with no such modifier keeps
+the reference speed, so bare-handed claw and beast profiles (speed scaling 0) are unaffected (GameTest
+`mobsSwingAtTheirWeaponsSpeed`). Measured before the fix, slash windup/release/recovery in ms for player | zombie:
+stone axe 586/503/950 | 525/450/850, mace 645/613/968 | 500/475/750, trident 789/394/1015 | 700/350/900. A one-off
+probe over all 378 Spartan Weaponry weapons with a profile found player and zombie timings equal for every one after
+the fix. Before it, mobs ignored Spartan's per-type and per-material speeds both ways: a lance 700 ms windup against
+the player's 828, a lead glaive 700 against 857, but an aluminum katana 500 against 408.
+
 ## Server combat cost
 
 Being hurt does not give an entity combat state. Players and fighter mobs have it; a bystander gets it only from

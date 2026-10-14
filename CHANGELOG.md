@@ -7,6 +7,11 @@
   exclusions and the late-tracking QA shutdown failure. PAL More Rotation remains an opt-in development experiment.
 
 **Combat**
+- Mobs swing a weapon as fast as a player does. Most mobs have no attack speed of their own, so they used to swing
+  every weapon at its profile's reference speed, ignoring the weapon: a zombie with a mace attacked about 22% sooner
+  than a player with the same mace, and axes and tridents were 5 to 11% quicker. Swords were already equal. Spartan
+  Weaponry's speeds now reach mobs too: lances, glaives, scythes and lead weapons are as slow in a mob's hands as in
+  yours, and katanas and aluminum weapons as quick. Bare-handed mobs keep their claw timings.
 - Archery costs stamina. Drawing a bow and holding it drawn, loading a crossbow, and holding a trident or javelin back
   each drain 12 stamina a second, and stamina doesn't come back meanwhile. Run out and the weapon is lowered without
   a shot (a half-loaded crossbow stays empty), and you can't start again until you are no longer exhausted. A loaded
