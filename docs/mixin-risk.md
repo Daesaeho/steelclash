@@ -14,6 +14,13 @@ Two-handed turnable mob poses temporarily normalize shoulder X/Z pivots and appl
 the draw; no additional production mixin is needed. The event and normal item-layer path were verified on the husk
 renderer. Renderer replacements, custom model hierarchies and nested/replaced render paths require separate checks.
 
+The same two injections also show hit reactions for every living body, players included (`client.HitReactions`):
+after `setupAnim` the struck part is turned and a severed head's parts are hidden (shown again in
+`RenderLivingEvent.Post`, as models are shared), and at the end of `setupRotations` a struck body tips and a body
+killed by a blade falls along the blow. For that the mixin shadows `LivingEntityRenderer#getFlipDegrees` and undoes
+vanilla's death turn before applying its own. Risk is unchanged in kind: renderers that skip `super.setupRotations`
+or replace the model keep vanilla's fall and show no flinch; a mod that also rotates dying bodies here stacks with it.
+
 `LivingEntityRendererMixin` also modifies the age argument passed to `EntityModel#setupAnim` while the development
 pose sheet is running. It holds vanilla idle/breathing motion at 100 ticks so equivalent free-hand captures are
 comparable. Ordinary rendering receives its original age. This is a client-only capture hook; a renderer that replaces

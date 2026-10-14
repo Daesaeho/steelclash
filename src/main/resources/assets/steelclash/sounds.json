@@ -279,5 +279,90 @@
       }
     ],
     "subtitle": "subtitles.steelclash.guard_break"
+  },
+  "hit_mail": {
+    "sounds": [
+      {
+        "name": "minecraft:block/chain/break1",
+        "pitch": 1.1,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:block/chain/break2",
+        "pitch": 1.1,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:block/chain/break3",
+        "pitch": 1.1,
+        "volume": 0.9
+      },
+      {
+        "name": "minecraft:block/chain/break4",
+        "pitch": 1.1,
+        "volume": 0.9
+      }
+    ],
+    "subtitle": "subtitles.steelclash.hit_mail"
+  },
+  "hit_plate": {
+    "sounds": [
+      {
+        "name": "minecraft:mob/zombie/metal1",
+        "pitch": 1.25,
+        "volume": 0.45
+      },
+      {
+        "name": "minecraft:mob/zombie/metal2",
+        "pitch": 1.25,
+        "volume": 0.45
+      },
+      {
+        "name": "minecraft:mob/zombie/metal3",
+        "pitch": 1.25,
+        "volume": 0.45
+      },
+      {
+        "name": "minecraft:mob/irongolem/hit1",
+        "pitch": 1.3,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:mob/irongolem/hit2",
+        "pitch": 1.3,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:mob/irongolem/hit3",
+        "pitch": 1.3,
+        "volume": 0.6
+      },
+      {
+        "name": "minecraft:mob/irongolem/hit4",
+        "pitch": 1.3,
+        "volume": 0.6
+      }
+    ],
+    "subtitle": "subtitles.steelclash.hit_plate"
+  },
+  "sever": {
+    "sounds": [
+      {
+        "name": "minecraft:entity/player/attack/crit1",
+        "pitch": 0.7,
+        "volume": 1.0
+      },
+      {
+        "name": "minecraft:entity/player/attack/crit2",
+        "pitch": 0.7,
+        "volume": 1.0
+      },
+      {
+        "name": "minecraft:entity/player/attack/crit3",
+        "pitch": 0.7,
+        "volume": 1.0
+      }
+    ],
+    "subtitle": "subtitles.steelclash.sever"
   }
 }

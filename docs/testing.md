@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Hit feel and mob weapon speed, 2026-10-14 | 209 required GameTests in each Spartan variant (four clean Spartan runs after the death-drop fix); 263 JUnit; 27 of 27 mutations caught; full build; code review findings fixed; hidden live captures of blood, flinch, parry bounce, aim lean on/off and (through a temporary hook) a thrown husk head; a 378-weapon Spartan timing probe; not yet played on the final build | [Hit feel findings](spikes.md#hit-feel), [mob weapon speed](spikes.md#mob-weapon-speed), [playtest list](#hit-feel) |
 | Mob kick hand-swing dispatch, 2026-10-14 | Fresh compilation; 197 required GameTests passed in each optional-mod variant; both intended mutations caught; hidden live husk capture confirms the extra weapon-arm cycle is absent | [Dispatch finding and evidence](spikes.md#mob-kick-hand-swing-dispatch), [rendering checks](#mob-kick-and-shield-bash-hand-animation) |
 | Two-handed mob grip, 2026-10-14 | Compile/full build; 254 fresh JUnit; two caught native mutations; both main arms contact the handle in 40/40 full-weight husk poses; shipped/candidate live release checks; 48 identical shield controls | [Pivot correction, captures and remaining scope](archive/mob-grip-20261014.md) |
 | Melee knockback setting, 2026-10-13 | 195 required GameTests in each Spartan variant (one new); four of four mutations caught; default unchanged; not played in a client | [Playtest list](#melee-knockback-setting) |
@@ -110,6 +111,23 @@ Select the relevant checks below; preserve the player guide's normal controls an
   stand while kicks, shield bashes and the mace slam still push them; a Knockback-enchanted sword does not push
   either. Judge whether hordes become too hard when nothing is knocked away, and whether 0 or a low value such as
   0.25 should become the default.
+
+### Hit feel
+
+- In game, not yet played: blood sprays from the spot the blade crossed and flies the way it travelled; parry
+  sparks appear between the bodies where the blades met. A zombie hit on the arm flings that arm, on the head snaps
+  the head, in the chest tips back; the reaction reads as caused by the blow, not as a twitch. Plate and mail ring
+  differently and a mace sounds lower than a sword. A killing slash or overhead to a bare head removes it and the
+  body's own head (husk, stray, piglin, vindicator, soldier, a player's skin) tumbles away and shrinks out after
+  about three seconds; with a helmet it stays on. Already seen in a capture: a husk's head leaving upright along the
+  blade with the body drawn headless; not seen: a real kill, other models, a player's skin and hat layer, the head
+  coming to rest on the ground, an illusioner's hat. Killed bodies slide along the blow and fall that way (check
+  spiders flip over the right way). A slash through a crowd visibly slows after each body without stuttering in first
+  person, and a combo pressed during it still comes; on a LAN client with ping the blade must not jump back. A
+  parried attacker's blade bounces back before the stagger pose; a kick right after doesn't replay it. Looking down
+  while attacking bends the body over without the head dropping further than the view; walking or strafing while
+  attacking keeps the legs walking. Check other players on a LAN client see the same, and that your own first-person
+  view never tips or jerks.
 
 ### M5: bot brain and M6c-2 encounters
 

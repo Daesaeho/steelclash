@@ -1,0 +1,23 @@
+{
+  "values": [
+    "minecraft:player",
+    "minecraft:zombie",
+    "minecraft:husk",
+    "minecraft:drowned",
+    "minecraft:zombie_villager",
+    "minecraft:zombified_piglin",
+    "minecraft:piglin",
+    "minecraft:piglin_brute",
+    "minecraft:skeleton",
+    "minecraft:stray",
+    "minecraft:bogged",
+    "minecraft:wither_skeleton",
+    "minecraft:vindicator",
+    "minecraft:pillager",
+    "minecraft:evoker",
+    "minecraft:illusioner",
+    "steelclash:footman",
+    "steelclash:knight",
+    "steelclash:archer"
+  ]
+}

@@ -196,5 +196,22 @@
   "steelclash.configuration.reviveSeconds": "Revive Time (s)",
   "steelclash.configuration.reviveRange": "Revive Range",
   "steelclash.configuration.reviveHealth": "Revive Health",
-  "steelclash.configuration.mobsIgnoreDowned": "Mobs Ignore Downed Players"
+  "steelclash.configuration.mobsIgnoreDowned": "Mobs Ignore Downed Players",
+  "steelclash.configuration.hitFeel": "Hit Feel",
+  "steelclash.configuration.bladeSamplesPerTick": "Blade Samples per Tick",
+  "steelclash.configuration.sweptBlade": "Swept Blade",
+  "steelclash.configuration.tracedContacts": "Traced Contacts",
+  "steelclash.configuration.hitLocations": "Hit Locations",
+  "steelclash.configuration.armourHitSounds": "Armour Hit Sounds",
+  "steelclash.configuration.decapitation": "Decapitation",
+  "steelclash.configuration.deathPush": "Death Push",
+  "steelclash.configuration.cleaveDragMs": "Cleave Drag (ms)",
+  "steelclash.configuration.parryBounce": "Parry Bounce",
+  "steelclash.configuration.hitReactions": "Hit Reactions",
+  "steelclash.configuration.deathFallFollowsBlow": "Death Fall Follows Blow",
+  "steelclash.configuration.aimLean": "Aim Lean",
+  "steelclash.configuration.legsKeepFootwork": "Legs Keep Footwork",
+  "subtitles.steelclash.hit_mail": "Blade strikes mail",
+  "subtitles.steelclash.hit_plate": "Blade strikes plate",
+  "subtitles.steelclash.sever": "Head severed"
 }

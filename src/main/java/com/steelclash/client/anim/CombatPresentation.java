@@ -90,8 +90,8 @@ public final class CombatPresentation {
             entry.displayed = null; // disarms and item changes do not retain the old weapon pose
         }
         CombatPose live = entity == Minecraft.getInstance().player && !PoseSheet.running()
-                ? entry.freeze.sample(signature.serial, frameNanos, () -> CombatPose.of(entity, time).orElse(null))
-                : CombatPose.of(entity, time).orElse(null);
+                ? entry.freeze.sample(signature.serial, frameNanos, () -> BodyFollow.apply(entity, CombatPose.of(entity, time).orElse(null), time))
+                : BodyFollow.apply(entity, CombatPose.of(entity, time).orElse(null), time);
         boolean release = live != null && live.phase() == Phase.RELEASE;
         if (PoseSheet.running() || release || entry.freeze.holding(frameNanos)) {
             entry.from = null; // release stays locked to the hit arc; frozen sheets/samples must remain exact

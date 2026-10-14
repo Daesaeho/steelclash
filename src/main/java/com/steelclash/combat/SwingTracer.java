@@ -24,8 +24,6 @@ import org.jetbrains.annotations.Nullable;
 
 /** Server-side hit detection: sweeps the blade through this tick's slice of the arc and collects new targets. */
 public final class SwingTracer {
-    /** Blade samples per tick. 6 keeps the gap between samples well under a mob's width at normal reach. */
-    private static final int SUB_STEPS = 6;
     private static final double BLADE_RADIUS = 0.1;
     /** Clank only checks the middle of the swing: the start is still the weapon being raised, the end is follow-through. */
     private static final double CLANK_FROM = 0.15;
@@ -37,6 +35,13 @@ public final class SwingTracer {
     private static final double CLANK_LENGTH = 2.0;
     /** Generous per-tick movement bound, to widen the candidate search when targets are rewound. */
     private static final double MAX_SPEED_PER_TICK = 1.0;
+    /**
+     * Swept blade: the tip may move at most this far between two samples (blocks). Less than the narrowest hitbox the
+     * blade is tested against (a 0.3-wide body, inflated by the blade's radius on both sides), so nothing is skipped.
+     */
+    private static final double MAX_TIP_GAP = 0.5;
+    /** Bound on the samples added between two regular ones. */
+    private static final int MAX_SPLITS = 16;
 
     private SwingTracer() {
     }
@@ -48,12 +53,27 @@ public final class SwingTracer {
     public record Result(List<Contact> contacts, @Nullable Vec3 clank) {
     }
 
-    /** A body the blade reached, and the release progress (0 to 1) where it did. */
-    public record Contact(LivingEntity target, double progress) {
+    /**
+     * A body the blade reached, and the release progress (0 to 1) where it did.
+     *
+     * @param offset where the blade first crossed into the body, on or inside its hitbox, relative to the body's
+     *               position: a hit delivered later (lag compensation) still lands where the blade met the body
+     * @param motion which way that point of the blade was travelling (not normalised; may be zero)
+     */
+    public record Contact(LivingEntity target, double progress, Vec3 offset, Vec3 motion) {
+        /** The contact point, on the body where it stands now. */
+        public Vec3 point() {
+            return target.position().add(offset);
+        }
+
+        /** The same contact with the blade at another point of its release (where it has got to since). */
+        public Contact atProgress(double newProgress) {
+            return new Contact(target, newProgress, offset, motion);
+        }
     }
 
     /** Geometry is fixed for this trace; reuse it for every blade sample and distance comparison. */
-    private record Candidate(LivingEntity target, Vec3 offset, AABB hitBox, Vec3 center) {
+    private record Candidate(LivingEntity target, Vec3 offset, AABB hitBox, AABB body, Vec3 center) {
         static Candidate of(LivingEntity target, int rewind, double duck) {
             Vec3 offset = LagCompensation.rewindOffset(target, rewind);
             AABB box = target.getBoundingBox().move(offset);
@@ -61,7 +81,7 @@ public final class SwingTracer {
             if (duck > 0 && target.isCrouching()) {
                 box = box.setMaxY(Math.min(box.maxY, box.minY + duck));
             }
-            return new Candidate(target, offset, box.inflate(BLADE_RADIUS + target.getPickRadius()), box.getCenter());
+            return new Candidate(target, offset, box.inflate(BLADE_RADIUS + target.getPickRadius()), box, box.getCenter());
         }
     }
 
@@ -116,40 +136,53 @@ public final class SwingTracer {
         }
 
         List<Candidate> stepHits = new ArrayList<>();
+        int steps = Config.BLADE_SAMPLES_PER_TICK.get();
+        boolean swept = Config.SWEPT_BLADE.get();
         // Include the very first blade position on the first release tick, otherwise only the swept positions.
         int firstStep = sweep.from() == 0 ? 0 : 1;
-        for (int step = firstStep; step <= SUB_STEPS; step++) {
-            float f = step / (float) SUB_STEPS;
+        Blade.Segment previous = firstStep == 0 ? null : bladeAt(data, path, sweep, pivotNow, yawNow, pitchNow, length, 0);
+        for (int step = firstStep; step <= steps; step++) {
+            float f = step / (float) steps;
             double t = Mth.lerp(f, sweep.from(), sweep.to());
-            double yaw = Mth.rotLerp(f, data.prevYaw, yawNow);
-            double pitch = Mth.lerp(f, data.prevPitch, pitchNow);
-            Vec pivot = CombatMath.toVec(data.prevPivot.lerp(pivotNow, f));
-            Blade.Segment blade = Blade.at(pivot, yaw, pitch, path, t, length);
-            Vec3 pivot3 = CombatMath.toVec3(pivot);
-
+            Blade.Segment blade = bladeAt(data, path, sweep, pivotNow, yawNow, pitchNow, length, f);
+            // Swept blade: where the tip would jump further than a thin body is wide, more samples go in along its path.
+            int splits = swept && previous != null
+                    ? Math.max(1, Math.min(MAX_SPLITS, (int) Math.ceil(tipGap(previous, blade) / MAX_TIP_GAP))) : 1;
+            float stepFrom = (step - 1) / (float) steps;
             boolean hitThisStep = false;
-            if (hits.size() < remaining) {
-                stepHits.clear();
-                for (Candidate candidate : candidates) {
-                    if (data.hitThisSwing.contains(candidate.target().getId())) {
-                        continue;
+            for (int split = 1; split <= splits; split++) {
+                float sampleAt = split == splits ? f : Mth.lerp(split / (float) splits, stepFrom, f);
+                Blade.Segment sample = split == splits ? blade
+                        : bladeAt(data, path, sweep, pivotNow, yawNow, pitchNow, length, sampleAt);
+                if (hits.size() < remaining) {
+                    Vec3 hilt = CombatMath.toVec3(sample.hilt());
+                    stepHits.clear();
+                    for (Candidate candidate : candidates) {
+                        if (data.hitThisSwing.contains(candidate.target().getId())) {
+                            continue;
+                        }
+                        AABB box = candidate.hitBox();
+                        if (Blade.intersectsBox(sample.hilt(), sample.tip(),
+                                box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ)
+                                && canReach(attacker, hilt, candidate)) {
+                            stepHits.add(candidate);
+                        }
                     }
-                    AABB box = candidate.hitBox();
-                    if (Blade.intersectsBox(blade.hilt(), blade.tip(),
-                            box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ)
-                            && canReach(attacker, pivot3, candidate)) {
-                        stepHits.add(candidate);
+                    stepHits.sort(Comparator.comparingDouble(c -> c.center().distanceToSqr(hilt)));
+                    for (Candidate candidate : stepHits) {
+                        if (hits.size() >= remaining) {
+                            break;
+                        }
+                        data.hitThisSwing.add(candidate.target().getId());
+                        // The swing's very first sample measures the blade's travel against the next one.
+                        Blade.Segment other = previous != null ? previous
+                                : bladeAt(data, path, sweep, pivotNow, yawNow, pitchNow, length, 1f / steps);
+                        hits.add(contact(candidate, sample, other, previous == null,
+                                Mth.lerp(sampleAt, sweep.from(), sweep.to())));
+                        hitThisStep = true;
                     }
                 }
-                stepHits.sort(Comparator.comparingDouble(c -> c.center().distanceToSqr(pivot3)));
-                for (Candidate candidate : stepHits) {
-                    if (hits.size() >= remaining) {
-                        break;
-                    }
-                    data.hitThisSwing.add(candidate.target().getId());
-                    hits.add(new Contact(candidate.target(), t));
-                    hitThisStep = true;
-                }
+                previous = sample;
             }
 
             // A blade that stopped in a body this step doesn't also clank on the wall behind it.
@@ -160,7 +193,7 @@ public final class SwingTracer {
                 CombatProfiler.begin(CombatProfiler.Section.WORLD);
                 Vec3 clank;
                 try {
-                    clank = wallHit(attacker, pivot3, CombatMath.toVec3(tip));
+                    clank = wallHit(attacker, CombatMath.toVec3(blade.hilt()), CombatMath.toVec3(tip));
                 } finally {
                     CombatProfiler.end(CombatProfiler.Section.WORLD);
                 }
@@ -170,6 +203,47 @@ public final class SwingTracer {
             }
         }
         return new Result(hits, null);
+    }
+
+    /** The blade a fraction {@code f} of the way through this tick's sweep, from last tick's view and pivot to this one's. */
+    private static Blade.Segment bladeAt(CombatData data, ArcPath path, CombatStateMachine.Sweep sweep, Vec3 pivotNow,
+                                         float yawNow, float pitchNow, double length, float f) {
+        double t = Mth.lerp(f, sweep.from(), sweep.to());
+        double yaw = Mth.rotLerp(f, data.prevYaw, yawNow);
+        double pitch = Mth.lerp(f, data.prevPitch, pitchNow);
+        return Blade.at(CombatMath.toVec(data.prevPivot.lerp(pivotNow, f)), yaw, pitch, path, t, length);
+    }
+
+    /** How far the tip moved from one sample to the next, blocks. */
+    private static double tipGap(Blade.Segment from, Blade.Segment to) {
+        double dx = to.tip().x() - from.tip().x();
+        double dy = to.tip().y() - from.tip().y();
+        double dz = to.tip().z() - from.tip().z();
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    /**
+     * Where the blade crossed into the body (the first point of it inside the hitbox, kept on the body) and which way
+     * that point of the blade was moving, measured against the neighbouring sample ({@code other}, which comes after
+     * {@code blade} when {@code otherIsLater}).
+     */
+    private static Contact contact(Candidate candidate, Blade.Segment blade, Blade.Segment other, boolean otherIsLater,
+                                   double progress) {
+        AABB box = candidate.hitBox();
+        double entry = Blade.entry(blade.hilt(), blade.tip(), box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+        double along = Double.isNaN(entry) ? 1 : entry;
+        Vec here = blade.along(along);
+        AABB body = candidate.body();
+        LivingEntity target = candidate.target();
+        // The body here may be rewound (lag compensation); relative to it, the point is the same as on the body now.
+        Vec3 offset = new Vec3(Mth.clamp(here.x(), body.minX, body.maxX), Mth.clamp(here.y(), body.minY, body.maxY),
+                Mth.clamp(here.z(), body.minZ, body.maxZ)).subtract(candidate.offset()).subtract(target.position());
+        Vec there = other.along(along);
+        Vec travel = otherIsLater ? there.subtract(here) : here.subtract(there);
+        if (travel.dot(travel) < 1e-8) {
+            travel = blade.tip().subtract(blade.hilt()); // a still blade pushes along itself
+        }
+        return new Contact(target, progress, offset, CombatMath.toVec3(travel));
     }
 
     /** Where the blade meets a wall or obstacle. Floors (top faces) don't count, so low swings don't snag the ground. */

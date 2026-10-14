@@ -54,6 +54,65 @@ calls `stopUsingItem`, never `releaseUsingItem`, so nothing is shot or loaded. T
 existing `DRAW_INTERRUPTED` feedback at strength 0, which needed no protocol change. Vanilla's drowned keeps
 `startUsingItem` active for its whole trident goal, so it pays the throw rate for as long as it has a target.
 
+## Hit feel
+
+- **Contact point.** `SwingTracer` tested the whole hilt-to-tip segment at each sample, so a hit was traced along
+  the blade; what it lacked was *where*. `Blade.entry` returns the slab test's entry fraction, and the contact is the
+  first point of the blade inside the (inflated) hitbox, clamped onto the real box. It is stored relative to the
+  body (`Contact.offset`, unrewound), so a hit lag compensation holds lands where the body then stands
+  (`aHeldHitLandsWhereTheBodyNowStands`); a held hit that is then parried bounces from where the blade has got to.
+  The blade's travel is that point of the blade compared with the neighbouring sample. Contacts ride on `Combat.Hit`
+  and `SwingContext.Active`, so a parry decided inside vanilla's damage call knows where the blade met the guard.
+- **Swept blade.** Samples alone only test the blade where it is at each one: before, the fixed 6 a tick kept the gap
+  under a mob's width at normal speeds. Now, when the tip would move more than 0.5 blocks between two samples, up
+  to 16 more are taken on the true arc between them (`sweptBlade`). At default settings (360°/s turn cap, 6
+  samples) the tip moves under 0.5 a sample, so ordinary swings cost nothing extra; the samples go in for flicks
+  with the cap off, long reach or fewer samples. GameTest `aFlickedBladeIsSweptThroughTheBodyItPassed` flicks a stab
+  90° in one tick at 2 samples: unswept it steps over a zombie, swept it meets it.
+- **Hit location** (`core/HitLocation`) is proportions of a biped in its box: legs below 12/32 of the height, the
+  head from 0.12 below the eye fraction, arms past 85% of the half width at chest height. Because the blade enters
+  from the side it travels from, sweeping slashes often land on an arm; a player's level slash rises 8° at its
+  start, so it meets a taller zombie at the neck (GameTest `tracedHitsLandWhereTheBladeCrossed`). Damage ignores
+  the location (the step 2 decision of no melee headshot bonus still holds).
+- **Model-space signs**, needed for the client reactions: model forward is -Z, the body's left +X, down +Y.
+  `xRot` + swings a limb back and nods the head down; `zRot` + swings a limb to the body's right and tips the head
+  to its left. The clip `body` channel is `Rz(z)·Ry(-y)·Rx(-x)` in model space (`WeaponRig.bodyRotation`), so a
+  positive body X leans *back*, and the leg angles that undo a body rotation (x, y, z) are (x, y, -z). The aim lean
+  bends the body by pitch × `aimLean` and takes the same off the head, which vanilla already pitches to the full
+  view. In the frame `setupRotations` leaves (before the model flip), forward is -Z and the body's left -X; vanilla's
+  death turn of +90° about Z lays the body on its left side.
+- **Hooks.** Flinches, the death fall and head hiding use the existing `LivingEntityRendererMixin` injections, which
+  run for players too (after Player Animation Library's `setupAnim`). `getFlipDegrees` is shadowed to undo vanilla's
+  fall exactly. Parts changed after `setupAnim` must be copied to `hat`/sleeves/pants again in `HumanoidModel`,
+  where they are siblings; `IllagerModel`'s hat is a child of the head and must not be (it would turn twice, and
+  `setupAnim` never resets it). Hidden head parts are restored in `RenderLivingEvent.Post`, since models are shared
+  between bodies. The body lean and leg footwork are applied to the pose before `CombatPresentation` blends or
+  freezes it, so transitions and hit-stop include them.
+- **Flying heads** draw the body's own head part (and the humanoid hat layer) from its renderer's model with its
+  texture, reset to the modelled pose and restored after, at `AFTER_ENTITIES`, then end only that render type's
+  batch so translucent batches keep their place. A level change clears them. Checked once in a live capture with a
+  temporary hook that made every hit throw a head: a husk's head leaves upright along the blade and the body is
+  drawn headless.
+- **Cleave drag** (`CombatStateMachine.slowRelease`) keeps the release fraction and lengthens the remaining time,
+  so the blade slows instead of jumping back; it is limited to slashes and overheads after it lengthened a landed
+  sprint stab (`aMissedSprintAttackRecoversLonger`). It is applied once per tick after the contacts are resolved
+  and sent non-authoritatively: an authoritative correction cleared the owner's queued combo and rewound its blade
+  by half a round trip. The owner merges it instead (`mergeRelease`: same attack, both releasing, the longer
+  release at the owner's own progress). `releaseSpanUs` remembers the slowed length, so a thwack traced after the
+  release ended measures its contact on the release as it ran.
+- **Gear before the blow** (`HitFeel.Struck`): the part, its armour and whether the head is bare are read before
+  the hit is delivered. A killing blow runs the death drop inside vanilla's damage call, which empties the slots it
+  drops (a player's always without keepInventory, a mob's by its drop chance, 8.5% for armour put on in code), so
+  reading afterwards severed helmeted heads and played flesh instead of plate. It showed as a decapitation GameTest
+  failing about one run in ten; the test now gives the helmet a guaranteed drop. The same tests swing one fixed arc
+  each (`TestSupport.swing` picks a random variant and side, which moves where a blade lands).
+- **Parry bounce** carries the server's attack serial; a client plays it only in that attack's stagger and drops it
+  once that stagger has shown and ended. A special blocked by a weapon guard sparks but sends no bounce: its
+  attacker isn't staggered.
+- **Blood spray** is spawned by clients from `HitReactionPayload` (its `spray` count); `sendParticles` with a count
+  of 0 sends one packet per particle per player, so the server now sends only the puff.
+- `HitReactionPayload` is new, so the protocol is 12.
+
 ## Mob weapon speed
 
 Zombies, skeletons, piglins and the other fighters have no `ATTACK_SPEED` attribute, so a held weapon's speed

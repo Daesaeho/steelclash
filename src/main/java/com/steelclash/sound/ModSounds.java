@@ -25,6 +25,9 @@ public final class ModSounds {
     public static final Supplier<SoundEvent> FEINT = register("feint");
     public static final Supplier<SoundEvent> DISARM = register("disarm");
     public static final Supplier<SoundEvent> GUARD_BREAK = register("guard_break");
+    public static final Supplier<SoundEvent> HIT_MAIL = register("hit_mail");
+    public static final Supplier<SoundEvent> HIT_PLATE = register("hit_plate");
+    public static final Supplier<SoundEvent> SEVER = register("sever");
 
     private ModSounds() {
     }

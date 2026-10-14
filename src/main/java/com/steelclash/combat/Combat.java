@@ -27,6 +27,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 
 /** Starting, ticking and cancelling attacks and parries. Shared by players and mobs. */
 public final class Combat {
@@ -373,20 +374,23 @@ public final class Combat {
             CombatProfiler.count(CombatProfiler.Counter.CONTACTS, result.contacts().size());
             CombatProfiler.begin(CombatProfiler.Section.RESOLVE);
             boolean landed = false;
+            int cutThrough = 0; // bodies the blade carried on through this tick
             try {
                 for (SwingTracer.Contact contact : result.contacts()) {
                     LivingEntity target = contact.target();
                     if (Allies.areAllies(entity, target)) {
-                        if (meetAlly(entity, data, target, spec.get(), contact.progress())) {
+                        if (meetAlly(entity, data, target, spec.get(), contact)) {
                             break;
                         }
+                        cutThrough++;
                         continue;
                     }
-                    Hit hit = prepareHit(entity, data, target, spec.get());
+                    Hit hit = prepareHit(entity, data, target, spec.get(), contact);
                     // A lagged defender gets time for their parry to arrive (see deliverHeld); the blade still met them.
                     boolean held = LagCompensation.hold(entity, target, hit);
                     if (!held) {
                         float healthBefore = target.getHealth();
+                        HitFeel.Struck struck = HitFeel.struck(target, hit.contact());
                         deliver(entity, target, hit);
                         if (data.swingBlocked) {
                             thwack(entity, data, spec.get(), contact.progress());
@@ -397,19 +401,29 @@ public final class Combat {
                         }
                         landed = true;
                         if (machine.type() != AttackType.KICK && target.getHealth() < healthBefore) {
-                            onDamagingHit(entity, target, hit);
+                            onDamagingHit(entity, target, hit, struck);
                         }
                     }
                     if (stopsAt(entity, data, spec.get(), !held && target.isDeadOrDying())) {
                         thwack(entity, data, spec.get(), contact.progress());
                         break; // hitstop: the blade stays in this body, bodies behind it are spared
                     }
+                    if (!held) {
+                        cutThrough++;
+                    }
                 }
             } finally {
                 CombatProfiler.end(CombatProfiler.Section.RESOLVE);
             }
+            boolean changed = false;
             if (landed && !machine.isComboAllowed()) {
                 machine.allowCombo();
+                changed = true;
+            }
+            changed |= dragThrough(data, cutThrough);
+            if (changed) {
+                // Not authoritative: the owner's prediction merges the combo window and the slower release
+                // (CombatStateMachine.mergeRelease) without losing its place or its queued input.
                 sync(entity, data, false);
             }
             if (result.clank() != null && machine.isAttacking() && !machine.isThwacked() && Config.ENVIRONMENT_CLANK.get()) {
@@ -579,13 +593,18 @@ public final class Combat {
      * @param damageMult    final damage multiplier (attack x heavy x lunge x jump x damage type x mount)
      * @param staminaDamage stamina a parrying or blocking defender loses
      */
-    public record Hit(AttackType type, WeaponProfile.AttackSpec spec, float damageMult, float staminaDamage, boolean heavy) {
+    public record Hit(AttackType type, WeaponProfile.AttackSpec spec, float damageMult, float staminaDamage, boolean heavy,
+                      @Nullable DamageType damageType, @Nullable SwingTracer.Contact contact) {
+        Hit withContact(@Nullable SwingTracer.Contact newContact) {
+            return new Hit(type, spec, damageMult, staminaDamage, heavy, damageType, newContact);
+        }
     }
 
-    private static Hit prepareHit(LivingEntity attacker, CombatData data, LivingEntity target, WeaponProfile.AttackSpec spec) {
+    private static Hit prepareHit(LivingEntity attacker, CombatData data, LivingEntity target, WeaponProfile.AttackSpec spec,
+                                  @Nullable SwingTracer.Contact contact) {
         AttackType type = data.machine.type();
         if (type == AttackType.KICK) {
-            return new Hit(type, spec, 1f, spec.staminaDamage(), false);
+            return new Hit(type, spec, 1f, spec.staminaDamage(), false, null, contact);
         }
         float damageMult = spec.damage();
         float staminaDamage = spec.staminaDamage();
@@ -611,7 +630,8 @@ public final class Combat {
             boolean couched = type == AttackType.STAB || type == AttackType.SPECIAL;
             damageMult *= (float) (couched ? DamageType.mountedChargeMultiplier(speed) : DamageType.mountedSwingMultiplier(speed));
         }
-        return new Hit(type, spec, damageMult, staminaDamage, data.machine.isHeavy());
+        return new Hit(type, spec, damageMult, staminaDamage, data.machine.isHeavy(),
+                profile.map(p -> p.damageTypeOf(spec)).orElse(null), contact);
     }
 
     /**
@@ -624,7 +644,7 @@ public final class Combat {
             applyKick(attacker, target, hit.spec());
             return;
         }
-        SwingContext.run(attacker, hit.type(), hit.spec(), hit.damageMult(), hit.staminaDamage(), () -> {
+        SwingContext.run(attacker, hit.type(), hit.spec(), hit.damageMult(), hit.staminaDamage(), hit.contact(), () -> {
             // Our swings hit each target at most once, so vanilla i-frames would only eat legitimate hits.
             target.invulnerableTime = 0;
             if (attacker instanceof Player player) {
@@ -637,9 +657,12 @@ public final class Combat {
         });
     }
 
-    /** Successful-hit consequences use the captured hit, even if the attacker starts another action during grace. */
-    private static void onDamagingHit(LivingEntity attacker, LivingEntity target, Hit hit) {
-        Feedback.hit(attacker, target, hit.heavy());
+    /**
+     * Successful-hit consequences use the captured hit, even if the attacker starts another action during grace, and
+     * the body as the blade met it ({@code struck}, from before the blow: a killed body drops its gear as it dies).
+     */
+    private static void onDamagingHit(LivingEntity attacker, LivingEntity target, Hit hit, HitFeel.Struck struck) {
+        HitFeel.hit(attacker, target, hit, struck);
         if (hit.type() == AttackType.SPECIAL) {
             // Specials stagger what they hit (Chivalry 2), so the attacker keeps the initiative. Whatever it is: like a
             // kick, the stagger gives a bystander its combat state (being hurt alone no longer does).
@@ -648,15 +671,19 @@ public final class Combat {
     }
 
     /** Lands a hit {@link LagCompensation} held for a lagged defender; it may now be parried, blocked or countered. */
-    static void deliverHeld(LivingEntity attacker, LivingEntity target, Hit hit) {
-        float healthBefore = target.getHealth();
-        deliver(attacker, target, hit);
+    static void deliverHeld(LivingEntity attacker, LivingEntity target, Hit held) {
         CombatData attackerData = attacker.getData(ModAttachments.COMBAT);
+        // The blade has moved on while the hit was held: a parry meets it where it is now, not where it was traced.
+        Hit hit = held.contact() == null ? held : held.withContact(held.contact().atProgress(
+                attackerData.machine.phase() == Phase.RELEASE ? attackerData.machine.phaseProgress(0) : 1));
+        float healthBefore = target.getHealth();
+        HitFeel.Struck struck = HitFeel.struck(target, hit.contact());
+        deliver(attacker, target, hit);
         if (attackerData.swingBlocked && attackerData.machine.phase() == Phase.RELEASE) {
             thwack(attacker, attackerData, hit.spec(), attackerData.machine.phaseProgress(0));
         }
         if (target.getHealth() < healthBefore) {
-            onDamagingHit(attacker, target, hit);
+            onDamagingHit(attacker, target, hit, struck);
             CombatData data = attacker.getData(ModAttachments.COMBAT);
             if (data.machine.phase() == Phase.RECOVERY && !data.machine.isComboAllowed()) {
                 data.machine.allowCombo();
@@ -737,23 +764,41 @@ public final class Combat {
      * @return whether the swing stops in the ally
      */
     private static boolean meetAlly(LivingEntity entity, CombatData data, LivingEntity ally, WeaponProfile.AttackSpec spec,
-                                    double progress) {
+                                    SwingTracer.Contact contact) {
         AttackType type = data.machine.type();
         if (!isWeaponAttack(type) && type != AttackType.SPECIAL) {
             return false;
         }
         if (Allies.damageScale() > 0) {
             float healthBefore = ally.getHealth();
-            deliver(entity, ally, prepareHit(entity, data, ally, spec));
+            Hit hit = prepareHit(entity, data, ally, spec, contact);
+            HitFeel.Struck struck = HitFeel.struck(ally, contact);
+            deliver(entity, ally, hit);
             if (ally.getHealth() < healthBefore) {
-                Feedback.hit(entity, ally, data.machine.isHeavy());
+                HitFeel.hit(entity, ally, hit, struck);
             }
         }
         if (type == AttackType.STAB || stopsAt(entity, data, spec, ally.isDeadOrDying())) {
-            thwack(entity, data, spec, progress);
+            thwack(entity, data, spec, contact.progress());
             return true;
         }
         return false;
+    }
+
+    /**
+     * A slash or overhead cut through {@code bodies} bodies this tick and carries on: the blade drags, and the rest of
+     * the swing slows ({@code cleaveDragMs} per body). Applied once, after the tick's contacts are resolved, so a thwack
+     * in the same tick measures its contact on the release as it ran. Thrusts don't sweep through bodies, so they keep
+     * their pace.
+     *
+     * @return whether the release slowed
+     */
+    private static boolean dragThrough(CombatData data, int bodies) {
+        int dragMs = Config.CLEAVE_DRAG_MS.get();
+        AttackType type = data.machine.type();
+        // A swing that thwacked this tick has already left its release, so slowRelease leaves it alone.
+        return bodies > 0 && dragMs > 0 && (type == AttackType.SLASH || type == AttackType.OVERHEAD)
+                && data.machine.slowRelease((long) bodies * dragMs * 1000L);
     }
 
     /** Ends the release at the contact and starts the thwack recovery; the attacker's own client is corrected too. */

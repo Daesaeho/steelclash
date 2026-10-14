@@ -400,6 +400,46 @@ public class Config {
             .defineInRange("healthRegenPerSecond", 1.0, 0.0, 100.0);
 
     static {
+        BUILDER.pop().push("hitFeel");
+    }
+
+    public static final ModConfigSpec.IntValue BLADE_SAMPLES_PER_TICK = BUILDER
+            .comment("How many times per tick the blade's position is checked. More pins down the moment of contact more",
+                    "exactly, at a little server cost. With sweptBlade off, few samples let a fast blade skip a thin body")
+            .defineInRange("bladeSamplesPerTick", 6, 2, 20);
+    public static final ModConfigSpec.BooleanValue SWEPT_BLADE = BUILDER
+            .comment("Sweep the blade between samples, as Chivalry 2 traces its weapons from frame to frame: when the tip",
+                    "would jump further than half a block between two samples (a flick, a long reach, few samples), more are",
+                    "taken along its path, so it can't pass through a body unnoticed. Off = only the samples are checked")
+            .define("sweptBlade", true);
+    public static final ModConfigSpec.BooleanValue TRACED_CONTACTS = BUILDER
+            .comment("Hits happen where the blade actually crossed the body: blood, sparks and sounds come from that",
+                    "point, and players see the struck body flinch from it. Off = effects at a point between the two bodies")
+            .define("tracedContacts", true);
+    public static final ModConfigSpec.BooleanValue HIT_LOCATIONS = BUILDER
+            .comment("Work out which part the blade met (head, chest, an arm, a leg) and react to it: the struck part is",
+                    "thrown the way the blade travelled, and the hit sounds like the armour on that part. Needs tracedContacts.",
+                    "Presentation only: damage doesn't depend on it")
+            .define("hitLocations", true);
+    public static final ModConfigSpec.BooleanValue ARMOUR_HIT_SOUNDS = BUILDER
+            .comment("Hits on mail or plate ring like metal, pitched by the weapon's damage type (blunt lowest, cuts highest)")
+            .define("armourHitSounds", true);
+    public static final ModConfigSpec.BooleanValue DECAPITATION = BUILDER
+            .comment("A killing cut or chop to the head takes it off (it flies away with the blow). Visual only, nothing",
+                    "drops; a helmet keeps the head on. Needs hitLocations")
+            .define("decapitation", true);
+    public static final ModConfigSpec.DoubleValue DEATH_PUSH = BUILDER
+            .comment("A killing blow throws the body the way the blade was travelling (blocks per tick at 1). 0 = off")
+            .defineInRange("deathPush", 0.5, 0.0, 2.0);
+    public static final ModConfigSpec.IntValue CLEAVE_DRAG_MS = BUILDER
+            .comment("A slash or overhead that cuts through a body and carries on slows down: the rest of its swing takes",
+                    "this much longer per body (never more than twice the swing). Stabs keep their pace. 0 = off")
+            .defineInRange("cleaveDragMs", 40, 0, 300);
+    public static final ModConfigSpec.BooleanValue PARRY_BOUNCE = BUILDER
+            .comment("A parried blade bounces back along its own path from where it met the guard, with sparks at that point")
+            .define("parryBounce", true);
+
+    static {
         BUILDER.pop();
     }
 
@@ -520,6 +560,22 @@ public class Config {
         public static final ModConfigSpec.IntValue HIT_STOP_MILLIS = BUILDER
                 .comment("How long your swing animation freezes when it connects (impact feel). 0 = off.")
                 .defineInRange("hitStopMillis", 70, 0, 300);
+        public static final ModConfigSpec.DoubleValue HIT_REACTIONS = BUILDER
+                .comment("How hard struck bodies flinch from the blade: the part it met is thrown the way it travelled and",
+                        "the body tips with it. 0 = off. Visual only (the server decides whether hits are traced)")
+                .defineInRange("hitReactions", 1.0, 0.0, 2.0);
+        public static final ModConfigSpec.BooleanValue DEATH_FALL_FOLLOWS_BLOW = BUILDER
+                .comment("A body killed by a blade falls the way the blow was going, instead of always onto its left side")
+                .define("deathFallFollowsBlow", true);
+        public static final ModConfigSpec.DoubleValue AIM_LEAN = BUILDER
+                .comment("Fighters' upper bodies lean with where they look while attacking: looking down bends the body",
+                        "over, looking up straightens it. Fraction of the view's pitch; 0 = off. Not shown on your own",
+                        "first-person arms. Visual only")
+                .defineInRange("aimLean", 0.35, 0.0, 1.0);
+        public static final ModConfigSpec.BooleanValue LEGS_KEEP_FOOTWORK = BUILDER
+                .comment("While a fighter moves, the legs keep walking under the attack: the attack's stance and body twist",
+                        "stay above the hips instead of dragging the legs along. Visual only")
+                .define("legsKeepFootwork", true);
         public static final ModConfigSpec.DoubleValue WEAPON_GRIP_PITCH = BUILDER
                 .comment("Degrees the held weapon is rotated in your hand so its blade follows the swing.",
                         "-80 verified in game (2026-10-06); only change this if a weapon model is held unusually.")

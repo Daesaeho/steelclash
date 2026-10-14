@@ -35,19 +35,33 @@ public final class Feedback {
         sound(entity, entity.position(), ModSounds.FEINT, 1f);
     }
 
-    /** A swing connected with flesh. */
+    /** A swing connected with flesh (without a traced contact: see {@link HitFeel#hit}). */
     public static void hit(LivingEntity attacker, LivingEntity target, boolean heavy) {
         Vec3 point = contactPoint(attacker, target);
         sound(target, point, ModSounds.HIT, 1f);
         if (Config.BLOOD_PARTICLES.get()) {
-            particles(target, BLOOD, point, heavy ? 14 : 8, 0.15, 0.1);
+            blood(target, point, heavy ? 14 : 8);
         }
+        landed(attacker, target, heavy);
+    }
+
+    /** The attacker's hit-stop and the target's camera shake. */
+    static void landed(LivingEntity attacker, LivingEntity target, boolean heavy) {
         send(attacker, FeedbackPayload.Kind.LANDED, heavy ? 1.5f : 1f);
         send(target, FeedbackPayload.Kind.TAKEN, heavy ? 1.5f : 1f);
     }
 
+    static void blood(LivingEntity target, Vec3 point, int count) {
+        particles(target, BLOOD, point, count, 0.15, 0.1);
+    }
+
     public static void parry(LivingEntity defender, Entity attacker) {
-        Vec3 point = defender.getEyePosition().add(attacker.getEyePosition()).scale(0.5);
+        if (!HitFeel.parried(defender, attacker)) {
+            parried(defender, attacker, defender.getEyePosition().add(attacker.getEyePosition()).scale(0.5));
+        }
+    }
+
+    static void parried(LivingEntity defender, Entity attacker, Vec3 point) {
         sound(defender, point, ModSounds.PARRY, 1f);
         particles(defender, ParticleTypes.CRIT, point, 12, 0.15, 0.4);
         send(defender, FeedbackPayload.Kind.PARRIED, 1f);
@@ -85,7 +99,11 @@ public final class Feedback {
     }
 
     private static void sound(Entity source, Vec3 at, Supplier<SoundEvent> sound, float volume) {
-        source.level().playSound(null, at.x, at.y, at.z, sound.get(), source.getSoundSource(), volume, 1f);
+        sound(source, at, sound, volume, 1f);
+    }
+
+    static void sound(Entity source, Vec3 at, Supplier<SoundEvent> sound, float volume, float pitch) {
+        source.level().playSound(null, at.x, at.y, at.z, sound.get(), source.getSoundSource(), volume, pitch);
     }
 
     private static void particles(Entity source, ParticleOptions type, Vec3 at, int count, double spread, double speed) {

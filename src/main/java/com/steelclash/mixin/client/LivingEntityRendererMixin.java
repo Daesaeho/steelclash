@@ -1,6 +1,7 @@
 package com.steelclash.mixin.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.steelclash.client.HitReactions;
 import com.steelclash.client.anim.MobCombatPoses;
 import com.steelclash.client.dev.PoseSheet;
 import net.minecraft.client.model.EntityModel;
@@ -16,12 +17,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Applies Steel Clash combat poses to mob models right after their own {@code setupAnim}, so zombie-arm and illager
- * poses can't overwrite them. Players are animated through Player Animation Library instead. See docs/mixin-risk.md.
+ * poses can't overwrite them. Players are animated through Player Animation Library instead. Hit reactions
+ * ({@link HitReactions}) go on top for every body, players included. See docs/mixin-risk.md.
  */
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extends EntityModel<T>> {
     @Shadow
     protected M model;
+
+    @Shadow
+    protected abstract float getFlipDegrees(T entity);
 
     /** Frozen combat progress also needs a frozen vanilla idle/breathing clock for comparable free-hand poses. */
     @ModifyArg(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
@@ -39,12 +44,17 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extend
     private void steelclash$applyCombatPose(T entity, float entityYaw, float partialTick, PoseStack poseStack,
                                             MultiBufferSource buffer, int packedLight, CallbackInfo ci) {
         MobCombatPoses.apply(entity, model, partialTick);
+        HitReactions.applyParts(entity, model);
     }
 
-    /** Whole-body lean and twist of a mob's attack, after vanilla's body rotation (players: Player Animation Library). */
+    /**
+     * After vanilla's body rotation: a struck body's tip and a killed one's fall along the blow (everyone), then the
+     * whole-body lean and twist of a mob's attack (players: Player Animation Library).
+     */
     @Inject(method = "setupRotations", at = @At("RETURN"))
     private void steelclash$applyBodyRotation(T entity, PoseStack poseStack, float bob, float yBodyRot, float partialTick,
                                               float scale, CallbackInfo ci) {
+        HitReactions.applyBodyRotation(entity, poseStack, yBodyRot, partialTick, getFlipDegrees(entity));
         MobCombatPoses.applyBodyRotation(entity, poseStack, partialTick);
     }
 }

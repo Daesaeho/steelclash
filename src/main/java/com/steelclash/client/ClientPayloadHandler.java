@@ -7,6 +7,7 @@ import com.steelclash.core.CombatStateMachine;
 import com.steelclash.net.CombatStatePayload;
 import com.steelclash.net.DownedPayload;
 import com.steelclash.net.FeedbackPayload;
+import com.steelclash.net.HitReactionPayload;
 import com.steelclash.net.StaminaPayload;
 import com.steelclash.profile.WeaponProfiles;
 import com.steelclash.client.anim.CombatPresentation;
@@ -45,6 +46,8 @@ public final class ClientPayloadHandler {
                     LiveCapture.recordActiveParryMerge(before, data.machine.predictionState().activeParryTicks(),
                             prediction.activeParryTicks(), identity.serial());
                 }
+                // A blade dragging through a body slows on the server; the prediction slows to match where it is.
+                data.machine.mergeRelease(identity, payload.phase(), payload.phaseDurationUs());
                 return;
             }
             data.machine.apply(payload.phase(), payload.attackType(), payload.phaseElapsedUs(), payload.phaseDurationUs(),
@@ -90,6 +93,10 @@ public final class ClientPayloadHandler {
 
     public static void handleFeedback(FeedbackPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> ClientFeel.onFeedback(payload));
+    }
+
+    public static void handleHitReaction(HitReactionPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> HitReactions.on(payload));
     }
 
     public static void handleStamina(StaminaPayload payload, IPayloadContext context) {

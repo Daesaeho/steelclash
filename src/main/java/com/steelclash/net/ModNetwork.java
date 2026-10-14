@@ -15,7 +15,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class ModNetwork {
-    private static final String PROTOCOL_VERSION = "11";
+    private static final String PROTOCOL_VERSION = "12";
 
     private ModNetwork() {
     }
@@ -40,6 +40,8 @@ public final class ModNetwork {
                 (payload, context) -> ClientPayloadHandler.handleFeedback(payload, context));
         registrar.playToClient(DownedPayload.TYPE, DownedPayload.STREAM_CODEC,
                 (payload, context) -> ClientPayloadHandler.handleDowned(payload, context));
+        registrar.playToClient(HitReactionPayload.TYPE, HitReactionPayload.STREAM_CODEC,
+                (payload, context) -> ClientPayloadHandler.handleHitReaction(payload, context));
     }
 
     /**
