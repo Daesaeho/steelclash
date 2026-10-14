@@ -32,6 +32,9 @@
 - Mobs that have never fought skip the combat-pose hooks on the client.
 
 **Fixes**
+- Two-handed humanoid mobs use the bounded support-arm solve and compensate vanilla attack shoulder movement,
+  keeping their support grip attached during real attacks. Preserve occupied-offhand poses and restore shared
+  model positions after each render.
 - Constrain two-handed player hand placement to the support arm's bounded reach while preserving blade orientation.
   Add opt-in actual arm-matrix capture; remaining rendered support-grip and mob acceptance is documented.
 - Refresh combat poses when PAL reuses a pre-tick sample at a near-zero render partial, preventing a one-frame

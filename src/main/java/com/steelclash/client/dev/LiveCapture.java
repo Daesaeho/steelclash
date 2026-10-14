@@ -188,6 +188,12 @@ public final class LiveCapture {
         }
     }
 
+    /** Exact disposable-server actor selected by this live run, for opt-in mesh diagnostics. */
+    public static boolean isCaptureOpponent(net.minecraft.world.entity.LivingEntity entity) {
+        ServerSample sample = server;
+        return active && sample != null && sample.opponent != null && entity.getId() == sample.opponent.id();
+    }
+
     public static void recordBone(AbstractClientPlayer player, com.zigythebird.playeranimcore.bones.PlayerAnimBone bone, boolean rigBlend) {
         if (!probingClock && active && player == Minecraft.getInstance().player && (com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode.isFirstPersonPass()
                 || !Minecraft.getInstance().options.getCameraType().isFirstPerson())) {

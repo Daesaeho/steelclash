@@ -105,6 +105,8 @@ public final class PoseSheet {
     private static final int BACKGROUND_GUI_WAIT_LIMIT = 1300;
     @Nullable
     private static CombatPose renderedPose;
+    @Nullable
+    private static LivingEntity renderedSubject;
     private static int renderedIndex = -1;
     @Nullable
     private static CameraType renderedView;
@@ -145,6 +147,15 @@ public final class PoseSheet {
         return MOB != null && running();
     }
 
+    /** Exact actor and shot already sampled by the model hook; diagnostics must not pick another nearby mob. */
+    public static boolean isRenderedSubject(LivingEntity entity) {
+        return running() && renderedIndex == index && renderedSubject == entity;
+    }
+
+    public static String currentShotName() {
+        return running() ? shots.get(index).name() : "";
+    }
+
     @SubscribeEvent
     static void onClientTickPre(ClientTickEvent.Pre event) {
         if (!BACKGROUND || backgroundConfigChecked) return;
@@ -181,6 +192,7 @@ public final class PoseSheet {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && entity == subject(mc.player, shots.get(index))) {
             renderedPose = pose;
+            renderedSubject = entity;
             renderedIndex = index;
             renderedView = mc.options.getCameraType();
             renderedItem = BuiltInRegistries.ITEM.getKey(entity.getMainHandItem().getItem());
@@ -558,6 +570,7 @@ public final class PoseSheet {
     }
 
     private static void finish(Minecraft mc, LocalPlayer player) {
+        renderedSubject = null;
         AnimationCaptureChecks.restore();
         previousPlayerArmor.forEach((slot, stack) -> player.setItemSlot(slot, stack.copy()));
         if (requestedMainArm != null) player.setMainArm(previousPlayerArm);

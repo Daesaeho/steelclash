@@ -48,33 +48,46 @@ public final class BladeMeshProbe {
 
     /** The actual arm transform before vanilla's hand/socket and PAL item rotations. */
     public static void arm(LivingEntity entity, ItemStack stack, boolean left, PoseStack pose) {
-        if(OUTPUT==null||samples>=MAX_SAMPLES||entity!=Minecraft.getInstance().player||!stack.is(Items.IRON_SWORD))return;
+        if(OUTPUT==null||samples>=MAX_SAMPLES||!subject(entity)||!stack.is(Items.IRON_SWORD))return;
         net.minecraft.client.renderer.entity.EntityRenderer<?> renderer=Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
-        if(!(renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer playerRenderer))return;
-        var part=left?playerRenderer.getModel().leftArm:playerRenderer.getModel().rightArm;
+        if(!(renderer instanceof net.minecraft.client.renderer.entity.LivingEntityRenderer<?,?> livingRenderer)
+                || !(livingRenderer.getModel() instanceof net.minecraft.client.model.HumanoidModel<?> model))return;
+        var part=left?model.leftArm:model.rightArm;
         PoseStack armPose=new PoseStack();armPose.mulPose(pose.last().pose());part.translateAndRotate(armPose);
-        var other=left?playerRenderer.getModel().rightArm:playerRenderer.getModel().leftArm;
+        var other=left?model.rightArm:model.leftArm;
         PoseStack otherPose=new PoseStack();otherPose.mulPose(pose.last().pose());other.translateAndRotate(otherPose);
-        String skin=entity instanceof net.minecraft.client.player.AbstractClientPlayer player?player.getSkin().model().name():"unknown";
+        String skin=entity instanceof net.minecraft.client.player.AbstractClientPlayer player?player.getSkin().model().name():"WIDE";
         ARM.set(new ArmPose(CombatPresentation.frameNumber(),entity.tickCount,entity.getId(),left,new Matrix4f(armPose.last().pose()),new Matrix4f(otherPose.last().pose()),skin));
+    }
+
+    private static boolean subject(LivingEntity entity) {
+        if (PoseSheet.photographingMob() || LiveCapture.isCaptureOpponent(entity)) {
+            boolean selected = PoseSheet.photographingMob() ? PoseSheet.isRenderedSubject(entity) : LiveCapture.isCaptureOpponent(entity);
+            return selected && (entity.getType()==net.minecraft.world.entity.EntityType.HUSK
+                    || entity.getType()==net.minecraft.world.entity.EntityType.ZOMBIE);
+        }
+        return entity==Minecraft.getInstance().player;
     }
 
     public static Scope begin(LivingEntity entity, ItemStack stack, ItemDisplayContext context, boolean left, PoseStack pose) {
         Scope previous=ACTIVE.get();
         Minecraft mc=Minecraft.getInstance();
-        if(OUTPUT==null||samples>=MAX_SAMPLES||entity!=mc.player||!stack.is(Items.IRON_SWORD)
+        if(OUTPUT==null||samples>=MAX_SAMPLES||!subject(entity)||!stack.is(Items.IRON_SWORD)
                 ||!entity.hasData(ModAttachments.COMBAT)||!entity.getData(ModAttachments.COMBAT).machine.phase().isAttack()) {
             ACTIVE.remove();
             return new Scope(previous);
         }
         var machine=entity.getData(ModAttachments.COMBAT).machine;
         String frozen=machine.phase()+":"+machine.phaseElapsedUs()+":"+machine.isHeavy()+":"+machine.isMirrored()
-                +":"+entity.getMainArm()+":"+mc.options.getCameraType()+":"+context+":"+left+":"+FirstPersonMode.isFirstPersonPass();
+                +":"+entity.getMainArm()+":"+mc.options.getCameraType()+":"+context+":"+left+":"+FirstPersonMode.isFirstPersonPass()
+                +":"+entity.getId()+":"+PoseSheet.currentShotName();
         if(PoseSheet.running()&&!FROZEN_SAMPLES.add(frozen)) { ACTIVE.remove();return new Scope(previous); }
         Scope scope=new Scope(previous);ACTIVE.set(scope);
         scope.data.addProperty("sample",++samples);scope.data.addProperty("frame",CombatPresentation.frameNumber());
         scope.data.addProperty("time_ns",System.nanoTime());scope.data.addProperty("entity_tick",entity.tickCount);
         scope.data.addProperty("entity_id",entity.getId());scope.data.addProperty("context",context.name());
+        scope.data.addProperty("entity_type",net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
+        scope.data.addProperty("shot",PoseSheet.currentShotName());
         scope.data.addProperty("left",left);scope.data.addProperty("first_person_pass",FirstPersonMode.isFirstPersonPass());
         ArmPose arm=ARM.get();
         if(arm!=null&&arm.frame==CombatPresentation.frameNumber()&&arm.tick==entity.tickCount&&arm.entityId==entity.getId()&&arm.left==left) {

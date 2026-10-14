@@ -9,6 +9,11 @@ Steel Clash prefers NeoForge events. Every mixin is listed here with why it exis
 
 Access transformers (`META-INF/accesstransformer.cfg`): `LivingEntity#attackStrengthTicker` (full-strength hits through vanilla `Player#attack`), and `IllagerModel` arm/leg parts (posing vindicators).
 
+Two-handed turnable mob poses temporarily normalize shoulder X/Z pivots and apply the bounded support offset in
+`MobCombatPoses`. NeoForge's `RenderLivingEvent.Post` at lowest priority restores the original arm positions after
+the draw; no additional production mixin is needed. The event and normal item-layer path were verified on the husk
+renderer. Renderer replacements, custom model hierarchies and nested/replaced render paths require separate checks.
+
 `LivingEntityRendererMixin` also modifies the age argument passed to `EntityModel#setupAnim` while the development
 pose sheet is running. It holds vanilla idle/breathing motion at 100 ticks so equivalent free-hand captures are
 comparable. Ordinary rendering receives its original age. This is a client-only capture hook; a renderer that replaces
@@ -17,9 +22,10 @@ the `setupAnim` call needs its own capture support. No event exposes this argume
 ## Development-only PAL More bridge
 
 `client.BladeMeshArmMixin` reads `ItemInHandLayer#renderArmWithItem` at method entry, only with `-PbladeMeshOut`.
-It copies the current parent matrix and the actual PlayerRenderer main/support arm transforms without mutating
-render state. No event exposes this exact item-layer context. Other item-layer replacements can bypass the hook;
-custom/non-player rigs are unsupported. Missing or mismatched transforms are flagged in the evidence rather than
+It copies the current parent matrix and actual main/support arm transforms without mutating render state. The
+diagnostic selects the local player or exact captured zombie/husk actor, using the reviewed humanoid renderer.
+No event exposes this exact item-layer context. Other item-layer replacements can bypass the hook;
+custom rigs are unsupported. Missing or mismatched transforms are flagged in the evidence rather than
 substituting an inferred hand transform. Ordinary launches skip the mixin.
 
 `client.BladeMeshContextMixin` wraps `ItemInHandRenderer#renderItem` with a `finally`-restored diagnostic scope.

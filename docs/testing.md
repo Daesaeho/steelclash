@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Two-handed mob grip, 2026-10-14 | Compile/full build; 254 fresh JUnit; two caught native mutations; both main arms contact the handle in 40/40 full-weight husk poses; shipped/candidate live release checks; 48 identical shield controls | [Pivot correction, captures and remaining scope](archive/mob-grip-20261014.md) |
 | Melee knockback setting, 2026-10-13 | 195 required GameTests in each Spartan variant (one new); four of four mutations caught; default unchanged; not played in a client | [Playtest list](#melee-knockback-setting) |
 | Ranged stamina, 2026-10-13 | 194 required GameTests in each Spartan variant (seven new); nine of nine mutations caught; full build; not played in a client | [Rule and findings](spikes.md#ranged-stamina), [playtest list](#ranged-stamina) |
 | Player grip and Vector API, 2026-10-13 | Compile/full build; 254 fresh JUnit; three caught mutations; 108 existing native draws, incomplete right-main support contact; SIMD timing inconclusive | [Reach constraint, rendered gaps and benchmark limits](archive/grip-and-vector-checkpoint-20261013.md) |
@@ -110,8 +111,9 @@ Select the relevant checks below; preserve the player guide's normal controls an
 ## Remaining unsupported checks
 
 - Finish right-main-arm support grip, first-person composition, ordinary-input motion and occupied-offhand controls
-  for the bounded player reach solve. The mob support-arm path still needs integration; custom/bent rigs and other
-  weapon families need their own acceptance. [Grip and Vector API scope](archive/grip-and-vector-checkpoint-20261013.md).
+  for the bounded player reach solve. Husk support integration now has [native and live evidence](archive/mob-grip-20261014.md);
+  broader mob models, custom/bent rigs and other weapon families need their own acceptance.
+  [Player grip and Vector API scope](archive/grip-and-vector-checkpoint-20261013.md).
 - Actual LAN/remote-player latency, packet ordering/correction and immediate visible windup after chunk return.
 - First-person kick feet, shield-bash and other/custom-model variants, broader camera effects, swimming/riding
   and renderer/shader combinations outside the recorded cases.

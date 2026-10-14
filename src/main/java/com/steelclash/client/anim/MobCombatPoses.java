@@ -3,11 +3,13 @@ package com.steelclash.client.anim;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.steelclash.Config;
+import com.steelclash.SteelClash;
 import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.WeaponRig;
 import com.steelclash.core.RigPoseBlend;
 import com.steelclash.core.Phase;
+import com.steelclash.core.Vec;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +25,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
 
 /**
  * Poses humanoid and illager mob models (zombies, skeletons, piglins, vindicators, the training dummy) from their
@@ -32,6 +39,7 @@ import org.joml.Quaternionf;
  * item layer (some modded ones) can't have it turned: its arm is pitched instead to put the blade on the arc, which
  * leaves the hand low.
  */
+@EventBusSubscriber(modid = SteelClash.MOD_ID, value = Dist.CLIENT)
 public final class MobCombatPoses {
     /** Whole-body rotation pivot height, blocks above the feet (as Player Animation Library uses for players). */
     private static final float BODY_PIVOT = 0.75f;
@@ -49,6 +57,14 @@ public final class MobCombatPoses {
     /** This frame's turn of each posed mob's weapon in its hand, for {@link #turnHeldItem}. Render thread only. */
     private static final Map<LivingEntity, HeldItemTurn> ITEM_TURNS = new WeakHashMap<>();
     private static final Map<LivingEntity, RigPoseBlend> RIGS = new WeakHashMap<>();
+    private record ShoulderPosition(ModelPart part, float x, float y, float z) {
+        void restore() { part.x = x; part.y = y; part.z = z; }
+    }
+    private record ShoulderPositions(ShoulderPosition main, ShoulderPosition off) {
+        void restore() { main.restore(); off.restore(); }
+    }
+    /** Renderers share models across entities; the support translation belongs to this draw only. */
+    private static final Map<EntityModel<?>, ShoulderPositions> SHOULDERS = new WeakHashMap<>();
     private record RigIdentity(Object weapon, Object offhand, HumanoidArm arm, long generation) {}
     /** Mob types whose held items vanilla's item layer draws, so their weapons can be turned in the hand. */
     private static final Set<EntityType<?>> TURNABLE = new HashSet<>();
@@ -88,12 +104,13 @@ public final class MobCombatPoses {
         float w = (float) pose.weight();
         if (!pose.kick()) {
             double[] arm;
+            WeaponRig weaponRig = null;
             if (TURNABLE.contains(entity.getType())) {
-                WeaponRig rig = pose.rig(Config.Client.WEAPON_GRIP_PITCH.get(), Config.Client.BLADE_TWIST.get(),
+                weaponRig = pose.rig(Config.Client.WEAPON_GRIP_PITCH.get(), Config.Client.BLADE_TWIST.get(),
                         WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()));
-                arm = rig.arm();
+                arm = weaponRig.arm();
                 ITEM_TURNS.put(entity, new HeldItemTurn(pose.leftHanded() ? HumanoidArm.LEFT : HumanoidArm.RIGHT,
-                        RotationBlend.blend(0, 0, 0, rig.item(), w)));
+                        RotationBlend.blend(0, 0, 0, weaponRig.item(), w)));
             } else {
                 arm = pose.mobWeaponArm();
             }
@@ -103,7 +120,23 @@ public final class MobCombatPoses {
             String offName = pose.leftHanded() ? "rightArm" : "leftArm";
             set(mainArm, w, arm, pose, mainName);
             if (pose.twoHanded()) {
-                set(offArm, w, pose.gripArm(arm), pose, ""); // authored free-arm offsets must not pull a solved grip away
+                if (weaponRig != null) {
+                    set(offArm, w, weaponRig.offArm(), pose, "");
+                    SHOULDERS.put(model, new ShoulderPositions(
+                            new ShoulderPosition(mainArm, mainArm.x, mainArm.y, mainArm.z),
+                            new ShoulderPosition(offArm, offArm.x, offArm.y, offArm.z)));
+                    // Vanilla's attackTime twists the shoulder pivots independently of the shared rig. Both hands
+                    // must use that rig's shoulder frame; keep their common crouch/riding height.
+                    normalizeShoulder(mainArm, pose.leftHanded() ? WeaponRig.LEFT_SHOULDER.x() : WeaponRig.RIGHT_SHOULDER.x(), w);
+                    normalizeShoulder(offArm, pose.leftHanded() ? WeaponRig.RIGHT_SHOULDER.x() : WeaponRig.LEFT_SHOULDER.x(), w);
+                    Vec shoulder = weaponRig.offShoulder(); // already mirrored by CombatPose.rig
+                    offArm.x += (float) shoulder.x() * w;
+                    offArm.y += (float) shoulder.y() * w;
+                    offArm.z += (float) shoulder.z() * w;
+                } else {
+                    // Unknown item renderers retain their pitched-arm fallback until an attachment solve is verified.
+                    set(offArm, w, pose.gripArm(arm), pose, "");
+                }
             } else {
                 add(offArm, pose, offName);
             }
@@ -136,6 +169,17 @@ public final class MobCombatPoses {
         record(entity,pose,"right_arm",parts.rightArm); record(entity,pose,"left_arm",parts.leftArm);
         record(entity,pose,"right_leg",parts.rightLeg); record(entity,pose,"left_leg",parts.leftLeg);
         com.steelclash.client.dev.LiveCapture.recordMob(entity, pose, "held_item", new double[]{hand.rx(), hand.ry(), hand.rz()});
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    static void afterRender(RenderLivingEvent.Post<?, ?> event) {
+        ShoulderPositions saved = SHOULDERS.remove(event.getRenderer().getModel());
+        if (saved != null) saved.restore();
+    }
+
+    private static void normalizeShoulder(ModelPart part, double x, float weight) {
+        part.x += ((float) x - part.x) * weight;
+        part.z *= 1 - weight;
     }
 
     private static RigPoseBlend rig(LivingEntity entity, CombatPose pose) {

@@ -9,6 +9,10 @@ The [player grip and Vector API checkpoint](archive/grip-and-vector-checkpoint-2
 player reach constraint, remaining rendered/mob grip gaps, and an isolated clip-sampling experiment. Overlapping,
 noisy timings establish no Vector API benefit; the runtime retains its existing sampler.
 
+The [mob grip checkpoint](archive/mob-grip-20261014.md) reproduces both a discarded support-shoulder solve and
+vanilla `attackTime` pivot interference. Rendered husk hand/handle contact, ordinary live morph release, handedness
+and occupied-offhand controls verify the correction. Other rigs and remaining player grip gaps stay explicit.
+
 ## Mod IDs and Spartan integration
 
 Spartan Weaponry is `spartan_weaponry_unofficial`; Spartan Shields is `spartanshieldsunofficial`.

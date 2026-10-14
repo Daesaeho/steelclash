@@ -6,6 +6,7 @@ current verified scope and remaining acceptance are in [testing](../testing.md).
 
 | Record | Contents |
 |---|---|
+| [Two-handed mob grip](mob-grip-20261014.md) | Native husk support-contact reproduction, live vanilla pivot correction, handedness/control evidence and remaining rig scope. |
 | [Player grip and Vector API checkpoint](grip-and-vector-checkpoint-20261013.md) | Bounded player reach math, actual hand-matrix capture, incomplete rendered/mob acceptance and isolated SIMD results. |
 | [Design history](design-history.md) | Original milestones, setup notes, fidelity checklist and deferred backlog. |
 | [Implementation findings](findings-history.md) | API research, combat/animation fixes, benchmarks and runtime investigations. |
