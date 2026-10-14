@@ -796,8 +796,9 @@ public final class Combat {
             entity.setDeltaMovement(entity.getDeltaMovement().add(look.x * 0.6, 0.05, look.z * 0.6));
             entity.hurtMarked = true; // sends the velocity to the client for players
         }
-        if (!(entity instanceof Player)) {
-            entity.swing(InteractionHand.MAIN_HAND, true); // mobs have no attack animation of their own yet (M4)
+        if (!(entity instanceof Player) && data.machine.type() != AttackType.KICK) {
+            // Kicks and shield bashes use their clips; a weapon-hand swing adds a second attack motion.
+            entity.swing(InteractionHand.MAIN_HAND, true);
         }
     }
 

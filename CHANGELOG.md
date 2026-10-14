@@ -32,6 +32,8 @@
 - Mobs that have never fought skip the combat-pose hooks on the client.
 
 **Fixes**
+- Mob kicks and shield bashes no longer start an extra vanilla weapon-hand swing beneath their dedicated
+  animation. Other mob hand attacks keep their existing swing dispatch and item hooks.
 - Two-handed humanoid mobs use the bounded support-arm solve and compensate vanilla attack shoulder movement,
   keeping their support grip attached during real attacks. Preserve occupied-offhand poses and restore shared
   model positions after each render.

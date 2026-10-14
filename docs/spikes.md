@@ -98,6 +98,38 @@ debug reach ray into a physical mesh endpoint or prove palm/support-hand attachm
 PAL's [live checkpoint](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12)
 adds heavy/morph, mob and reload evidence while retaining tracking/shutdown and alignment limits.
 
+### Mob kick hand-swing dispatch
+
+The pre-correction husk kick capture at `7e8c74c` showed continuous fast leg motion and a separate vanilla
+weapon-hand swing during recovery. Finer bone samples resolve the coarse onion-skin flags into intervening
+poses; the arm cycle fits vanilla zombie `attackTime` motion. This does not establish a rig-handover snap.
+The local audit and 50 ms selection are retained in
+`C:/dev/steelclash-beta-audit/20261014/kick-audit/AUDIT.md`.
+
+`Combat.onReleaseStarted` now excludes non-player `KICK` from `LivingEntity.swing`; `KICK` also represents
+shield bash, and both have dedicated clips. This prevents a new conventional hand animation without clearing
+an already active legitimate swing. Slash, overhead, stab, jab, special and throw still dispatch their existing
+main-hand animation and item swing hooks. Restricting the call to `isWeaponAttack()` would wrongly exclude
+jab, special and throw. Player dispatch and damage rules retain their existing paths.
+
+Two production GameTests use fresh passive husks and ordinary attack requests/ticks: kick/bash must start no
+hand swing, while the other six releases must retain it and throw must also remove the held weapon. All 197
+required GameTests passed with optional integrations and again after restoration with `-PnoCompat`, including
+fresh compilation. Both mutations were caught by their intended tests: unconditional swing failed
+`mobkickandshieldbashdonotstartvanillahandswings`; an `isWeaponAttack()`-only guard failed
+`mobhandattacksretainvanillaswingdispatch`. Logs and the mutation report are retained beside the audit as
+`gametest-default.log`, `gametest-161703814270.log` and `mutants.report.json`.
+
+The post-correction ordinary-input husk capture retained 737 frames with the window hidden and mouse released at
+`C:/dev/steelclash-beta-audit/20261014/mob-grip/kick-checkpoint-161802732404/live-kick`.
+Across kick release/recovery, the weapon arm's yaw previously ranged from -0.100 to +0.500 radians;
+all 59 post-correction samples stay at -0.100 radians. Its pitch now stays within ordinary idle bob rather
+than tracing the conventional hand attack. A 26-frame selection on a 50 ms grid (maximum timestamp error
+6.98 ms) and its inspected onion pairs confirm the extra arm cycle is absent. The selection still flags
+fast leg motion, entry changes and the fixture's final reset; this is a bounded dispatch/rendering fix,
+not acceptance of every transition, shield-bash appearance or first-person kick foot. Comparison evidence is
+`kick-audit/after-comparison.json` and `kick-audit/after-50ms-onion/pairs.png` under the same day's audit root.
+
 ## Bug audit and active-parry acknowledgments
 
 The [earlier bug audit](archive/findings-history.md#bug-audit-and-fixes-2026-10-08) records input, prediction,

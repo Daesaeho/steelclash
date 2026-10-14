@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Mob kick hand-swing dispatch, 2026-10-14 | Fresh compilation; 197 required GameTests passed in each optional-mod variant; both intended mutations caught; hidden live husk capture confirms the extra weapon-arm cycle is absent | [Dispatch finding and evidence](spikes.md#mob-kick-hand-swing-dispatch), [rendering checks](#mob-kick-and-shield-bash-hand-animation) |
 | Two-handed mob grip, 2026-10-14 | Compile/full build; 254 fresh JUnit; two caught native mutations; both main arms contact the handle in 40/40 full-weight husk poses; shipped/candidate live release checks; 48 identical shield controls | [Pivot correction, captures and remaining scope](archive/mob-grip-20261014.md) |
 | Melee knockback setting, 2026-10-13 | 195 required GameTests in each Spartan variant (one new); four of four mutations caught; default unchanged; not played in a client | [Playtest list](#melee-knockback-setting) |
 | Ranged stamina, 2026-10-13 | 194 required GameTests in each Spartan variant (seven new); nine of nine mutations caught; full build; not played in a client | [Rule and findings](spikes.md#ranged-stamina), [playtest list](#ranged-stamina) |
@@ -77,6 +78,21 @@ Select the relevant checks below; preserve the player guide's normal controls an
 - Readable ready/windup, arc-aligned release, continuous recovery/morph/heavy/weapon-kick. [Client contract](animation.md#client-acceptance-checks), [mob arms](archive/testing-history.md#mob-arms-and-windups-added-2026-10-08), [baseline](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11).
 - Torch/shield/empty, eat/drink/cancel/bottle return, hotbar swaps, both main arms. [Consumption](archive/testing-history.md#offhand-consumable-blend-2026-10-10), [swaps](archive/testing-history.md#hotbar-swaps-and-player-kick-rig-handover-2026-10-10).
 - Nine families, light/heavy/mirrored, controlled model/armor/handedness, hilt/tip alignment. [Family motion](archive/testing-history.md#representative-motion-coverage-by-family-2026-10-10), [capture integrity](archive/testing-history.md#trustworthy-pose-sheet-captures-2026-10-09).
+
+### Mob kick and shield-bash hand animation
+
+- `MobReleaseAnimationGameTests` drives ordinary requests through the first production release sweep on fresh
+  passive husks. Kick and vanilla-shield bash must leave `swinging` false and `swingTime` zero; slash, overhead,
+  stab, jab, special and throw must retain main-hand swing dispatch. Throw also verifies item removal.
+- All 197 required GameTests passed in both optional-mod variants. The unconditional-swing mutation failed
+  `mobkickandshieldbashdonotstartvanillahandswings`; the `isWeaponAttack()`-only mutation failed
+  `mobhandattacksretainvanillaswingdispatch`. Restored source compiled and passed the no-compat suite.
+- The hidden ordinary-input `mob-kick` capture completes release/recovery with no extra vanilla weapon-arm
+  cycle: all 59 captured samples retain -0.100-radian main-arm yaw. Inspected 50 ms onion pairs and the
+  [comparison evidence](spikes.md#mob-kick-hand-swing-dispatch) support this bounded correction.
+- Still check shield-bash appearance separately and inspect weapon-to-kick/recovery-to-idle transitions,
+  including entry and final-reset onion flags. First-person kick feet and broader model/lifecycle acceptance
+  remain open; the dispatch tests and this husk fixture do not close them.
 
 ### Ranged stamina
 
