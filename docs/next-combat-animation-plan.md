@@ -21,7 +21,9 @@ grip checkpoint](archive/grip-and-vector-checkpoint-20261013.md), [husk grip evi
 and [updated player grip evidence](archive/player-physical-grip-20261014.md) record their limits. The latest player
 checkpoint verifies a 277-JUnit full build, six caught mutations, selected iron-sword binding/live controls and
 occupied-shield parity. Pitched first-person contact, blended recovery and near-plane cases remain open; evidence does
-not establish other model or family support. Step 5 metadata passes 281 fresh JUnit, 215 required GameTests in each
+not establish other model or family support. [Separate shoulder measurements](archive/player-physical-grip-20261014.md#separating-blended-shoulder-reach--2026-10-15)
+now expose the blended reach gap and an offline joint candidate; runtime adoption is the next grip action.
+Step 5 metadata passes 281 fresh JUnit, 215 required GameTests in each
 Spartan variant and the final merged native diagnostics; anatomical Deliverable B and remaining lifecycle/remote
 acceptance keep the full step-5 gate open.
 Verification procedures and unsupported acceptance are centralized in [testing.md](testing.md).

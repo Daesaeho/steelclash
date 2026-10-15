@@ -1,5 +1,7 @@
 # Unreleased
 
+- Add opt-in grip-shoulder and final arm-transform measurements for blended first-person poses and weapon/kick
+  handovers. Record the remaining reach gaps and an offline joint-solve candidate; runtime grip acceptance remains open.
 - Add the first original editable Blockbench sword source with light/heavy body/free-arm/leg tracks and verified
   native save/reopen preservation. Validate its body-folded PAL export against the source before recovering local
   body/free-arm/foot motion. Add exact linear phases and an explicit hip counter-turn policy; runtime styles are pending.

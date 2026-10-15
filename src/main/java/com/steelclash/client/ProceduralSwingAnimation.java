@@ -7,6 +7,7 @@ import com.steelclash.client.anim.CombatPresentation;
 import com.steelclash.client.anim.AnimationLibrary;
 import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.client.dev.LiveCapture;
+import com.steelclash.client.dev.BladeMeshProbe;
 import com.steelclash.combat.Downed;
 import com.steelclash.core.RotationBlend;
 import com.steelclash.core.UsePoseBlend;
@@ -222,11 +223,9 @@ public class ProceduralSwingAnimation implements IAnimation {
         LiveCapture.recordRenderedPose(player, pose, ready != null, consumableWeight);
         // In first person the ready stance stands in for vanilla's arm pose: attacks blend from it and back to it.
         boolean readyBase = ready != null && FirstPersonMode.isFirstPersonPass();
-        if (readyBase) {
-            applyReady(bone);
-        }
+        Vec supportShoulder = readyBase ? applyReady(bone) : Vec.ZERO;
         if (pose == null) {
-            return finishBone(bone);
+            return finishBone(bone, supportShoulder);
         }
         float w = (float) pose.weight();
         WeaponRig rig = viewRig != null && FirstPersonMode.isFirstPersonPass() ? viewRig : this.rig;
@@ -260,6 +259,7 @@ public class ProceduralSwingAnimation implements IAnimation {
                     blendRotation(bone, grip, w);
                     // PAL bone positions: X and Z as the model part, Y flipped. Over a ready stance's shoulder: blend.
                     Vec shoulder = rig.offShoulder().subtract(readyBase && ready.twoHanded() ? readyRig.offShoulder() : Vec.ZERO);
+                    if (BladeMeshProbe.supportShoulderEnabled()) supportShoulder = supportShoulder.add(shoulder.scale(w));
                     bone.setPosX(bone.getPosX() + (float) shoulder.x() * w);
                     bone.setPosY(bone.getPosY() - (float) shoulder.y() * w);
                     bone.setPosZ(bone.getPosZ() + (float) shoulder.z() * w);
@@ -290,11 +290,11 @@ public class ProceduralSwingAnimation implements IAnimation {
             default -> {
             }
         }
-        return finishBone(bone);
+        return finishBone(bone, supportShoulder);
     }
 
     /** Blend the actually displayed bone transforms when leg choreography replaces the weapon rig, and vice versa. */
-    private PlayerAnimBone finishBone(PlayerAnimBone bone) {
+    private PlayerAnimBone finishBone(PlayerAnimBone bone, Vec supportShoulder) {
         if (ready != null && FirstPersonMode.isFirstPersonPass()) LiveCapture.recordReadyView(player, readyViewYaw, readyViewPitch);
         RigPoseBlend blend = FirstPersonMode.isFirstPersonPass() ? firstPersonRig : worldRig;
         boolean legRig = pose != null && pose.kick();
@@ -302,6 +302,14 @@ public class ProceduralSwingAnimation implements IAnimation {
         blend.begin(CombatPresentation.frameNumber(), CombatPresentation.frameTimeNanos(), legRig, exact,
                 new RigIdentity(player.getMainHandItem().getItem(), player.getOffhandItem().getItem(), player.getMainArm(),
                         com.steelclash.client.anim.AnimationLibrary.INSTANCE.generation()));
+        if (BladeMeshProbe.supportShoulderEnabled()
+                && bone.getName().equals(player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT ? "right_arm" : "left_arm")) {
+            // Track just the solver's model-space contribution, separately from camera and vanilla pivot offsets.
+            // This opt-in channel follows the same handover fraction without changing the displayed arm.
+            RigPoseBlend.Bone shoulder = blend.apply("supportShoulder", new RigPoseBlend.Bone(0, 0, 0,
+                    supportShoulder.x(), supportShoulder.y(), supportShoulder.z(), 0));
+            BladeMeshProbe.supportShoulder(player, supportShoulder, new Vec(shoulder.x(), shoulder.y(), shoulder.z()), blend.blending());
+        }
         RigPoseBlend.Bone result = blend.apply(bone.getName(), new RigPoseBlend.Bone(bone.getRotX(), bone.getRotY(), bone.getRotZ(),
                 bone.getPosX(), bone.getPosY(), bone.getPosZ(), bone.getBend()));
         bone.updateRotation((float)result.rx(), (float)result.ry(), (float)result.rz());
@@ -345,18 +353,18 @@ public class ProceduralSwingAnimation implements IAnimation {
     }
 
     /** The first-person ready stance, in place of vanilla's arm pose: weapon arm, grip hand, and the weapon when idle. */
-    private void applyReady(PlayerAnimBone bone) {
+    private Vec applyReady(PlayerAnimBone bone) {
         String name = bone.getName();
         if (!name.equals("right_arm") && !name.equals("left_arm")) {
             if (pose == null && name.equals(ready.leftHanded() ? "left_item" : "right_item")) {
                 itemRotation(bone, NO_TURN, readyRig.item(), 1);
             }
-            return;
+            return Vec.ZERO;
         }
         addModelOffset(bone,WeaponRig.viewShoulderOffset(readyViewYaw,readyViewPitch,name.equals("left_arm")));
         if (name.equals("left_arm") != ready.leftHanded() && !player.getOffhandItem().isEmpty()) {
             blendRotation(bone, carriedArm, 1);
-            return;
+            return Vec.ZERO;
         }
         addModelOffset(bone,WeaponRig.cameraRotation(readyViewYaw,readyViewPitch)
                 .apply(new Vec(0,ready.firstPerson().down(),-ready.firstPerson().forward())));
@@ -369,7 +377,9 @@ public class ProceduralSwingAnimation implements IAnimation {
             bone.setPosX(bone.getPosX() + (float) shoulder.x());
             bone.setPosY(bone.getPosY() - (float) shoulder.y());
             bone.setPosZ(bone.getPosZ() + (float) shoulder.z());
+            return shoulder;
         }
+        return Vec.ZERO;
     }
 
     private static void addModelOffset(PlayerAnimBone bone, Vec offset) {

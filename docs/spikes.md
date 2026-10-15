@@ -11,6 +11,9 @@ noisy timings establish no Vector API benefit; the runtime retains its existing 
 The [physical player-grip checkpoint](archive/player-physical-grip-20261014.md) records bounded iron-sword contact,
 heavy/morph/reload live controls, restored binding checks and unchanged occupied-shield controls. Pitched first-person
 contact, blended recovery, near-plane crossings and broader model/family acceptance remain open.
+Its [blended shoulder measurements](archive/player-physical-grip-20261014.md#separating-blended-shoulder-reach--2026-10-15)
+separate total reach from an additive correction: six captured recovery targets exceed the current reach shell.
+An offline joint socket/support solve is feasible for those rows; its runtime item-transform and motion checks remain open.
 
 The [mob grip checkpoint](archive/mob-grip-20261014.md) reproduces both a discarded support-shoulder solve and
 vanilla `attackTime` pivot interference. Rendered husk hand/handle contact, ordinary live morph release, handedness

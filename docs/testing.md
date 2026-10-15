@@ -82,6 +82,9 @@ Select the relevant checks below; preserve the player guide's normal controls an
 - Torch/shield/empty, eat/drink/cancel/bottle return, hotbar swaps, both main arms. [Consumption](archive/testing-history.md#offhand-consumable-blend-2026-10-10), [swaps](archive/testing-history.md#hotbar-swaps-and-player-kick-rig-handover-2026-10-10).
 - Nine families, light/heavy/mirrored, controlled model/armor/handedness, hilt/tip alignment. [Family motion](archive/testing-history.md#representative-motion-coverage-by-family-2026-10-10), [capture integrity](archive/testing-history.md#trustworthy-pose-sheet-captures-2026-10-09).
 - Physical player grip: finish pitched main-hand contact, blended recovery and first-person camera clearance. Check other model/configuration stacks and weapon families separately. [Verified cases and open checks](archive/player-physical-grip-20261014.md).
+- The separate shoulder probe passed compile and three hidden live scenes (415 screenshots, 115 matched mesh rows),
+  including actual weapon/kick handovers. [Reach measurements](archive/player-physical-grip-20261014.md#separating-blended-shoulder-reach--2026-10-15)
+  expose six out-of-shell recovery samples; validate predicted item transforms and the joint-solve candidate in rendered motion before adoption.
 
 ### Mob kick and shield-bash hand animation
 

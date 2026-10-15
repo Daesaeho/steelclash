@@ -9,6 +9,7 @@ import com.steelclash.Config;
 import com.steelclash.client.anim.CombatPresentation;
 import com.steelclash.client.SwingPose;
 import com.steelclash.combat.ModAttachments;
+import com.steelclash.core.Vec;
 import com.zigythebird.playeranimcore.api.firstPerson.FirstPersonMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,12 +32,26 @@ public final class BladeMeshProbe {
     private static final String OUTPUT = System.getProperty("steelclash.bladeMeshOut");
     private static final int MAX_SAMPLES = 512;
     private static final ThreadLocal<Scope> ACTIVE = new ThreadLocal<>();
-    private record ArmPose(long frame, int tick, int entityId, boolean left, Matrix4f matrix, Matrix4f otherMatrix, String skin) {}
+    private record ArmPose(long frame, int tick, int entityId, boolean left, boolean firstPerson, Matrix4f matrix, Matrix4f otherMatrix,
+                           Matrix4f parent, Vec mainRotation, Vec mainPivot, Vec otherRotation, Vec otherPivot, String skin) {}
     private static final ThreadLocal<ArmPose> ARM = new ThreadLocal<>();
+    private record ShoulderPose(long frame, int tick, int entityId, boolean mainLeft, boolean firstPerson,
+                                Vec requested, Vec displayed, boolean blending) {}
+    private static final ThreadLocal<ShoulderPose> SHOULDER = new ThreadLocal<>();
     private static final Set<String> FROZEN_SAMPLES = new HashSet<>();
     private static int samples;
     private static Path output;
     private BladeMeshProbe() {}
+
+    public static boolean supportShoulderEnabled() { return OUTPUT != null && samples < MAX_SAMPLES; }
+
+    /** Separately blended solver offset, in model pixels (+Y down), from this exact PAL pass. */
+    public static void supportShoulder(LivingEntity entity, Vec requested, Vec displayed, boolean blending) {
+        if (!supportShoulderEnabled() || !subject(entity)) return;
+        SHOULDER.set(new ShoulderPose(CombatPresentation.frameNumber(), entity.tickCount, entity.getId(),
+                entity.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT, FirstPersonMode.isFirstPersonPass(),
+                requested, displayed, blending));
+    }
 
     public static final class Scope {
         final Scope previous;
@@ -58,7 +73,10 @@ public final class BladeMeshProbe {
         var other=left?model.rightArm:model.leftArm;
         PoseStack otherPose=new PoseStack();otherPose.mulPose(pose.last().pose());other.translateAndRotate(otherPose);
         String skin=entity instanceof net.minecraft.client.player.AbstractClientPlayer player?player.getSkin().model().name():"WIDE";
-        ARM.set(new ArmPose(CombatPresentation.frameNumber(),entity.tickCount,entity.getId(),left,new Matrix4f(armPose.last().pose()),new Matrix4f(otherPose.last().pose()),skin));
+        ARM.set(new ArmPose(CombatPresentation.frameNumber(),entity.tickCount,entity.getId(),left,FirstPersonMode.isFirstPersonPass(),
+                new Matrix4f(armPose.last().pose()),new Matrix4f(otherPose.last().pose()),new Matrix4f(pose.last().pose()),
+                new Vec(part.xRot,part.yRot,part.zRot),new Vec(part.x,part.y,part.z),
+                new Vec(other.xRot,other.yRot,other.zRot),new Vec(other.x,other.y,other.z),skin));
     }
 
     private static boolean subject(LivingEntity entity) {
@@ -92,10 +110,24 @@ public final class BladeMeshProbe {
         scope.data.addProperty("shot",PoseSheet.currentShotName());
         scope.data.addProperty("left",left);scope.data.addProperty("first_person_pass",FirstPersonMode.isFirstPersonPass());
         ArmPose arm=ARM.get();
-        if(arm!=null&&arm.frame==CombatPresentation.frameNumber()&&arm.tick==entity.tickCount&&arm.entityId==entity.getId()&&arm.left==left) {
+        if(arm!=null&&arm.frame==CombatPresentation.frameNumber()&&arm.tick==entity.tickCount&&arm.entityId==entity.getId()&&arm.left==left
+                &&arm.firstPerson==FirstPersonMode.isFirstPersonPass()) {
             scope.data.add("arm_draw_matrix",matrix(arm.matrix));scope.data.addProperty("arm_skin",arm.skin);
             scope.data.add("other_arm_draw_matrix",matrix(arm.otherMatrix));
+            scope.data.add("arm_parent_draw_matrix",matrix(arm.parent));
+            scope.data.add("main_arm_rotation_radians",vector(arm.mainRotation));
+            scope.data.add("main_arm_pivot_pixels",vector(arm.mainPivot));
+            scope.data.add("other_arm_rotation_radians",vector(arm.otherRotation));
+            scope.data.add("other_arm_pivot_pixels",vector(arm.otherPivot));
         } else scope.data.addProperty("arm_transform_missing",true);
+        ShoulderPose shoulder=SHOULDER.get();
+        if(shoulder!=null&&shoulder.frame==CombatPresentation.frameNumber()&&shoulder.tick==entity.tickCount
+                &&shoulder.entityId==entity.getId()&&shoulder.mainLeft==left
+                &&shoulder.firstPerson==FirstPersonMode.isFirstPersonPass()) {
+            scope.data.add("support_shoulder_requested_pixels",vector(shoulder.requested));
+            scope.data.add("support_shoulder_displayed_pixels",vector(shoulder.displayed));
+            scope.data.addProperty("support_shoulder_rig_blending",shoulder.blending);
+        } else scope.data.addProperty("support_shoulder_missing",true);
         scope.data.addProperty("camera_type",mc.options.getCameraType().name());scope.data.addProperty("main_arm",entity.getMainArm().name());
         scope.data.addProperty("phase",machine.phase().name());scope.data.addProperty("elapsed_us",machine.phaseElapsedUs());
         scope.data.addProperty("duration_us",machine.phaseDurationUs());scope.data.addProperty("heavy",machine.isHeavy());
@@ -177,5 +209,6 @@ public final class BladeMeshProbe {
     }
 
     private static JsonArray matrix(Matrix4f matrix) {float[] values=new float[16];matrix.get(values);JsonArray result=new JsonArray();for(float value:values)result.add(value);return result;}
+    private static JsonArray vector(Vec value) { return array(value.x(),value.y(),value.z()); }
     private static JsonArray array(double... values) {JsonArray result=new JsonArray();for(double value:values){if(!Double.isFinite(value))throw new IllegalStateException("Nonfinite blade mesh value");result.add(value);}return result;}
 }
