@@ -8,6 +8,9 @@ owns reference confidence and unresolved fidelity questions.
 The [player grip and Vector API checkpoint](archive/grip-and-vector-checkpoint-20261013.md) records a bounded
 player reach constraint, remaining rendered/mob grip gaps, and an isolated clip-sampling experiment. Overlapping,
 noisy timings establish no Vector API benefit; the runtime retains its existing sampler.
+The [physical player-grip checkpoint](archive/player-physical-grip-20261014.md) records bounded iron-sword contact,
+heavy/morph/reload live controls, restored binding checks and unchanged occupied-shield controls. Pitched first-person
+contact, blended recovery, near-plane crossings and broader model/family acceptance remain open.
 
 The [mob grip checkpoint](archive/mob-grip-20261014.md) reproduces both a discarded support-shoulder solve and
 vanilla `attackTime` pivot interference. Rendered husk hand/handle contact, ordinary live morph release, handedness

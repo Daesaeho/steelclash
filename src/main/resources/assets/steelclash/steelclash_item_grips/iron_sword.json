@@ -1,0 +1,44 @@
+{
+  "schema": 2,
+  "item": "minecraft:iron_sword",
+  "models": [
+    {
+      "resource": "minecraft:models/item/iron_sword.json",
+      "sha256": "16a6c0e3cc569db43956801f5062ffaaa86f04c9be8166af46b9a60c1ffc49dd"
+    },
+    {
+      "resource": "minecraft:models/item/handheld.json",
+      "sha256": "8fe990d1c011429e27df2d49d35cf8571946370eac8d0fb7497aacede4ff20f5"
+    },
+    {
+      "resource": "minecraft:models/item/generated.json",
+      "sha256": "63190611202e75ad7b812bc9a4b31bd53f3e186895d7b53e5e280b0d1e30a67a"
+    }
+  ],
+  "texture": {
+    "resource": "minecraft:textures/item/iron_sword.png",
+    "sprite": "minecraft:item/iron_sword",
+    "sha256": "ed1fa2f83955583e70a19791455d13989e8bd93b1d7240e775a57141022bed6b"
+  },
+  "handheld_display": {
+    "right_rotation": [0, -90, 55],
+    "left_rotation": [0, 90, -55],
+    "translation_pixels": [0, 4, 0.5],
+    "scale": [0.85, 0.85, 0.85]
+  },
+  "mesh": {
+    "quad_count": 50,
+    "position_sha256": "fc52a01f4cf939c719721978b9b51cd497211c693e5b1a911cb4a4954b74bb2b"
+  },
+  "grip_anchor_pixels": [4.5, 4.5, 8],
+  "shaft_axis": [1, 1, 0],
+  "physical_root_shift_pixels": {
+    "wide": [0, 0, 0],
+    "slim": [0.5, 0, 0]
+  },
+  "grip_texels": [[4,10],[5,10],[3,11],[4,11],[5,11],[2,12],[3,12],[4,12],[0,13],[1,13],[2,13],[3,13],[0,14],[1,14],[2,14],[0,15],[1,15],[2,15]],
+  "grip_gap_pixels": {
+    "min": 2.5,
+    "max": 2.5
+  }
+}

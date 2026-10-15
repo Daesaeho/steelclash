@@ -20,6 +20,10 @@ public record Vec(double x, double y, double z) {
         return x * o.x + y * o.y + z * o.z;
     }
 
+    public Vec cross(Vec o) {
+        return new Vec(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x);
+    }
+
     public double length() {
         return Math.sqrt(dot(this));
     }

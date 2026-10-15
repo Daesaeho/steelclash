@@ -133,21 +133,20 @@ public class ProceduralSwingAnimation implements IAnimation {
 
     private void refreshPose(float partialTick) {
         pose = CombatPresentation.get(player, partialTick).orElse(null);
-        if (pose != null && !pose.kick()) {
-            rig = rigFor(pose);
-        }
         Minecraft mc = Minecraft.getInstance();
-        viewRig = pose != null && !pose.kick() && player == mc.player && mc.options.getCameraType().isFirstPerson()
-                ? rigFor(pose.spreadForView(Config.Client.FIRST_PERSON_SWING_WIDTH.get(), Config.Client.FIRST_PERSON_SWING_LIFT.get(),
-                        player.getViewXRot(partialTick)))
-                : null;
         ready = wantsReadyStance() ? CombatPose.ready(player, partialTick).orElse(null) : null;
         updateConsumable();
         if (ready != null) {
             readyViewYaw=ready.aimYaw()-ready.relativeYaw(); readyViewPitch=player.getViewXRot(partialTick);
             readyRig = ready.readyRigInView(Config.Client.WEAPON_GRIP_PITCH.get(),Config.Client.BLADE_TWIST.get(),
-                    WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()),readyViewPitch);
+                    WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()),readyViewPitch,
+                    com.steelclash.client.anim.VerifiedHandheldGrip.forPlayer(player, ready.gripGap()));
         }
+        if (pose != null && !pose.kick()) rig = rigFor(pose, false);
+        viewRig = pose != null && !pose.kick() && player == mc.player && mc.options.getCameraType().isFirstPerson()
+                ? rigFor(pose.spreadForView(Config.Client.FIRST_PERSON_SWING_WIDTH.get(), Config.Client.FIRST_PERSON_SWING_LIFT.get(),
+                        player.getViewXRot(partialTick)), ready != null)
+                : null;
         CombatPose carried = pose != null ? pose : ready;
         if (carried != null && mc.options.getCameraType().isFirstPerson()
                 && !player.getOffhandItem().isEmpty() && !player.getOffhandItem().canPerformAction(ItemAbilities.SHIELD_BLOCK)) {
@@ -173,9 +172,13 @@ public class ProceduralSwingAnimation implements IAnimation {
         LiveCapture.recordClockRefresh(player, partialTick);
     }
 
-    private static WeaponRig rigFor(CombatPose pose) {
+    private WeaponRig rigFor(CombatPose pose, boolean viewShoulders) {
+        WeaponRig.GripAttachment attachment = com.steelclash.client.anim.VerifiedHandheldGrip.forPlayer(player, pose.gripGap());
+        // First-person attacks retain applyReady's shoulder pivots even at full attack weight.
+        if (attachment != null && viewShoulders)
+            attachment = attachment.withViewShoulders(readyViewYaw, readyViewPitch, pose.leftHanded());
         return pose.rig(Config.Client.WEAPON_GRIP_PITCH.get(), Config.Client.BLADE_TWIST.get(),
-                WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()));
+                WeaponRig.TwistAxis.valueOf(Config.Client.BLADE_TWIST_AXIS.get().name()), attachment);
     }
 
     /**

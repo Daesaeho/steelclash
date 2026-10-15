@@ -74,6 +74,10 @@
   model positions after each render.
 - Constrain two-handed player hand placement to the support arm's bounded reach while preserving blade orientation.
   Add opt-in actual arm-matrix capture; remaining rendered support-grip and mob acceptance is documented.
+- Add a bounded free socket roll for the verified iron-sword mesh when its main-hand grip texels miss the hand volume.
+  Preserve blade orientation and the support target, validate calibrated assets on reload, and retain the ordinary
+  solve for unsupported assets. Add reproducible view-angle and displayed-weight capture diagnostics.
+  [Verified poses, live controls and remaining blend/pitch limits](docs/archive/player-physical-grip-20261014.md).
 - Refresh combat poses when PAL reuses a pre-tick sample at a near-zero render partial, preventing a one-frame
   attack rewind. Shared pose caching includes phase elapsed/duration; first-person camera ownership stays tick-based.
 - An absent attack variant inherits an authored generic heavy release/recovery instead of silently using its light

@@ -37,6 +37,165 @@ public record WeaponRig(double[] arm, double[] item, double[] offArm, Vec offSho
 
     public enum TwistAxis { X, Y, Z }
 
+    /** Verified rendered attachment, in model pixels and the canonical right hand's item frame. */
+    public record GripAttachment(Vec socket, Vec itemGrip, Vec itemAxis, Vec shoulderShift,
+                                 Vec physicalRootShift, boolean slimHand, GripContact mainContact) {
+        /** Source-compatible support-only attachment; legacy callers do not acquire a main-mesh constraint. */
+        public GripAttachment(Vec socket, Vec itemGrip, Vec itemAxis, Vec shoulderShift) {
+            this(socket, itemGrip, itemAxis, shoulderShift, Vec.ZERO, false, null);
+        }
+
+        public GripAttachment {
+            for (Vec value : new Vec[]{socket, itemGrip, itemAxis, shoulderShift, physicalRootShift}) {
+                java.util.Objects.requireNonNull(value);
+                if (!Double.isFinite(value.x()) || !Double.isFinite(value.y()) || !Double.isFinite(value.z()))
+                    throw new IllegalArgumentException("grip attachment must be finite");
+            }
+            if (socket.length() < 1e-9 || itemAxis.length() < 1e-9 || !Double.isFinite(itemAxis.length()))
+                throw new IllegalArgumentException("grip attachment needs a socket and shaft direction");
+            itemAxis = itemAxis.scale(1 / itemAxis.length());
+        }
+
+        /** Account for the view-anchored shoulder pivots already applied to a first-person attack. */
+        public GripAttachment withViewShoulders(double viewYaw, double viewPitch, boolean leftHanded) {
+            Vec mainDelta = viewShoulderOffset(viewYaw, viewPitch, leftHanded);
+            Vec offDelta = viewShoulderOffset(viewYaw, viewPitch, !leftHanded);
+            Vec difference = mainDelta.subtract(offDelta);
+            if (leftHanded) difference = new Vec(-difference.x(), difference.y(), difference.z());
+            return new GripAttachment(socket, itemGrip, itemAxis, shoulderShift.add(difference), physicalRootShift,
+                    slimHand, mainContact);
+        }
+    }
+
+    /** A verified socket/mesh anchor refines the two-handed target without changing the blade orientation. */
+    public static WeaponRig solve(double bladeYaw, double bladePitch, double gripDegrees, double twistDegrees, TwistAxis twistAxis,
+                                  double[] body, double relax, double gripGap, boolean twoHanded, GripAttachment attachment) {
+        WeaponRig base = solve(bladeYaw, bladePitch, gripDegrees, twistDegrees, twistAxis, body, relax, gripGap, twoHanded);
+        if (!twoHanded || attachment == null) return base;
+        Mat3 arm = Mat3.zyx(base.arm[0], base.arm[1], base.arm[2]);
+        Mat3 blade = arm.mul(HAND).mul(Mat3.zyx(base.item[0], base.item[1], base.item[2]));
+        Vec shaft = blade.apply(attachment.itemAxis);
+        Vec constant = attachment.shoulderShift.add(blade.apply(attachment.itemGrip)).subtract(shaft.scale(gripGap));
+        Vec centre = LEFT_SHOULDER.subtract(RIGHT_SHOULDER).subtract(constant);
+        double radius = attachment.socket.length(); // socket offset, not rendered arm length
+        Vec direction = arm.apply(attachment.socket).scale(1 / radius);
+        Vec constrained = reachableSocket(direction, centre, radius);
+        // Unsupported attachment geometry cannot stretch either arm or escape into the render loop.
+        if (constrained == null) return base;
+        arm = rotationBetween(direction, constrained).mul(arm);
+        Mat3 item = HAND.transpose().mul(arm.transpose()).mul(blade);
+        Vec grip = RIGHT_SHOULDER.add(arm.apply(attachment.socket)).add(constant);
+        Vec toGrip = grip.subtract(LEFT_SHOULDER);
+        double distance = toGrip.length();
+        double travel = Math.max(0, Math.min(MAX_SHOULDER_REACH, distance - SUPPORT_GRIP_DISTANCE));
+        Vec shoulder = distance < 1e-9 ? Vec.ZERO : toGrip.scale(travel / distance);
+        if (attachment.mainContact() != null) {
+            Vec minimum = new Vec(attachment.slimHand() ? -2 : -3, 8, -2);
+            Vec maximum = new Vec(1, 10, 2);
+            Mat3 corrected = preserveOrRollForMainContact(arm, blade, attachment, minimum, maximum);
+            if (corrected != arm) {
+                arm = corrected;
+                item = HAND.transpose().mul(arm.transpose()).mul(blade);
+            }
+        }
+        return new WeaponRig(arm.toZyx(), item.toZyx(), reach(LEFT_SHOULDER, grip), shoulder);
+    }
+
+    private static final double MAX_SOCKET_ROLL = Math.toRadians(20);
+    private static final double SOCKET_ROLL_STEP = Math.toRadians(.1);
+    private static final double CONTACT_INTERIOR_MARGIN = .001;
+
+    static Mat3 preserveOrRollForMainContact(Mat3 arm, Mat3 blade, GripAttachment attachment, Vec minimum, Vec maximum) {
+        // Preserve an already-contacting pose bit-for-bit, including valid contact outside the old point anchor.
+        if (attachment.mainContact() == null || attachment.mainContact().intersects(arm, blade,
+                attachment.physicalRootShift(), attachment.socket(), minimum, maximum, 0)) return arm;
+        Mat3 rolled = solveSocketRoll(arm, blade, attachment, minimum, maximum);
+        return rolled == null ? arm : rolled;
+    }
+
+    /** Rolls the arm around its own socket vector while counter-rotating the item to preserve the blade. */
+    static Mat3 solveSocketRoll(Mat3 arm, Mat3 blade, GripAttachment attachment, Vec minimum, Vec maximum) {
+        Vec axis = attachment.socket().scale(1 / attachment.socket().length());
+        Mat3 best = null;
+        double bestMagnitude = Double.POSITIVE_INFINITY;
+        double previousMagnitude = 0;
+        for (double magnitude = SOCKET_ROLL_STEP; magnitude <= MAX_SOCKET_ROLL + 1e-12; magnitude += SOCKET_ROLL_STEP) {
+            for (double sign : new double[]{1, -1}) {
+                Mat3 candidate = arm.mul(axisRotation(axis, magnitude * sign));
+                if (!attachment.mainContact().intersects(candidate, blade, attachment.physicalRootShift(), attachment.socket(),
+                        minimum, maximum, CONTACT_INTERIOR_MARGIN)) continue;
+                double low = previousMagnitude, high = magnitude;
+                for (int iteration = 0; iteration < 18; iteration++) {
+                    double middle = (low + high) * .5;
+                    Mat3 middleArm = arm.mul(axisRotation(axis, middle * sign));
+                    if (attachment.mainContact().intersects(middleArm, blade, attachment.physicalRootShift(), attachment.socket(),
+                            minimum, maximum, CONTACT_INTERIOR_MARGIN)) high = middle;
+                    else low = middle;
+                }
+                Mat3 refined = arm.mul(axisRotation(axis, high * sign));
+                if (high < bestMagnitude) { bestMagnitude = high; best = refined; }
+            }
+            if (best != null) return best;
+            previousMagnitude = magnitude;
+        }
+        return null;
+    }
+
+    private static Mat3 axisRotation(Vec axis, double angle) {
+        double x = axis.x(), y = axis.y(), z = axis.z();
+        double c = Math.cos(angle), s = Math.sin(angle), t = 1 - c;
+        return new Mat3(t*x*x+c, t*x*y-s*z, t*x*z+s*y,
+                t*x*y+s*z, t*y*y+c, t*y*z-s*x,
+                t*x*z-s*y, t*y*z+s*x, t*z*z+c);
+    }
+
+    /** Returns null only when the attachment's socket sphere cannot meet the bounded support shell. */
+    private static Vec reachableSocket(Vec direction, Vec centre, double radius) {
+        double distance = centre.length();
+        double maximum = SUPPORT_GRIP_DISTANCE + MAX_SHOULDER_REACH;
+        if (!Double.isFinite(radius) || !Double.isFinite(distance)) return null;
+        if (distance < 1e-9)
+            return radius >= SUPPORT_GRIP_DISTANCE && radius <= maximum ? direction : null;
+        Vec axis = centre.scale(1 / distance);
+        double lower = (radius * radius + distance * distance - maximum * maximum) / (2 * radius * distance);
+        double upper = (radius * radius + distance * distance - SUPPORT_GRIP_DISTANCE * SUPPORT_GRIP_DISTANCE)
+                / (2 * radius * distance);
+        if (!Double.isFinite(lower) || !Double.isFinite(upper) || lower > 1 + 1e-12 || upper < -1 - 1e-12)
+            return null;
+        lower = Math.max(-1, Math.min(1, lower));
+        upper = Math.max(-1, Math.min(1, upper));
+        if (lower > upper) return null;
+        double dot = direction.dot(axis);
+        if (dot >= lower && dot <= upper) return direction;
+        double projected = Math.max(lower, Math.min(upper, dot));
+        Vec perpendicular = direction.subtract(axis.scale(dot));
+        if (perpendicular.length() < 1e-9) {
+            Vec preferred = Math.abs(axis.z()) < .9 ? new Vec(0,0,-1) : new Vec(0,1,0);
+            perpendicular = preferred.subtract(axis.scale(preferred.dot(axis)));
+        }
+        return axis.scale(projected).add(perpendicular.scale(Math.sqrt(Math.max(0,1-projected*projected)) / perpendicular.length()));
+    }
+
+    /** Shortest rotation of the entire arm; reducing this to yaw/pitch would lose the socket's lateral offset. */
+    private static Mat3 rotationBetween(Vec from, Vec to) {
+        double cosine = Math.max(-1, Math.min(1, from.dot(to)));
+        Vec cross = from.cross(to);
+        double sine = cross.length();
+        if (sine < 1e-12) {
+            if (cosine >= 0) return Mat3.IDENTITY;
+            Vec preferred = Math.abs(from.z()) < .9 ? new Vec(0,0,1) : new Vec(0,1,0);
+            Vec axis = from.cross(preferred); axis = axis.scale(1 / axis.length());
+            double x=axis.x(), y=axis.y(), z=axis.z();
+            return new Mat3(2*x*x-1,2*x*y,2*x*z,2*y*x,2*y*y-1,2*y*z,2*z*x,2*z*y,2*z*z-1);
+        }
+        // Axis-normalized Rodrigues stays finite even if cosine rounds to -1 while the cross product is nonzero.
+        Vec axis = cross.scale(1 / sine);
+        double x=axis.x(), y=axis.y(), z=axis.z(), complement=1-cosine;
+        return new Mat3(cosine+x*x*complement,x*y*complement-z*sine,x*z*complement+y*sine,
+                y*x*complement+z*sine,cosine+y*y*complement,y*z*complement-x*sine,
+                z*x*complement-y*sine,z*y*complement+x*sine,cosine+z*z*complement);
+    }
+
     /** Reflect a canonical right-handed solve across the model's X plane. */
     public WeaponRig mirrored() {
         return new WeaponRig(mirrorAngles(arm), mirrorAngles(item), mirrorAngles(offArm),

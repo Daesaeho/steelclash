@@ -186,6 +186,12 @@ neoForge {
                 if (project.hasProperty('poseSheetArm')) {
                     systemProperty 'steelclash.poseSheetArm', project.property('poseSheetArm').toString()
                 }
+                if (project.hasProperty('poseSheetViewYaw')) {
+                    systemProperty 'steelclash.poseSheetViewYaw', project.property('poseSheetViewYaw').toString()
+                }
+                if (project.hasProperty('poseSheetViewPitch')) {
+                    systemProperty 'steelclash.poseSheetViewPitch', project.property('poseSheetViewPitch').toString()
+                }
                 if (project.hasProperty('poseSheetOffhand')) {
                     systemProperty 'steelclash.poseSheetOffhand', project.property('poseSheetOffhand').toString()
                 }

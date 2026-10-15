@@ -64,6 +64,8 @@ import org.lwjgl.glfw.GLFW;
  *     summoned without AI three blocks in front of the player holding the item, from the front and the side in first
  *     person (file names {@code ..._mobfront}, {@code ..._mobside});</li>
  *     <li>{@code steelclash.poseSheetArm}: main arm, {@code left} or {@code right};</li>
+ *     <li>{@code steelclash.poseSheetViewYaw}/{@code steelclash.poseSheetViewPitch}: optional player view angles
+ *     in degrees, with body yaw held at zero; useful for checking first-person grip while looking aside;</li>
  *     <li>{@code steelclash.poseSheetOffhand}: offhand item id, including {@code minecraft:air} for empty;
  *     omitted arm/offhand settings preserve the subject's existing conditions;</li>
      *     <li>{@code steelclash.poseSheetArmor}: capture-only {@code none} or full {@code iron} equipment;</li>
@@ -78,6 +80,8 @@ import org.lwjgl.glfw.GLFW;
 public final class PoseSheet {
     private static final String SPEC = System.getProperty("steelclash.poseSheet");
     private static final String MOB = System.getProperty("steelclash.poseSheetMob");
+    private static final Float VIEW_YAW = captureAngle("steelclash.poseSheetViewYaw", 180);
+    private static final Float VIEW_PITCH = captureAngle("steelclash.poseSheetViewPitch", 90);
     private static final boolean BACKGROUND = Boolean.getBoolean("steelclash.poseSheetBackground");
     /** Mob shots: the mob's yaw (the player looks along +Z): facing the camera, then side-on. */
     private static final float[] MOB_YAWS = {180, 90};
@@ -116,6 +120,9 @@ public final class PoseSheet {
     private static HumanoidArm renderedMainArm;
     @Nullable
     private static ResourceLocation renderedOffhand;
+    private static float renderedViewYaw;
+    private static float renderedViewPitch;
+    private static float renderedBodyYaw;
     @Nullable
     private static HumanoidArm requestedMainArm;
     @Nullable
@@ -198,6 +205,9 @@ public final class PoseSheet {
             renderedItem = BuiltInRegistries.ITEM.getKey(entity.getMainHandItem().getItem());
             renderedMainArm = entity.getMainArm();
             renderedOffhand = BuiltInRegistries.ITEM.getKey(entity.getOffhandItem().getItem());
+            renderedViewYaw = entity.getViewYRot(0);
+            renderedViewPitch = entity.getViewXRot(0);
+            renderedBodyYaw = entity.yBodyRotO;
         }
     }
 
@@ -318,6 +328,9 @@ public final class PoseSheet {
     }
 
     private static List<Shot> plan() {
+        if (MOB != null && (VIEW_YAW != null || VIEW_PITCH != null)) {
+            throw new IllegalArgumentException("Pose sheet view-angle fixtures require a player subject");
+        }
         List<Shot> out = new ArrayList<>();
         List<String> items = items();
         for (String item : items) {
@@ -411,12 +424,14 @@ public final class PoseSheet {
 
     /** Pins the pose every tick so the client's own combat tick can't move it on. */
     private static void hold(LocalPlayer player, Shot shot) {
-        player.setYRot(0);
-        player.setXRot(0);
-        player.yRotO = 0;
-        player.xRotO = 0;
-        player.setYHeadRot(0);
-        player.yHeadRotO = 0;
+        float viewYaw = VIEW_YAW == null ? 0 : VIEW_YAW;
+        float viewPitch = VIEW_PITCH == null ? 0 : VIEW_PITCH;
+        player.setYRot(viewYaw);
+        player.setXRot(viewPitch);
+        player.yRotO = viewYaw;
+        player.xRotO = viewPitch;
+        player.setYHeadRot(viewYaw);
+        player.yHeadRotO = viewYaw;
         player.yBodyRot = 0;
         player.yBodyRotO = 0;
         LivingEntity subject = subject(player, shot);
@@ -535,6 +550,18 @@ public final class PoseSheet {
         SteelClash.LOGGER.info("Pose sheet conditions: {} entity={} arm={} offhand={} skin={} armor={} poseLeft={} twoHanded={}",
                 shot.name(), BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()), expectedArm, expectedOffhand, skin,
                 armor, renderedPose == null ? null : renderedPose.leftHanded(), renderedPose == null ? null : renderedPose.twoHanded());
+        if (VIEW_YAW != null || VIEW_PITCH != null) {
+            float yaw = VIEW_YAW == null ? 0 : VIEW_YAW;
+            float pitch = VIEW_PITCH == null ? 0 : VIEW_PITCH;
+            SteelClash.LOGGER.info("Pose sheet view fixture: {} requestedYaw={} requestedPitch={} renderedYaw={} renderedPitch={} renderedBodyYaw={}",
+                    shot.name(), yaw, pitch, renderedViewYaw, renderedViewPitch, renderedBodyYaw);
+            if (renderedIndex != index || Math.abs(renderedViewYaw - yaw) > 0.0001
+                    || Math.abs(renderedViewPitch - pitch) > 0.0001 || Math.abs(renderedBodyYaw) > 0.0001
+                    || Math.abs(entity.getViewYRot(0) - yaw) > 0.0001
+                    || Math.abs(entity.getViewXRot(0) - pitch) > 0.0001 || Math.abs(entity.yBodyRotO) > 0.0001) {
+                throw new IllegalStateException("Pose sheet: rendered view fixture does not match " + shot.name());
+            }
+        }
         if (Boolean.getBoolean("steelclash.poseSheetInspectModel")) {
             ItemStack held = entity.getMainHandItem();
             var model = mc.getItemRenderer().getModel(held, entity.level(), entity, entity.getId());
@@ -612,5 +639,16 @@ public final class PoseSheet {
         } catch (RuntimeException invalidSpec) {
             return false;
         }
+    }
+
+    @Nullable
+    private static Float captureAngle(String property, float maximum) {
+        String raw = System.getProperty(property);
+        if (raw == null) return null;
+        float value = Float.parseFloat(raw);
+        if (!Float.isFinite(value) || Math.abs(value) > maximum) {
+            throw new IllegalArgumentException(property + " must be finite and within +/-" + maximum + " degrees");
+        }
+        return value;
     }
 }

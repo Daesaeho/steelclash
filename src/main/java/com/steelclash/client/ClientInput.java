@@ -531,7 +531,8 @@ public final class ClientInput {
         long now = System.nanoTime();
         double cap = Config.TURN_CAP.get();
         Phase phase = player.hasData(ModAttachments.COMBAT) ? player.getData(ModAttachments.COMBAT).machine.phase() : Phase.IDLE;
-        if (cap <= 0 || (phase != Phase.WINDUP && phase != Phase.RELEASE)) {
+        // Frozen dev poses pin absolute view angles; the ordinary mouse turn cap would undo that fixture each frame.
+        if (com.steelclash.client.dev.PoseSheet.running() || cap <= 0 || (phase != Phase.WINDUP && phase != Phase.RELEASE)) {
             limitYaw = player.getYRot();
             limitPitch = player.getXRot();
             limitNanos = now;

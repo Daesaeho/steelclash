@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Player physical grip, 2026-10-15 | Full build; 277 fresh JUnit; 6/6 intended mutations caught; corrected opposite-yaw poses have 60/60 region contact for both hands; binding rejection/recovery and live heavy/morph/reload checks passed; 18 shield controls pixel-identical; displayed-weight capture verified. Blend, pitched main-hand and near-plane limits remain open | [Counts, paths and acceptance limits](archive/player-physical-grip-20261014.md) |
 | Hit feel and mob weapon speed, 2026-10-14 | 209 required GameTests in each Spartan variant (four clean Spartan runs after the death-drop fix); 263 JUnit; 27 of 27 mutations caught; full build; code review findings fixed; hidden live captures of blood, flinch, parry bounce, aim lean on/off and (through a temporary hook) a thrown husk head; a 378-weapon Spartan timing probe; not yet played on the final build | [Hit feel findings](spikes.md#hit-feel), [mob weapon speed](spikes.md#mob-weapon-speed), [playtest list](#hit-feel) |
 | Mob kick hand-swing dispatch, 2026-10-14 | Fresh compilation; 197 required GameTests passed in each optional-mod variant; both intended mutations caught; hidden live husk capture confirms the extra weapon-arm cycle is absent | [Dispatch finding and evidence](spikes.md#mob-kick-hand-swing-dispatch), [rendering checks](#mob-kick-and-shield-bash-hand-animation) |
 | Two-handed mob grip, 2026-10-14 | Compile/full build; 254 fresh JUnit; two caught native mutations; both main arms contact the handle in 40/40 full-weight husk poses; shipped/candidate live release checks; 48 identical shield controls | [Pivot correction, captures and remaining scope](archive/mob-grip-20261014.md) |
@@ -79,6 +80,7 @@ Select the relevant checks below; preserve the player guide's normal controls an
 - Readable ready/windup, arc-aligned release, continuous recovery/morph/heavy/weapon-kick. [Client contract](animation.md#client-acceptance-checks), [mob arms](archive/testing-history.md#mob-arms-and-windups-added-2026-10-08), [baseline](archive/testing-history.md#broader-baseline-and-background-work-2026-10-11).
 - Torch/shield/empty, eat/drink/cancel/bottle return, hotbar swaps, both main arms. [Consumption](archive/testing-history.md#offhand-consumable-blend-2026-10-10), [swaps](archive/testing-history.md#hotbar-swaps-and-player-kick-rig-handover-2026-10-10).
 - Nine families, light/heavy/mirrored, controlled model/armor/handedness, hilt/tip alignment. [Family motion](archive/testing-history.md#representative-motion-coverage-by-family-2026-10-10), [capture integrity](archive/testing-history.md#trustworthy-pose-sheet-captures-2026-10-09).
+- Physical player grip: finish pitched main-hand contact, blended recovery and first-person camera clearance. Check other model/configuration stacks and weapon families separately. [Verified cases and open checks](archive/player-physical-grip-20261014.md).
 
 ### Mob kick and shield-bash hand animation
 
@@ -144,10 +146,11 @@ Select the relevant checks below; preserve the player guide's normal controls an
 
 ## Remaining unsupported checks
 
-- Finish right-main-arm support grip, first-person composition, ordinary-input motion and occupied-offhand controls
-  for the bounded player reach solve. Husk support integration now has [native and live evidence](archive/mob-grip-20261014.md);
-  broader mob models, custom/bent rigs and other weapon families need their own acceptance.
-  [Player grip and Vector API scope](archive/grip-and-vector-checkpoint-20261013.md).
+- Finish first-person composition, ordinary-input motion, live-input controls and the remaining binding case for the
+  bounded player grip correction. The stock iron-sword right −70°/left +70° support/main contact follow-ups have
+  [native evidence](archive/player-physical-grip-20261014.md), but the heavy-motion capture flags near-plane crossings
+  and intermediate first-person support error, so smoothness remains open. Husk support integration has [native and live evidence](archive/mob-grip-20261014.md); broader mob models,
+  custom/bent rigs and other weapon families need their own acceptance.
 - Actual LAN/remote-player latency, packet ordering/correction and immediate visible windup after chunk return.
 - First-person kick feet, shield-bash and other/custom-model variants, broader camera effects, swimming/riding
   and renderer/shader combinations outside the recorded cases.

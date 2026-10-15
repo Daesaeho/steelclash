@@ -43,6 +43,7 @@ public final class BladeMeshProbe {
         final JsonObject data = new JsonObject();
         final JsonArray quads = new JsonArray();
         final Set<String> unique = new HashSet<>();
+        String frozen;
         Scope(Scope previous) { this.previous = previous; }
     }
 
@@ -81,8 +82,9 @@ public final class BladeMeshProbe {
         String frozen=machine.phase()+":"+machine.phaseElapsedUs()+":"+machine.isHeavy()+":"+machine.isMirrored()
                 +":"+entity.getMainArm()+":"+mc.options.getCameraType()+":"+context+":"+left+":"+FirstPersonMode.isFirstPersonPass()
                 +":"+entity.getId()+":"+PoseSheet.currentShotName();
-        if(PoseSheet.running()&&!FROZEN_SAMPLES.add(frozen)) { ACTIVE.remove();return new Scope(previous); }
+        if(PoseSheet.running()&&FROZEN_SAMPLES.contains(frozen)) { ACTIVE.remove();return new Scope(previous); }
         Scope scope=new Scope(previous);ACTIVE.set(scope);
+        scope.frozen=frozen;
         scope.data.addProperty("sample",++samples);scope.data.addProperty("frame",CombatPresentation.frameNumber());
         scope.data.addProperty("time_ns",System.nanoTime());scope.data.addProperty("entity_tick",entity.tickCount);
         scope.data.addProperty("entity_id",entity.getId());scope.data.addProperty("context",context.name());
@@ -113,6 +115,14 @@ public final class BladeMeshProbe {
             scope.data.addProperty("render_phase",swing.phase().name());scope.data.addProperty("progress",swing.progress());
             scope.data.addProperty("weight",swing.weight());scope.data.addProperty("arc_yaw",swing.yaw());
             scope.data.addProperty("arc_pitch",swing.pitch());scope.data.addProperty("arc_extension",swing.extension());
+        });
+        // The displayed pose can still be blending from an earlier action after the raw swing reaches full weight.
+        // Keep both clocks explicit so live mesh analysis does not mistake that handover for an exact solved pose.
+        var displayedPose=CombatPresentation.get(entity,partial);
+        scope.data.addProperty("displayed_pose_present",displayedPose.isPresent());
+        displayedPose.ifPresent(displayed->{
+            scope.data.addProperty("displayed_weight",displayed.weight());
+            scope.data.addProperty("displayed_phase",displayed.phase().name());
         });
         Vector3f socket=new Vector3f().mulPosition(pose.last().pose());
         scope.data.add("item_socket_render_position",array(socket.x,socket.y,socket.z));
@@ -160,6 +170,8 @@ public final class BladeMeshProbe {
                 SteelClash.LOGGER.info("Blade mesh probe output: {}",output);
             }
             Files.writeString(output,scope.data+"\n",StandardOpenOption.APPEND,StandardOpenOption.WRITE);
+            // Empty render passes are not evidence: allow a later frame to supply the actual submitted mesh.
+            if(PoseSheet.running())FROZEN_SAMPLES.add(scope.frozen);
         } catch(Exception error) {throw new IllegalStateException("Blade mesh evidence failed",error);}
         finally {if(scope.previous==null)ACTIVE.remove();else ACTIVE.set(scope.previous);}
     }

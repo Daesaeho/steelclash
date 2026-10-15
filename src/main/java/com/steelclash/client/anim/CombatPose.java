@@ -196,20 +196,37 @@ public record CombatPose(Phase phase, AttackType type, double weight, double aim
      * @param twistScale blade twist setting (1 full, 0 off, -1 reversed)
      */
     public WeaponRig rig(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis) {
+        return rig(gripDegrees, twistScale, twistAxis, null);
+    }
+
+    public WeaponRig rig(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis, WeaponRig.GripAttachment attachment) {
         double[] body = bodyDegrees();
         WeaponRig solved = WeaponRig.solve(leftHanded ? -aimYaw : aimYaw, aimPitch, gripDegrees,
                 bladeTwist * twistScale * (leftHanded ? -1 : 1), twistAxis,
-                leftHanded ? WeaponRig.mirrorAngles(body) : body, WRIST_RELAX, gripGap, twoHanded);
+                leftHanded ? WeaponRig.mirrorAngles(body) : body, WRIST_RELAX, gripGap, twoHanded, attachment);
         return leftHanded ? solved.mirrored() : solved;
     }
 
     /** Ready wrist home belongs to the camera frame; rotating only the blade leaves the hand behind as the body turns. */
     public WeaponRig readyRigInView(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis, double viewPitch) {
+        return readyRigInView(gripDegrees, twistScale, twistAxis, viewPitch, null);
+    }
+
+    public WeaponRig readyRigInView(double gripDegrees, double twistScale, WeaponRig.TwistAxis twistAxis, double viewPitch,
+                                   WeaponRig.GripAttachment attachment) {
         double[] override = PoseSheet.readyOverride();
         double pitch = override == null ? firstPerson.readyPitch() : override[1];
         CombatPose camera = new CombatPose(phase,type,weight,relativeYaw,pitch,offsets,twoHanded,kick,bladeTwist,gripGap,
                 leftHanded,bash,relativeYaw,extension,firstPerson,swing);
-        return camera.rig(gripDegrees,twistScale,twistAxis).fromView(aimYaw-relativeYaw,viewPitch);
+        if (attachment != null) {
+            // Slim item attachment moves in the actual body's X frame, even when the ready shoulders follow the view.
+            double yaw = aimYaw-relativeYaw;
+            Mat3 inverseCamera = WeaponRig.cameraRotation(leftHanded ? -yaw : yaw,viewPitch).transpose();
+            Vec shift = inverseCamera.apply(attachment.shoulderShift());
+            attachment = new WeaponRig.GripAttachment(attachment.socket(), attachment.itemGrip(), attachment.itemAxis(), shift,
+                    inverseCamera.apply(attachment.physicalRootShift()), attachment.slimHand(), attachment.mainContact());
+        }
+        return camera.rig(gripDegrees,twistScale,twistAxis,attachment).fromView(aimYaw-relativeYaw,viewPitch);
     }
 
     /**
