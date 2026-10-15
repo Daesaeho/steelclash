@@ -4,6 +4,7 @@ import com.steelclash.Config;
 import com.steelclash.core.ArcPath;
 import com.steelclash.core.Blade;
 import com.steelclash.core.CombatStateMachine;
+import com.steelclash.core.CollisionProvenance;
 import com.steelclash.core.Vec;
 import com.steelclash.profile.WeaponProfile;
 import java.util.ArrayList;
@@ -50,26 +51,40 @@ public final class SwingTracer {
      * @param contacts newly hit targets in the order the blade reached them (respects the attack's max target count)
      * @param clank    where the blade struck a wall or obstacle this tick, if it did; the swing should stop there
      */
-    public record Result(List<Contact> contacts, @Nullable Vec3 clank) {
+    public record Result(List<Contact> contacts, @Nullable Vec3 clank, @Nullable Clank clankMetadata) {
+        /** Compatibility for callers that only need the old stop point. */
+        public Result(List<Contact> contacts, @Nullable Vec3 clank) {
+            this(contacts, clank, null);
+        }
+    }
+
+    /** A block-shape collision captured by the server tracer, not an entity mesh contact. */
+    public record Clank(Vec3 point, @Nullable Vec3 normal, CombatStateMachine.AttackIdentity attackIdentity,
+                        long serverTick, double progress, CollisionProvenance collisionProvenance) {
     }
 
     /**
-     * A body the blade reached, and the release progress (0 to 1) where it did.
+     * One server AABB contact. {@link #point()} follows the target's current body; {@code capturedPoint} is the
+     * body-clamped point in the historical collision frame, and {@code entryPoint} is the raw segment entry. The
+     * normal belongs to that entry surface. None of these points is a rendered-mesh point.
      *
-     * @param offset where the blade first crossed into the body, on or inside its hitbox, relative to the body's
-     *               position: a hit delivered later (lag compensation) still lands where the blade met the body
+     * @param serverTick level game tick when the contact was captured
+     * @param progress release progress (0 to 1) at capture; held delivery preserves this value
+     * @param offset body-relative point so a held hit follows the body if it moves
+     * @param capturedPoint body-clamped point in the rewound target's world frame at capture
+     * @param entryPoint raw segment entry point in the inflated AABB's historical world frame
      * @param motion which way that point of the blade was travelling (not normalised; may be zero)
      */
-    public record Contact(LivingEntity target, double progress, Vec3 offset, Vec3 motion) {
+    public record Contact(LivingEntity target, int attackerRecipientSerial,
+                          CombatStateMachine.AttackIdentity attackIdentity, long serverTick,
+                          double progress, Vec3 offset, Vec3 capturedPoint, Vec3 entryPoint, Vec3 motion, @Nullable Vec3 normal,
+                          CollisionProvenance collisionProvenance) {
+
         /** The contact point, on the body where it stands now. */
         public Vec3 point() {
             return target.position().add(offset);
         }
 
-        /** The same contact with the blade at another point of its release (where it has got to since). */
-        public Contact atProgress(double newProgress) {
-            return new Contact(target, newProgress, offset, motion);
-        }
     }
 
     /** Geometry is fixed for this trace; reuse it for every blade sample and distance comparison. */
@@ -97,6 +112,8 @@ public final class SwingTracer {
 
     private static Result traceSwept(LivingEntity attacker, CombatData data, WeaponProfile.AttackSpec spec,
                                      CombatStateMachine.Sweep sweep) {
+        CombatStateMachine.AttackIdentity attackIdentity = data.machine.attackIdentity();
+        long serverTick = attacker.level().getGameTime();
         int remaining = spec.maxTargets() - data.hitThisSwing.size();
         boolean checkClanks = Config.ENVIRONMENT_CLANK.get();
         if (remaining <= 0 && !checkClanks) {
@@ -177,8 +194,8 @@ public final class SwingTracer {
                         // The swing's very first sample measures the blade's travel against the next one.
                         Blade.Segment other = previous != null ? previous
                                 : bladeAt(data, path, sweep, pivotNow, yawNow, pitchNow, length, 1f / steps);
-                        hits.add(contact(candidate, sample, other, previous == null,
-                                Mth.lerp(sampleAt, sweep.from(), sweep.to())));
+                        hits.add(contact(attacker, candidate, sample, other, previous == null,
+                                Mth.lerp(sampleAt, sweep.from(), sweep.to()), attackIdentity, serverTick));
                         hitThisStep = true;
                     }
                 }
@@ -191,14 +208,18 @@ public final class SwingTracer {
                 double len = dir.length();
                 Vec tip = len > CLANK_LENGTH ? blade.hilt().add(dir.scale(CLANK_LENGTH / len)) : blade.tip();
                 CombatProfiler.begin(CombatProfiler.Section.WORLD);
-                Vec3 clank;
+                BlockHitResult clank;
                 try {
                     clank = wallHit(attacker, CombatMath.toVec3(blade.hilt()), CombatMath.toVec3(tip));
                 } finally {
                     CombatProfiler.end(CombatProfiler.Section.WORLD);
                 }
-                if (clank != null) {
-                    return new Result(hits, clank);
+                if (clank != null && clank.getType() == HitResult.Type.BLOCK) {
+                    Vec3 normal = clank.isInside() ? null : new Vec3(clank.getDirection().getStepX(),
+                            clank.getDirection().getStepY(), clank.getDirection().getStepZ());
+                    Clank metadata = new Clank(clank.getLocation(), normal, attackIdentity, serverTick, t,
+                            CollisionProvenance.BLOCK_SHAPE);
+                    return new Result(hits, clank.getLocation(), metadata);
                 }
             }
         }
@@ -227,33 +248,42 @@ public final class SwingTracer {
      * that point of the blade was moving, measured against the neighbouring sample ({@code other}, which comes after
      * {@code blade} when {@code otherIsLater}).
      */
-    private static Contact contact(Candidate candidate, Blade.Segment blade, Blade.Segment other, boolean otherIsLater,
-                                   double progress) {
+    private static Contact contact(LivingEntity attacker, Candidate candidate, Blade.Segment blade, Blade.Segment other, boolean otherIsLater,
+                                   double progress, CombatStateMachine.AttackIdentity attackIdentity, long serverTick) {
         AABB box = candidate.hitBox();
         double entry = Blade.entry(blade.hilt(), blade.tip(), box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
         double along = Double.isNaN(entry) ? 1 : entry;
         Vec here = blade.along(along);
         AABB body = candidate.body();
         LivingEntity target = candidate.target();
+        CollisionProvenance provenance = CollisionProvenance.at(here, new Vec(body.minX, body.minY, body.minZ),
+                new Vec(body.maxX, body.maxY, body.maxZ));
+        Vec face = Blade.entryNormal(blade.hilt(), blade.tip(), box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
         // The body here may be rewound (lag compensation); relative to it, the point is the same as on the body now.
-        Vec3 offset = new Vec3(Mth.clamp(here.x(), body.minX, body.maxX), Mth.clamp(here.y(), body.minY, body.maxY),
-                Mth.clamp(here.z(), body.minZ, body.maxZ)).subtract(candidate.offset()).subtract(target.position());
         Vec there = other.along(along);
         Vec travel = otherIsLater ? there.subtract(here) : here.subtract(there);
         if (travel.dot(travel) < 1e-8) {
             travel = blade.tip().subtract(blade.hilt()); // a still blade pushes along itself
         }
-        return new Contact(target, progress, offset, CombatMath.toVec3(travel));
+        Vec3 capturedBodyPoint = new Vec3(Mth.clamp(here.x(), body.minX, body.maxX), Mth.clamp(here.y(), body.minY, body.maxY),
+                Mth.clamp(here.z(), body.minZ, body.maxZ));
+        Vec3 offset = capturedBodyPoint.subtract(candidate.offset()).subtract(target.position());
+        int attackerRecipientSerial = attacker.hasData(ModAttachments.COMBAT)
+                ? attacker.getData(ModAttachments.COMBAT).machine.attackSerial() : -1;
+        return new Contact(target, attackerRecipientSerial, attackIdentity, serverTick,
+                progress, offset, capturedBodyPoint, CombatMath.toVec3(here),
+                CombatMath.toVec3(travel),
+                face == null ? null : CombatMath.toVec3(face), provenance);
     }
 
     /** Where the blade meets a wall or obstacle. Floors (top faces) don't count, so low swings don't snag the ground. */
     @Nullable
-    private static Vec3 wallHit(Entity attacker, Vec3 from, Vec3 to) {
+    private static BlockHitResult wallHit(Entity attacker, Vec3 from, Vec3 to) {
         BlockHitResult hit = attacker.level().clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, attacker));
         if (hit.getType() != HitResult.Type.BLOCK || hit.getDirection() == Direction.UP) {
             return null;
         }
-        return hit.getLocation();
+        return hit;
     }
 
     private static boolean isValidTarget(LivingEntity attacker, LivingEntity target) {

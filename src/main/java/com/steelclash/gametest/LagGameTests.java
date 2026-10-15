@@ -11,10 +11,14 @@ import static com.steelclash.gametest.TestSupport.swordsman;
 
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
+import com.steelclash.combat.CombatData;
+import com.steelclash.combat.HitFeel;
 import com.steelclash.combat.LagCompensation;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.AttackTimings;
+import com.steelclash.core.CollisionProvenance;
 import com.steelclash.core.Phase;
+import com.steelclash.combat.SwingTracer;
 import com.steelclash.entity.TrainingDummy;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -40,6 +44,7 @@ public final class LagGameTests {
     public static void laggedAttackerHitsWhereTheTargetWas(GameTestHelper helper) {
         TrainingDummy target = dummy(helper, 3, 4, FACING_NEGATIVE_X);
         helper.runAfterDelay(10, () -> {
+            Vec3 historicalPosition = target.position();
             // The target steps out of reach; a lagged attacker's screen still shows it in front of them.
             Vec3 away = helper.absoluteVec(new Vec3(7.5, 2, 4.5));
             target.teleportTo(away.x, away.y, away.z);
@@ -52,6 +57,15 @@ public final class LagGameTests {
             LagCompensation.forceLatency(lagged, PING);
             swing(lagged, AttackType.SLASH);
             check(helper, isHurt(target), "a " + PING + " ms attacker should hit the target where their screen showed it");
+            HitFeel.Impact impact = HitFeel.lastImpact(target);
+            check(helper, impact != null, "the traced hit retains capture-time contact metadata");
+            if (impact != null) {
+                double expectedRewindX = historicalPosition.x - target.getX();
+                check(helper, Math.abs((impact.capturedPoint().x - impact.point().x) - expectedRewindX) < 0.05,
+                        "captured body point remains in the historical frame while the delivery point follows the moved body");
+                check(helper, impact.entryPoint().distanceToSqr(impact.capturedPoint()) > 1e-8,
+                        "the raw expanded-box entry is distinct from the clamped historical body point");
+            }
             helper.succeed();
         });
     }
@@ -104,6 +118,36 @@ public final class LagGameTests {
     }
 
     @GameTest(template = ARENA)
+    public static void delayedOldHitCannotOpenComboOnNewWhiff(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        CombatData attackerData = data(attacker);
+        check(helper, Combat.start(attacker, attackerData, AttackType.SLASH), "the original attack starts");
+        var oldIdentity = attackerData.machine.attackIdentity();
+        var spec = Combat.currentSpec(attacker, attackerData).orElseThrow();
+        Vec3 point = defender.getBoundingBox().getCenter();
+        var contact = new SwingTracer.Contact(defender, oldIdentity.serial(), oldIdentity,
+                defender.level().getGameTime(), 0.4, Vec3.ZERO, point, point, new Vec3(1, 0, 0), null,
+                CollisionProvenance.UNKNOWN_OR_MANUAL);
+        var held = new Combat.Hit(AttackType.SLASH, spec, 1f, spec.staminaDamage(), false, null, contact, 0.4);
+        LagCompensation.forceLatency(defender, PING);
+        check(helper, LagCompensation.hold(attacker, defender, held), "the defender's lag grace holds the old hit");
+
+        attackerData.machine.cancel();
+        check(helper, Combat.start(attacker, attackerData, AttackType.OVERHEAD), "a newer attack starts during grace");
+        attackerData.machine.apply(Phase.RECOVERY, AttackType.OVERHEAD, 0, AttackTimings.TICK_US,
+                AttackTimings.ofTicks(1, 1, 1), 0, false, false, false, 0, false);
+        check(helper, !attackerData.machine.isComboAllowed(), "the newer attack has whiffed and has no combo");
+
+        helper.runAfterDelay(8, () -> {
+            check(helper, isHurt(defender), "the old held hit still resolves");
+            check(helper, !attackerData.machine.isComboAllowed(),
+                    "damage from an older action cannot grant a combo to the newer whiff");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = ARENA)
     public static void defenderWithoutLatencyIsHitAtOnce(GameTestHelper helper) {
         Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
@@ -130,7 +174,7 @@ public final class LagGameTests {
         check(helper, m.isFromGuard(), "the expired attempt retains its guard origin");
         LagCompensation.forceLatency(defender, PING);
         var spec = Combat.currentSpec(attacker, data(attacker)).orElseThrow();
-        var hit = new Combat.Hit(AttackType.SLASH, spec, 1f, spec.staminaDamage(), false, null, null);
+        var hit = new Combat.Hit(AttackType.SLASH, spec, 1f, spec.staminaDamage(), false, null, null, 0);
         check(helper, LagCompensation.hold(attacker, defender, hit), "an expired counter cannot end the grace early");
         LagCompensation.tick();
         check(helper, !isHurt(defender), "keep waiting for a real defense or the deadline");

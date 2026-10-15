@@ -34,7 +34,11 @@
   (`parryBounce`). A blocked special only sparks: its attacker isn't staggered.
 - While attacking, fighters' upper bodies lean with where they look (client `aimLean`). While moving, the legs
   keep walking under the attack instead of being carried by its stance and twist (client `legsKeepFootwork`).
-- Network protocol 12: players need the same version as the server.
+- Preserve server contact entry/body/projection frames, meaningful normals, attack identity and original progress
+  through held hits, defenses and feedback. Prevent an old held hit from granting a newer attack a combo or freezing
+  it, including when detailed hit effects are disabled. Default collision geometry retains its existing behavior.
+- Add bounded contact/source debug markers and separate actual hit-stop from retained diagnostic metadata.
+- Network protocol 13: players need the same version as the server.
 
 **Combat**
 - Mobs swing a weapon as fast as a player does. Most mobs have no attack speed of their own, so they used to swing

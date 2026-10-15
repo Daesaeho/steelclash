@@ -15,10 +15,13 @@ import com.steelclash.SteelClash;
 import com.steelclash.Config;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
+import com.steelclash.combat.Feedback;
 import com.steelclash.core.AttackType;
 import com.steelclash.core.AttackTimings;
+import com.steelclash.core.CollisionProvenance;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
+import com.steelclash.net.FeedbackPayload;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.InteractionHand;
@@ -429,6 +432,13 @@ public final class OffenseGameTests {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
         swing(player, AttackType.SLASH);
         check(helper, data(player).machine.phase() == Phase.STAGGER, "slashing into a wall should clank and stagger");
+        FeedbackPayload feedback = Feedback.lastPayload(player);
+        check(helper, feedback != null && feedback.kind() == FeedbackPayload.Kind.CLANK
+                        && feedback.contact() != null
+                        && feedback.contact().collisionProvenance() == CollisionProvenance.BLOCK_SHAPE
+                        && feedback.contact().normal() != null
+                        && feedback.contact().attackIdentity().serial() == data(player).machine.attackSerial(),
+                "wall clank feedback exposes its block face and captured attack action");
         helper.succeed();
     }
 

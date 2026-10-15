@@ -42,6 +42,7 @@ These are the latest committed scopes, not a claim that every checklist below ha
 
 | Checkpoint | Verified scope | Evidence |
 |---|---|---|
+| Contact metadata, 2026-10-15 | Final integrated build: 281 fresh JUnit; 215 required GameTests in each Spartan variant; 7 original mutations plus the effects-disabled fallback mutation caught; 555 hidden diagnostic frames, including the final merged 139-frame riposte, cover received/drawn metadata, source association, actual freeze and natural expiry. World replacement and real remote delivery remain open | [Contracts, counts and acceptance limits](archive/contact-metadata-20261015.md) |
 | Player physical grip, 2026-10-15 | Full build; 277 fresh JUnit; 6/6 intended mutations caught; corrected opposite-yaw poses have 60/60 region contact for both hands; binding rejection/recovery and live heavy/morph/reload checks passed; 18 shield controls pixel-identical; displayed-weight capture verified. Blend, pitched main-hand and near-plane limits remain open | [Counts, paths and acceptance limits](archive/player-physical-grip-20261014.md) |
 | Hit feel and mob weapon speed, 2026-10-14 | 209 required GameTests in each Spartan variant (four clean Spartan runs after the death-drop fix); 263 JUnit; 27 of 27 mutations caught; full build; code review findings fixed; hidden live captures of blood, flinch, parry bounce, aim lean on/off and (through a temporary hook) a thrown husk head; a 378-weapon Spartan timing probe; not yet played on the final build | [Hit feel findings](spikes.md#hit-feel), [mob weapon speed](spikes.md#mob-weapon-speed), [playtest list](#hit-feel) |
 | Mob kick hand-swing dispatch, 2026-10-14 | Fresh compilation; 197 required GameTests passed in each optional-mod variant; both intended mutations caught; hidden live husk capture confirms the extra weapon-arm cycle is absent | [Dispatch finding and evidence](spikes.md#mob-kick-hand-swing-dispatch), [rendering checks](#mob-kick-and-shield-bash-hand-animation) |
@@ -116,6 +117,9 @@ Select the relevant checks below; preserve the player guide's normal controls an
 
 ### Hit feel
 
+- Contact metadata: [the checkpoint](archive/contact-metadata-20261015.md) separates server contact frames,
+  received/debug-drawn data, retained source diagnostics and actual freeze. Exercise world replacement, real remote delivery and broader model/view
+  stacks. The recorded natural expiry does not establish runtime world-replacement cleanup or anatomical collision.
 - In game, not yet played: blood sprays from the spot the blade crossed and flies the way it travelled; parry
   sparks appear between the bodies where the blades met. A zombie hit on the arm flings that arm, on the head snaps
   the head, in the chest tips back; the reaction reads as caused by the blow, not as a twitch. Plate and mail ring

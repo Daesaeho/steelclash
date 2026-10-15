@@ -4,11 +4,14 @@ import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.client.anim.CombatPose;
 import com.steelclash.client.anim.CombatPresentation;
+import com.steelclash.combat.ModAttachments;
+import com.steelclash.core.FeedbackEligibility;
 import com.steelclash.net.FeedbackPayload;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -24,25 +27,37 @@ public final class ClientFeel {
     private static float shake;
     private static long lastFrameNanos = System.nanoTime();
     private static LocalPlayer lastPlayer;
+    private static Level lastLevel;
 
     private ClientFeel() {
     }
 
     public static void onFeedback(FeedbackPayload payload) {
+        CombatDebugRenderer.recordContact(payload);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && (payload.kind() == FeedbackPayload.Kind.LANDED
+                || payload.kind() == FeedbackPayload.Kind.PARRIED || payload.kind() == FeedbackPayload.Kind.CLANK)) {
+            var machine = mc.player.getData(ModAttachments.COMBAT).machine;
+            boolean defenderFollowup = payload.kind() == FeedbackPayload.Kind.PARRIED
+                    && payload.parryDefender() && machine.isFromGuard();
+            if (!FeedbackEligibility.accepts(payload.recipientAttackSerial(), machine.attackSerial(), defenderFollowup)) {
+                return;
+            }
+        }
         float strength = payload.strength();
         switch (payload.kind()) {
             case LANDED -> {
-                hitStop();
+                hitStop(payload);
                 addShake(0.35f * strength);
             }
             case TAKEN -> addShake(0.6f * strength);
             case PARRIED -> {
-                hitStop();
+                hitStop(payload);
                 addShake(0.5f * strength);
             }
             case BLOCKED -> addShake(0.4f * strength);
             case CLANK -> {
-                hitStop();
+                hitStop(payload);
                 addShake(0.7f * strength);
             }
             case HEADSHOT -> {
@@ -61,10 +76,10 @@ public final class ClientFeel {
         }
     }
 
-    private static void hitStop() {
+    private static void hitStop(FeedbackPayload payload) {
         int millis = Config.Client.HIT_STOP_MILLIS.get();
         if (millis > 0) {
-            CombatPresentation.hitStop(System.nanoTime(), millis);
+            CombatPresentation.hitStop(System.nanoTime(), millis, payload.contact());
         }
     }
 
@@ -76,11 +91,13 @@ public final class ClientFeel {
     @SubscribeEvent
     static void onClientTick(ClientTickEvent.Pre event) {
         LocalPlayer current = Minecraft.getInstance().player;
-        if (current != lastPlayer) {
+        Level level = Minecraft.getInstance().level;
+        if (current != lastPlayer || level != lastLevel) {
             CombatPresentation.reset();
             shake = 0;
             lastFrameNanos = System.nanoTime();
             lastPlayer = current;
+            lastLevel = level;
         }
     }
 

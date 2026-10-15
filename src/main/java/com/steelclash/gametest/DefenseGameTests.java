@@ -15,15 +15,18 @@ import static com.steelclash.gametest.TestSupport.swordsman;
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
+import com.steelclash.combat.Feedback;
 import com.steelclash.combat.Disarm;
 import com.steelclash.combat.Dodge;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.compat.Compat;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.CollisionProvenance;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
 import com.steelclash.net.CombatStatePayload;
+import com.steelclash.net.FeedbackPayload;
 import com.steelclash.profile.WeaponProfiles;
 import java.util.concurrent.atomic.AtomicBoolean;
 import io.netty.buffer.Unpooled;
@@ -392,6 +395,21 @@ public final class DefenseGameTests {
             swing(attacker, AttackType.SLASH);
             check(helper, !isHurt(front), "a raised shield should stop a frontal slash");
             check(helper, data(attacker).machine.phase() == Phase.STAGGER, "hitting a shield staggers the attacker");
+            FeedbackPayload attackerFeedback = Feedback.lastPayload(attacker);
+            FeedbackPayload defenderFeedback = Feedback.lastPayload(front);
+            check(helper, attackerFeedback != null && defenderFeedback != null
+                            && attackerFeedback.kind() == FeedbackPayload.Kind.BLOCKED
+                            && defenderFeedback.kind() == FeedbackPayload.Kind.BLOCKED,
+                    "both shield-block participants receive their own feedback packet");
+            check(helper, attackerFeedback.contact() != null && defenderFeedback.contact() != null
+                            && attackerFeedback.contact().attackIdentity().serial() == data(attacker).machine.attackSerial()
+                            && attackerFeedback.contact().serverTick() <= helper.getLevel().getGameTime()
+                            && attackerFeedback.contact().progress() >= 0 && attackerFeedback.contact().progress() <= 1
+                            && attackerFeedback.contact().collisionProvenance() != CollisionProvenance.UNKNOWN_OR_MANUAL,
+                    "the attacker's blocked feedback carries the traced contact metadata");
+            check(helper, attackerFeedback.recipientAttackSerial() == attackerFeedback.contact().attackIdentity().serial()
+                            && defenderFeedback.recipientAttackSerial() == data(front).machine.attackSerial(),
+                    "attacker and defender hit-stop tokens are captured from their respective combat states");
 
             face(front, FACING_POSITIVE_X);
             Player second = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);

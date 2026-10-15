@@ -393,7 +393,7 @@ public final class Combat {
                         HitFeel.Struck struck = HitFeel.struck(target, hit.contact());
                         deliver(entity, target, hit);
                         if (data.swingBlocked) {
-                            thwack(entity, data, spec.get(), contact.progress());
+                            thwack(entity, data, spec.get(), contact);
                             break; // a special stopped on a weapon guard, the attacker unstaggered
                         }
                         if (machine.phase() != Phase.RELEASE && machine.phase() != Phase.RECOVERY) {
@@ -405,7 +405,7 @@ public final class Combat {
                         }
                     }
                     if (stopsAt(entity, data, spec.get(), !held && target.isDeadOrDying())) {
-                        thwack(entity, data, spec.get(), contact.progress());
+                        thwack(entity, data, spec.get(), contact);
                         break; // hitstop: the blade stays in this body, bodies behind it are spared
                     }
                     if (!held) {
@@ -427,7 +427,11 @@ public final class Combat {
                 sync(entity, data, false);
             }
             if (result.clank() != null && machine.isAttacking() && !machine.isThwacked() && Config.ENVIRONMENT_CLANK.get()) {
-                clank(entity, data, result.clank());
+                if (result.clankMetadata() == null) {
+                    clank(entity, data, result.clank());
+                } else {
+                    clank(entity, data, result.clankMetadata());
+                }
             }
             // A sub-tick attack may enter and leave RELEASE within a tick that began in WINDUP, and may even finish
             // recovery. Finalize from the sweep, rather than requiring RELEASE at the beginning of the tick.
@@ -594,9 +598,9 @@ public final class Combat {
      * @param staminaDamage stamina a parrying or blocking defender loses
      */
     public record Hit(AttackType type, WeaponProfile.AttackSpec spec, float damageMult, float staminaDamage, boolean heavy,
-                      @Nullable DamageType damageType, @Nullable SwingTracer.Contact contact) {
-        Hit withContact(@Nullable SwingTracer.Contact newContact) {
-            return new Hit(type, spec, damageMult, staminaDamage, heavy, damageType, newContact);
+                      @Nullable DamageType damageType, @Nullable SwingTracer.Contact contact, double releaseProgress) {
+        Hit withReleaseProgress(double newProgress) {
+            return new Hit(type, spec, damageMult, staminaDamage, heavy, damageType, contact, newProgress);
         }
     }
 
@@ -604,7 +608,8 @@ public final class Combat {
                                   @Nullable SwingTracer.Contact contact) {
         AttackType type = data.machine.type();
         if (type == AttackType.KICK) {
-            return new Hit(type, spec, 1f, spec.staminaDamage(), false, null, contact);
+            return new Hit(type, spec, 1f, spec.staminaDamage(), false, null, contact,
+                    contact == null ? 0 : contact.progress());
         }
         float damageMult = spec.damage();
         float staminaDamage = spec.staminaDamage();
@@ -631,7 +636,7 @@ public final class Combat {
             damageMult *= (float) (couched ? DamageType.mountedChargeMultiplier(speed) : DamageType.mountedSwingMultiplier(speed));
         }
         return new Hit(type, spec, damageMult, staminaDamage, data.machine.isHeavy(),
-                profile.map(p -> p.damageTypeOf(spec)).orElse(null), contact);
+                profile.map(p -> p.damageTypeOf(spec)).orElse(null), contact, contact == null ? 0 : contact.progress());
     }
 
     /**
@@ -644,7 +649,8 @@ public final class Combat {
             applyKick(attacker, target, hit.spec());
             return;
         }
-        SwingContext.run(attacker, hit.type(), hit.spec(), hit.damageMult(), hit.staminaDamage(), hit.contact(), () -> {
+        SwingContext.run(attacker, hit.type(), hit.spec(), hit.damageMult(), hit.staminaDamage(), hit.contact(),
+                hit.releaseProgress(), () -> {
             // Our swings hit each target at most once, so vanilla i-frames would only eat legitimate hits.
             target.invulnerableTime = 0;
             if (attacker instanceof Player player) {
@@ -674,18 +680,22 @@ public final class Combat {
     static void deliverHeld(LivingEntity attacker, LivingEntity target, Hit held) {
         CombatData attackerData = attacker.getData(ModAttachments.COMBAT);
         // The blade has moved on while the hit was held: a parry meets it where it is now, not where it was traced.
-        Hit hit = held.contact() == null ? held : held.withContact(held.contact().atProgress(
-                attackerData.machine.phase() == Phase.RELEASE ? attackerData.machine.phaseProgress(0) : 1));
+        boolean sameAttack = held.contact() != null
+                && held.contact().attackIdentity().equals(attackerData.machine.attackIdentity());
+        double releaseProgress = sameAttack
+                ? attackerData.machine.phase() == Phase.RELEASE ? attackerData.machine.phaseProgress(0) : 1
+                : held.releaseProgress();
+        Hit hit = held.withReleaseProgress(releaseProgress);
         float healthBefore = target.getHealth();
         HitFeel.Struck struck = HitFeel.struck(target, hit.contact());
         deliver(attacker, target, hit);
-        if (attackerData.swingBlocked && attackerData.machine.phase() == Phase.RELEASE) {
-            thwack(attacker, attackerData, hit.spec(), attackerData.machine.phaseProgress(0));
+        if (sameAttack && attackerData.swingBlocked && attackerData.machine.phase() == Phase.RELEASE) {
+            thwack(attacker, attackerData, hit.spec(), hit.contact(), hit.releaseProgress());
         }
         if (target.getHealth() < healthBefore) {
             onDamagingHit(attacker, target, hit, struck);
             CombatData data = attacker.getData(ModAttachments.COMBAT);
-            if (data.machine.phase() == Phase.RECOVERY && !data.machine.isComboAllowed()) {
+            if (sameAttack && data.machine.phase() == Phase.RECOVERY && !data.machine.isComboAllowed()) {
                 data.machine.allowCombo();
                 sync(attacker, data, false);
             }
@@ -779,7 +789,7 @@ public final class Combat {
             }
         }
         if (type == AttackType.STAB || stopsAt(entity, data, spec, ally.isDeadOrDying())) {
-            thwack(entity, data, spec, contact.progress());
+            thwack(entity, data, spec, contact);
             return true;
         }
         return false;
@@ -802,8 +812,15 @@ public final class Combat {
     }
 
     /** Ends the release at the contact and starts the thwack recovery; the attacker's own client is corrected too. */
-    private static void thwack(LivingEntity entity, CombatData data, WeaponProfile.AttackSpec spec, double at) {
-        if (data.machine.thwack(spec.thwackUs(data.machine.timings().recoveryUs()), at)) {
+    private static void thwack(LivingEntity entity, CombatData data, WeaponProfile.AttackSpec spec,
+                               SwingTracer.Contact contact) {
+        thwack(entity, data, spec, contact, contact == null ? 0 : contact.progress());
+    }
+
+    private static void thwack(LivingEntity entity, CombatData data, WeaponProfile.AttackSpec spec,
+                               SwingTracer.Contact contact, double releaseProgress) {
+        if (contact != null && contact.attackIdentity().equals(data.machine.attackIdentity())
+                && data.machine.thwack(spec.thwackUs(data.machine.timings().recoveryUs()), releaseProgress)) {
             sync(entity, data, true);
         }
     }
@@ -811,6 +828,11 @@ public final class Combat {
     private static void clank(LivingEntity entity, CombatData data, Vec3 where) {
         stagger(entity, data, Config.CLANK_STAGGER_TICKS.get(), true);
         Feedback.clank(entity, where);
+    }
+
+    private static void clank(LivingEntity entity, CombatData data, SwingTracer.Clank clank) {
+        stagger(entity, data, Config.CLANK_STAGGER_TICKS.get(), true);
+        Feedback.clank(entity, clank);
     }
 
     // ---------------------------------------------------------------- feedback & sync

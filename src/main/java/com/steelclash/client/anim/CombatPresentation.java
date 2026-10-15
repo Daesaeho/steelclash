@@ -7,6 +7,7 @@ import com.steelclash.core.Phase;
 import com.steelclash.core.PoseBlend;
 import com.steelclash.core.PresentationFreeze;
 import com.steelclash.core.PoseSampleStamp;
+import com.steelclash.net.FeedbackPayload;
 import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
@@ -20,6 +21,14 @@ public final class CombatPresentation {
     private static final Map<LivingEntity, Entry> ENTRIES = new WeakHashMap<>();
     private static long frame;
     private static long frameNanos = System.nanoTime();
+    private static final long HIT_STOP_METADATA_LIFE_NANOS = 2_500_000_000L;
+    @Nullable
+    private static FeedbackPayload.Contact lastHitStopContact;
+    private static long lastHitStopAt;
+
+    /** QA view keeps the actual local freeze separate from the retained source-metadata TTL. */
+    public record HitStopDebugSnapshot(boolean freezeHolding, @Nullable FeedbackPayload.Contact source,
+                                       long sourceAgeNanos, boolean sourceWithinMetadataTtl) {}
 
     private CombatPresentation() {}
 
@@ -28,17 +37,34 @@ public final class CombatPresentation {
         frameNanos = now;
     }
 
-    public static void reset() { ENTRIES.clear(); }
+    public static void reset() { ENTRIES.clear(); lastHitStopContact = null; lastHitStopAt = 0; }
     public static long frameNumber() { return frame; }
     public static long frameTimeNanos() { return frameNanos; }
 
-    public static void hitStop(long now, int millis) {
+    public static void hitStop(long now, int millis, @Nullable FeedbackPayload.Contact contact) {
         LivingEntity player = Minecraft.getInstance().player;
         if (player != null && millis > 0) {
+            lastHitStopContact = contact;
+            lastHitStopAt = now;
             Entry entry = ENTRIES.computeIfAbsent(player, ignored -> new Entry());
             entry.freeze.request(now, millis * 1_000_000L);
             entry.sample.clear();
         }
+    }
+
+    /** Recent captured source for the opt-in debug view alongside the associated presentation freeze. */
+    @Nullable
+    public static FeedbackPayload.Contact lastHitStopContact() {
+        return System.nanoTime() - lastHitStopAt <= HIT_STOP_METADATA_LIFE_NANOS ? lastHitStopContact : null;
+    }
+
+    public static HitStopDebugSnapshot hitStopDebugSnapshot(long now) {
+        LivingEntity player = Minecraft.getInstance().player;
+        Entry entry = player == null ? null : ENTRIES.get(player);
+        boolean withinTtl = lastHitStopContact != null && now - lastHitStopAt <= HIT_STOP_METADATA_LIFE_NANOS;
+        return new HitStopDebugSnapshot(entry != null && entry.freeze.holding(now),
+                withinTtl ? lastHitStopContact : null,
+                lastHitStopAt == 0 ? -1 : Math.max(0, now - lastHitStopAt), withinTtl);
     }
 
     public static void corrected(LivingEntity entity) {

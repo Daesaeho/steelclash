@@ -105,6 +105,12 @@ public final class HitReactions {
         }
         long now = System.nanoTime();
         if (payload.kind() == HitReactionPayload.Kind.BOUNCE) {
+            Bounce current = BOUNCES.get(body);
+            if (current != null && (now - current.at) / 1e9 <= BOUNCE_SECONDS
+                    && payload.serial() != current.serial && payload.serial() - current.serial < 0) {
+                // A delayed bounce from an older attack must not replace the newer attack's pending recoil.
+                return;
+            }
             BOUNCES.put(body, new Bounce(payload.serial(), payload.progress(), now));
             return;
         }

@@ -8,6 +8,7 @@ import com.steelclash.combat.ModAttachments;
 import com.steelclash.combat.SwingTracer;
 import com.steelclash.compat.Compat;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.CollisionProvenance;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
@@ -118,12 +119,23 @@ public final class SwingGameTests {
             CombatStateMachine.Sweep sweep = new CombatStateMachine.Sweep(0.4, 0.6);
 
             Config.ENVIRONMENT_CLANK.set(true);
-            TestSupport.check(helper, SwingTracer.trace(player, data, spec, sweep).clank() != null,
+            SwingTracer.Result blockedByWall = SwingTracer.trace(player, data, spec, sweep);
+            TestSupport.check(helper, blockedByWall.clank() != null,
                     "the test wall must produce a clank when enabled");
+            SwingTracer.Clank clank = blockedByWall.clankMetadata();
+            TestSupport.check(helper, clank != null && clank.point().equals(blockedByWall.clank())
+                            && clank.attackIdentity().equals(data.machine.attackIdentity())
+                            && clank.serverTick() <= helper.getLevel().getGameTime()
+                            && clank.progress() >= 0 && clank.progress() <= 1
+                            && clank.collisionProvenance() == CollisionProvenance.BLOCK_SHAPE,
+                    "wall stop captures its block-shape point, attack, tick, and sweep progress");
+            TestSupport.check(helper, clank.normal() != null,
+                    "a block-face clank carries the clip's mathematically meaningful face normal");
 
             Config.ENVIRONMENT_CLANK.set(false);
             SwingTracer.Result result = SwingTracer.trace(player, data, spec, sweep);
             TestSupport.check(helper, result.clank() == null, "disabled clanks must not stop the trace");
+            TestSupport.check(helper, result.clankMetadata() == null, "disabled clanks do not produce feedback metadata");
             TestSupport.check(helper, result.contacts().isEmpty(), "line-of-sight checks must still reject the hidden target");
             TestSupport.finish(player);
             TestSupport.check(helper, !TestSupport.isHurt(zombie), "disabling clanks must never permit through-wall damage");

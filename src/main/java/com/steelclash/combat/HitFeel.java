@@ -3,6 +3,8 @@ package com.steelclash.combat;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.CollisionProvenance;
+import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.DamageType;
 import com.steelclash.core.HitLocation;
 import com.steelclash.net.HitReactionPayload;
@@ -38,6 +40,7 @@ public final class HitFeel {
     private static final Map<LivingEntity, Vec3> LAST_PARRY = new WeakHashMap<>();
     /** The serial of the attack each attacker last had bounce off a guard. */
     private static final Map<LivingEntity, Integer> LAST_BOUNCE = new WeakHashMap<>();
+    private static final Map<LivingEntity, BounceMetadata> LAST_BOUNCE_METADATA = new WeakHashMap<>();
 
     /** What the armour on the struck part is made of, as far as sound goes. */
     public enum Armour {
@@ -45,10 +48,17 @@ public final class HitFeel {
     }
 
     /**
-     * One blow: where it landed (on the body as it stood), the blade's normalised travel, the part it met, the armour
-     * there, and whether it killed or took the head.
+     * One blow: the current body projection, historical body projection and raw collision entry, the blade's travel,
+     * the part and armour it met, and whether it killed or took the head.
      */
-    public record Impact(Vec3 point, Vec3 motion, HitLocation.Region region, Armour armour, boolean killed, boolean severed) {
+    public record Impact(Vec3 point, Vec3 capturedPoint, Vec3 entryPoint, Vec3 motion, HitLocation.Region region, Armour armour, boolean killed, boolean severed,
+                         CombatStateMachine.AttackIdentity attackIdentity, long serverTick, double progress,
+                         @Nullable Vec3 normal, CollisionProvenance collisionProvenance) {
+    }
+
+    /** Captured server contact data plus the release position used to show a delayed parry bounce. */
+    public record BounceMetadata(CombatStateMachine.AttackIdentity attackIdentity, long serverTick,
+                                 double capturedProgress, double bounceProgress) {
     }
 
     /**
@@ -86,6 +96,11 @@ public final class HitFeel {
         return LAST_BOUNCE.get(attacker);
     }
 
+    @Nullable
+    public static BounceMetadata lastBounceMetadata(LivingEntity attacker) {
+        return LAST_BOUNCE_METADATA.get(attacker);
+    }
+
     /**
      * A swing's blow hurt {@code target}, which was {@code struck} as it landed. Without a traced contact (or with
      * tracing off) it is the plain hit feedback.
@@ -93,7 +108,7 @@ public final class HitFeel {
     static void hit(LivingEntity attacker, LivingEntity target, Combat.Hit hit, Struck struck) {
         SwingTracer.Contact contact = hit.contact();
         if (contact == null || !Config.TRACED_CONTACTS.get()) {
-            Feedback.hit(attacker, target, hit.heavy());
+            Feedback.hit(attacker, target, hit.heavy(), contact);
             return;
         }
         Vec3 point = contact.point();
@@ -107,7 +122,8 @@ public final class HitFeel {
                 && hit.type() != AttackType.STAB && hit.type() != AttackType.JAB
                 && target.getType().is(CAN_LOSE_HEAD) && struck.bareHead();
         Armour armour = struck.armour();
-        LAST.put(target, new Impact(point, motion, region, armour, killed, severed));
+        LAST.put(target, new Impact(point, contact.capturedPoint(), contact.entryPoint(), motion, region, armour, killed, severed, contact.attackIdentity(),
+                contact.serverTick(), contact.progress(), contact.normal(), contact.collisionProvenance()));
 
         Feedback.sound(target, point, ModSounds.HIT, 1f, 1f);
         if (armour != Armour.NONE && Config.ARMOUR_HIT_SOUNDS.get()) {
@@ -129,8 +145,9 @@ public final class HitFeel {
         HitReactionPayload.Kind kind = severed ? HitReactionPayload.Kind.SEVER
                 : killed ? HitReactionPayload.Kind.KILL : HitReactionPayload.Kind.HIT;
         int spray = !blood ? 0 : severed ? 16 : hit.heavy() ? 7 : 4;
-        ModNetwork.sendToTrackingAndSelf(target, payload(target, kind, region, point, motion, hit.heavy() ? 1.4f : 1f, 0, 0, spray));
-        Feedback.landed(attacker, target, hit.heavy());
+        ModNetwork.sendToTrackingAndSelf(target, payload(target, kind, region, point, motion, hit.heavy() ? 1.4f : 1f,
+                0, contact, contact.attackIdentity().serial(), spray));
+        Feedback.landed(attacker, target, hit.heavy(), contact);
     }
 
     /**
@@ -153,10 +170,13 @@ public final class HitFeel {
         LAST_PARRY.put(defender, point);
         Feedback.parried(defender, attacker, point);
         if (swing.type() != AttackType.SPECIAL && attacker instanceof LivingEntity living && living.hasData(ModAttachments.COMBAT)) {
-            int serial = living.getData(ModAttachments.COMBAT).machine.attackSerial();
+            int serial = contact.attackIdentity().serial();
             LAST_BOUNCE.put(living, serial);
+            LAST_BOUNCE_METADATA.put(living, new BounceMetadata(contact.attackIdentity(), contact.serverTick(),
+                    contact.progress(), swing.releaseProgress()));
             ModNetwork.sendToTrackingAndSelf(attacker, payload(attacker, HitReactionPayload.Kind.BOUNCE,
-                    HitLocation.Region.TORSO, point, travel(contact, attacker, defender), 1f, (float) contact.progress(), serial, 0));
+                    HitLocation.Region.TORSO, point, travel(contact, attacker, defender), 1f, swing.releaseProgress(),
+                    contact, serial, 0));
         }
         return true;
     }
@@ -208,8 +228,12 @@ public final class HitFeel {
     }
 
     private static HitReactionPayload payload(Entity entity, HitReactionPayload.Kind kind, HitLocation.Region region,
-                                              Vec3 point, Vec3 motion, float strength, float progress, int serial, int spray) {
-        return new HitReactionPayload(entity.getId(), kind, region.ordinal(), (float) point.x, (float) point.y,
-                (float) point.z, (float) motion.x, (float) motion.y, (float) motion.z, strength, progress, serial, spray);
+                                              Vec3 point, Vec3 motion, float strength, double progress,
+                                              SwingTracer.Contact contact, int serial, int spray) {
+        return new HitReactionPayload(entity.getId(), kind, region.ordinal(), point.x, point.y,
+                point.z, (float) motion.x, (float) motion.y, (float) motion.z, strength, progress,
+                contact.progress(), serial, contact.attackIdentity(), contact.serverTick(), contact.capturedPoint(),
+                contact.entryPoint(), contact.normal(),
+                contact.collisionProvenance(), spray);
     }
 }

@@ -16,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
 public final class SwingContext {
     /** @param contact where the blade met the body being hit, when the swing was traced */
     public record Active(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
-                         float staminaDamage, @Nullable SwingTracer.Contact contact) {
+                         float staminaDamage, @Nullable SwingTracer.Contact contact, double releaseProgress) {
     }
 
     @Nullable
@@ -27,13 +27,18 @@ public final class SwingContext {
 
     public static void run(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
                            float staminaDamage, Runnable action) {
-        run(attacker, type, spec, damageMult, staminaDamage, null, action);
+        run(attacker, type, spec, damageMult, staminaDamage, null, 0, action);
     }
 
     public static void run(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
                            float staminaDamage, @Nullable SwingTracer.Contact contact, Runnable action) {
+        run(attacker, type, spec, damageMult, staminaDamage, contact, contact == null ? 0 : contact.progress(), action);
+    }
+
+    public static void run(Entity attacker, AttackType type, WeaponProfile.AttackSpec spec, float damageMult,
+                           float staminaDamage, @Nullable SwingTracer.Contact contact, double releaseProgress, Runnable action) {
         Active previous = current;
-        current = new Active(attacker, type, spec, damageMult, staminaDamage, contact);
+        current = new Active(attacker, type, spec, damageMult, staminaDamage, contact, releaseProgress);
         try {
             action.run();
         } finally {

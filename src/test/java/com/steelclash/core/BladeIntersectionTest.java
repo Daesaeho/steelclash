@@ -2,6 +2,7 @@ package com.steelclash.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Random;
@@ -28,6 +29,41 @@ class BladeIntersectionTest {
             a[(axis + 1) % 3] = b[(axis + 1) % 3] = 1.01;
             assertFalse(hit(a, b), "parallel segment outside the box");
         }
+    }
+
+    @Test
+    void entryNormalNamesOnlyAnUnambiguousFirstFace() {
+        assertEquals(new Vec(-1, 0, 0), Blade.entryNormal(new Vec(-1, 0.5, 0.5), new Vec(2, 0.5, 0.5),
+                0, 0, 0, 1, 1, 1));
+        assertEquals(new Vec(0, 1, 0), Blade.entryNormal(new Vec(0.5, 2, 0.5), new Vec(0.5, -1, 0.5),
+                0, 0, 0, 1, 1, 1));
+        assertEquals(new Vec(-1, 0, 0), Blade.entryNormal(new Vec(0, 0.5, 0.5), new Vec(1, 0.5, 0.5),
+                0, 0, 0, 1, 1, 1), "moving inward from a boundary still has a known face normal");
+        assertNull(Blade.entryNormal(new Vec(0.5, 0.5, 0.5), new Vec(2, 0.5, 0.5),
+                0, 0, 0, 1, 1, 1), "starting inside has no entry face");
+        assertNull(Blade.entryNormal(new Vec(-1, -1, 0.5), new Vec(1, 1, 0.5),
+                0, 0, 0, 1, 1, 1), "a corner entry has no unique face normal");
+        assertNull(Blade.entryNormal(new Vec(-1, 0.5, 0.5), new Vec(-0.1, 0.5, 0.5),
+                0, 0, 0, 1, 1, 1), "a segment ending before the box has no entry normal");
+        assertNull(Blade.entryNormal(new Vec(2, 0.5, 0.5), new Vec(1.1, 0.5, 0.5),
+                0, 0, 0, 1, 1, 1), "a segment starting after the box and ending before it has no entry normal");
+        assertNull(Blade.entryNormal(new Vec(-1, 0.5, 0.5), new Vec(-2, 0.5, 0.5),
+                0, 0, 0, 1, 1, 1), "a segment moving away from the box has no entry normal");
+    }
+
+    @Test
+    void inflatedCollisionBoundariesRemainDistinctFromTheBodyAabb() {
+        Vec bodyMin = Vec.ZERO;
+        Vec bodyMax = new Vec(1, 1, 1);
+        Vec expandedMin = new Vec(-0.1, -0.1, -0.1);
+        Vec expandedMax = new Vec(1.1, 1.1, 1.1);
+        assertEquals(CollisionProvenance.BODY_AABB_CONTACT, CollisionProvenance.at(new Vec(0, 0.5, 0.5), bodyMin, bodyMax));
+        assertEquals(CollisionProvenance.INFLATED_AABB_ENTRY_BODY_CLAMPED,
+                CollisionProvenance.at(new Vec(-0.1, 0.5, 0.5), bodyMin, bodyMax));
+        assertTrue(Blade.intersectsBox(new Vec(-0.1, 0.5, 0.5), new Vec(-0.1, 0.5, 0.5), expandedMin, expandedMax),
+                "the exact expanded boundary is included");
+        assertFalse(Blade.intersectsBox(new Vec(-0.10001, 0.5, 0.5), new Vec(-0.10001, 0.5, 0.5), expandedMin, expandedMax),
+                "just beyond the expanded boundary is rejected");
     }
 
     @Test

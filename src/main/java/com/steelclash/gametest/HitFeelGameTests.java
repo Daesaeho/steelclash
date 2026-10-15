@@ -13,15 +13,23 @@ import com.steelclash.Config;
 import com.steelclash.SteelClash;
 import com.steelclash.combat.Combat;
 import com.steelclash.combat.CombatData;
+import com.steelclash.combat.Feedback;
 import com.steelclash.combat.HitFeel;
 import com.steelclash.combat.LagCompensation;
 import com.steelclash.core.AttackType;
+import com.steelclash.core.CollisionProvenance;
+import com.steelclash.core.CombatStateMachine;
+import com.steelclash.core.FeedbackEligibility;
 import com.steelclash.core.HitLocation;
 import com.steelclash.core.Phase;
 import com.steelclash.entity.TrainingDummy;
+import com.steelclash.net.FeedbackPayload;
+import com.steelclash.net.HitReactionPayload;
 import java.util.function.Supplier;
+import io.netty.buffer.Unpooled;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -92,6 +100,23 @@ public final class HitFeelGameTests {
         check(helper, Math.abs(stab.point().x - (stabbed.getX() - stabbed.getBbWidth() / 2)) < 0.05,
                 "it lands on the front of the body facing the attacker: " + stab.point() + " vs body at " + stabbed.position());
         check(helper, stab.motion().x > 0.8, "a stab drives straight into the body: " + stab.motion());
+        check(helper, stab.attackIdentity().type() == AttackType.STAB
+                        && stab.attackIdentity().serial() == data(player).machine.attackIdentity().serial(),
+                "the captured attack identity survives the hit");
+        check(helper, stab.serverTick() <= helper.getLevel().getGameTime()
+                        && stab.progress() >= 0 && stab.progress() <= 1,
+                "contact tick and release progress are captured");
+        check(helper, stab.normal() != null && stab.normal().x < -0.9,
+                "the front-face entry has an outward collision normal: " + stab.normal());
+        check(helper, stab.collisionProvenance() == CollisionProvenance.INFLATED_AABB_ENTRY_BODY_CLAMPED,
+                "the contact records that the expanded server AABB was entered and the point body-clamped");
+        FeedbackPayload landedFeedback = Feedback.lastPayload(player);
+        check(helper, landedFeedback != null && landedFeedback.kind() == FeedbackPayload.Kind.LANDED
+                        && landedFeedback.contact() != null
+                        && landedFeedback.contact().attackIdentity().equals(stab.attackIdentity())
+                        && landedFeedback.contact().serverTick() == stab.serverTick()
+                        && Math.abs(landedFeedback.contact().progress() - stab.progress()) < 1e-6,
+                "direct LANDED feedback carries the exact traced contact metadata");
         stabbed.discard();
 
         Zombie split = zombie(helper, 4);
@@ -110,6 +135,90 @@ public final class HitFeelGameTests {
         check(helper, Math.abs(slash.motion().z) > Math.abs(slash.motion().x), "a slash travels across the body: " + slash.motion());
         check(helper, slash.point().x < cut.getX(), "and meets the near side of the body, where the blade came in, not the "
                 + "far side its tip reaches: " + slash.point() + " vs body at " + cut.position());
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void hitReactionContactMetadataRoundTrips(GameTestHelper helper) {
+        CombatStateMachine.AttackIdentity identity = new CombatStateMachine.AttackIdentity(
+                37, AttackType.SPECIAL, true, true, false, 3, true);
+        HitReactionPayload before = new HitReactionPayload(12, HitReactionPayload.Kind.BOUNCE, 4,
+                20_000_000.125, 2.5, 20_000_000.875, -0.5f, 0.25f, 0.75f, 1.4f, 0.62f, 0.58f, identity.serial(),
+                identity, 9182L, new Vec3(20_000_000.025, 2.5, 20_000_000.875),
+                new Vec3(20_000_000.005, 2.5, 20_000_000.875), new Vec3(-1, 0, 0),
+                CollisionProvenance.INFLATED_AABB_ENTRY_BODY_CLAMPED, 0);
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            HitReactionPayload.STREAM_CODEC.encode(buf, before);
+            HitReactionPayload after = HitReactionPayload.STREAM_CODEC.decode(buf);
+            check(helper, after.attackIdentity().equals(identity) && after.serial() == identity.serial(),
+                    "wire keeps the complete captured attack identity for delayed bounce matching");
+            check(helper, after.contactTick() == before.contactTick()
+                            && after.capturedProgress() == before.capturedProgress()
+                            && after.progress() == before.progress(),
+                    "wire keeps contact time, captured release progress, and later bounce progress separately");
+            check(helper, after.normal().equals(before.normal())
+                            && after.collisionProvenance() == CollisionProvenance.INFLATED_AABB_ENTRY_BODY_CLAMPED,
+                    "wire keeps the normal and the surface whose entry generated it");
+            check(helper, after.x() == before.x() && after.y() == before.y() && after.z() == before.z()
+                            && after.dx() == before.dx() && after.dy() == before.dy() && after.dz() == before.dz(),
+                    "wire keeps the large-coordinate effect point and blade motion exactly");
+            check(helper, after.capturedBodyPoint().equals(before.capturedBodyPoint())
+                            && after.entryPoint().equals(before.entryPoint())
+                            && after.x() != after.capturedBodyPoint().x,
+                    "wire separates the bounce effect point from captured body projection and raw inflated-box entry");
+
+            buf.clear();
+            HitReactionPayload manual = new HitReactionPayload(12, HitReactionPayload.Kind.HIT, 0,
+                    0, 0, 0, 0, 0, 0, 1, 0, 0, identity.serial(), identity, 9183L,
+                    Vec3.ZERO, Vec3.ZERO, null, CollisionProvenance.UNKNOWN_OR_MANUAL, 0);
+            HitReactionPayload.STREAM_CODEC.encode(buf, manual);
+            HitReactionPayload manualAfter = HitReactionPayload.STREAM_CODEC.decode(buf);
+            check(helper, manualAfter.normal() == null
+                            && manualAfter.collisionProvenance() == CollisionProvenance.UNKNOWN_OR_MANUAL,
+                    "wire represents legacy/manual contacts as unknown without fabricating a surface normal");
+        } finally {
+            buf.release();
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void feedbackContactMetadataRoundTripsWithRecipientToken(GameTestHelper helper) {
+        CombatStateMachine.AttackIdentity attackerIdentity = new CombatStateMachine.AttackIdentity(
+                18, AttackType.SLASH, false, true, false, 2, true);
+        FeedbackPayload.Contact contact = new FeedbackPayload.Contact(new Vec3(20_000_000.125, -64.25, 20_000_000.875),
+                new Vec3(20_000_000.025, -64.25, 20_000_000.875), new Vec3(0.1, 0.2, -0.3), attackerIdentity,
+                901L, 0.375f, new Vec3(-1, 0, 0),
+                CollisionProvenance.BLOCK_SHAPE);
+        FeedbackPayload before = new FeedbackPayload(FeedbackPayload.Kind.PARRIED, 1.3f, contact, 7, true);
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            FeedbackPayload.STREAM_CODEC.encode(buf, before);
+            FeedbackPayload after = FeedbackPayload.STREAM_CODEC.decode(buf);
+            check(helper, after.kind() == FeedbackPayload.Kind.PARRIED && after.recipientAttackSerial() == 7
+                            && after.parryDefender(),
+                    "wire keeps recipient action token separately from the attacker's contact identity");
+            check(helper, after.contact().attackIdentity().equals(attackerIdentity)
+                            && after.contact().serverTick() == 901L && after.contact().progress() == 0.375f,
+                    "parry feedback carries the captured attack identity, server tick, and release progress");
+            check(helper, after.contact().capturedPoint().equals(contact.capturedPoint())
+                            && after.contact().entryPoint().equals(contact.entryPoint())
+                            && after.contact().motion().equals(contact.motion())
+                            && after.contact().normal().equals(contact.normal())
+                            && after.contact().collisionProvenance() == CollisionProvenance.BLOCK_SHAPE,
+                    "feedback wire preserves captured point, blade motion, block normal, and source");
+
+            buf.clear();
+            FeedbackPayload legacy = new FeedbackPayload(FeedbackPayload.Kind.CLANK, 1f);
+            FeedbackPayload.STREAM_CODEC.encode(buf, legacy);
+            FeedbackPayload legacyAfter = FeedbackPayload.STREAM_CODEC.decode(buf);
+            check(helper, legacyAfter.contact() == null && legacyAfter.recipientAttackSerial() == -1
+                            && !legacyAfter.parryDefender(),
+                    "legacy/manual feel stays a plain feedback packet without fabricated contact data");
+        } finally {
+            buf.release();
+        }
         helper.succeed();
     }
 
@@ -133,6 +242,27 @@ public final class HitFeelGameTests {
             check(helper, stab.armour() == c[1], c[0] + " sounds like " + c[1] + ", was " + stab.armour());
             zombie.discard();
         }
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void multipleContactsKeepTheirSharedAttackIdentity(GameTestHelper helper) {
+        Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        Zombie left = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 3);
+        Zombie right = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 5);
+        Combat.requestAttack(player, AttackType.SLASH, 0, false);
+        TestSupport.finish(player);
+
+        HitFeel.Impact leftImpact = impact(helper, left, "left contact");
+        HitFeel.Impact rightImpact = impact(helper, right, "right contact");
+        check(helper, isHurt(left) && isHurt(right), "the slash reaches both bodies");
+        check(helper, leftImpact.attackIdentity().equals(rightImpact.attackIdentity()),
+                "both contacts retain the same attack identity");
+        check(helper, leftImpact.serverTick() <= helper.getLevel().getGameTime()
+                        && rightImpact.serverTick() <= helper.getLevel().getGameTime()
+                        && leftImpact.progress() >= 0 && leftImpact.progress() <= 1
+                        && rightImpact.progress() >= 0 && rightImpact.progress() <= 1,
+                "each contact has its own valid capture time and progress");
         helper.succeed();
     }
 
@@ -254,23 +384,98 @@ public final class HitFeelGameTests {
         Integer bounced = HitFeel.lastBounce(attacker);
         check(helper, bounced != null && bounced == data(attacker).machine.attackSerial(),
                 "the blade bounces back, tagged with the parried attack: " + bounced + " vs " + data(attacker).machine.attackSerial());
+        HitFeel.BounceMetadata metadata = HitFeel.lastBounceMetadata(attacker);
+        check(helper, metadata != null && metadata.attackIdentity().serial() == bounced
+                        && metadata.serverTick() <= helper.getLevel().getGameTime()
+                        && metadata.capturedProgress() >= 0 && metadata.capturedProgress() <= 1,
+                "bounce feedback retains the server contact identity and capture time");
+        FeedbackPayload defenderFeedback = Feedback.lastPayload(defender);
+        FeedbackPayload attackerFeedback = Feedback.lastPayload(attacker);
+        check(helper, defenderFeedback != null && attackerFeedback != null
+                        && defenderFeedback.kind() == FeedbackPayload.Kind.PARRIED
+                        && attackerFeedback.kind() == FeedbackPayload.Kind.PARRIED
+                        && defenderFeedback.contact() != null && attackerFeedback.contact() != null,
+                "both parry participants receive contact-bearing PARRIED feedback");
+        check(helper, defenderFeedback.recipientAttackSerial() == data(defender).machine.attackSerial()
+                        && attackerFeedback.recipientAttackSerial() == metadata.attackIdentity().serial(),
+                "parry hit-stop tokens belong respectively to defender and captured attacker action");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA, timeoutTicks = 60)
+    public static void aHeldParryBounceKeepsTheOriginalAttackIdentityAndTime(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_NEGATIVE_X);
+        LagCompensation.forceLatency(defender, 200);
+        long capturedTick = helper.getLevel().getGameTime();
+        strike(attacker, AttackType.STAB);
+        check(helper, !isHurt(defender), "premise: the lag-held hit has not damaged the defender");
+        CombatStateMachine.AttackIdentity heldIdentity = data(attacker).machine.attackIdentity();
+
+        Combat.requestAttack(attacker, AttackType.OVERHEAD, 0, false);
+        CombatStateMachine.AttackIdentity laterIdentity = data(attacker).machine.attackIdentity();
+        check(helper, !heldIdentity.equals(laterIdentity), "a later attack has started");
+        Combat.requestParry(defender);
+        LagCompensation.tick(); // the normal held-hit queue resolves because the defender is now ready to parry
+
+        HitFeel.BounceMetadata metadata = HitFeel.lastBounceMetadata(attacker);
+        check(helper, metadata != null, "the held contact is parried and produces bounce feedback");
+        check(helper, metadata.attackIdentity().equals(heldIdentity), "the bounce uses the held attack identity");
+        check(helper, !metadata.attackIdentity().equals(laterIdentity), "the later attack does not replace the held identity");
+        check(helper, HitFeel.lastBounce(attacker) == heldIdentity.serial(), "the client bounce serial identifies the held attack");
+        check(helper, metadata.serverTick() == capturedTick, "the original contact tick survives the hold");
+        check(helper, metadata.capturedProgress() >= 0 && metadata.capturedProgress() <= 1,
+                "the original captured progress remains available");
+        check(helper, !isHurt(defender), "a parried held hit deals no damage");
         helper.succeed();
     }
 
     @GameTest(template = ARENA, timeoutTicks = 60)
     public static void aHeldHitLandsWhereTheBodyNowStands(GameTestHelper helper) {
         Player player = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        Zombie direct = zombie(helper, 4);
+        strike(player, AttackType.STAB);
+        HitFeel.Impact directImpact = impact(helper, direct, "direct control");
+        Vec3 directOffset = directImpact.point().subtract(direct.position());
+        direct.discard();
+
         Zombie zombie = zombie(helper, 4);
         LagCompensation.forceLatency(zombie, 200); // a lagged defender: the hit waits for a parry that may be coming
         zombie.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1); // only the test moves it
         strike(player, AttackType.STAB);
         check(helper, !isHurt(zombie) && HitFeel.lastImpact(zombie) == null, "premise: the hit is held");
+        CombatStateMachine.AttackIdentity heldIdentity = data(player).machine.attackIdentity();
+        Combat.requestAttack(player, AttackType.OVERHEAD, 0, false);
+        CombatStateMachine.AttackIdentity laterIdentity = data(player).machine.attackIdentity();
+        check(helper, !heldIdentity.equals(laterIdentity), "the later attack has a different identity");
         zombie.setPos(zombie.getX(), zombie.getY(), zombie.getZ() + 1); // it steps aside before the hit lands
         helper.succeedWhen(() -> {
             HitFeel.Impact impact = HitFeel.lastImpact(zombie);
             helper.assertTrue(impact != null, "the held hit lands");
             helper.assertTrue(zombie.getBoundingBox().inflate(0.05).contains(impact.point()),
                     "on the body where it now stands: " + impact.point() + " vs " + zombie.getBoundingBox());
+            helper.assertTrue(impact.attackIdentity().equals(heldIdentity),
+                    "the delayed hit keeps its captured attack identity: " + impact.attackIdentity() + " vs " + heldIdentity);
+            helper.assertTrue(!impact.attackIdentity().equals(laterIdentity), "it does not inherit the later attack identity");
+            helper.assertTrue(impact.serverTick() < helper.getLevel().getGameTime(), "the original contact tick survives deferral");
+            helper.assertTrue(Math.abs(impact.progress() - directImpact.progress()) < 1e-6,
+                    "the held hit keeps captured progress instead of replacing it with delivery progress");
+            helper.assertTrue(impact.point().subtract(zombie.position()).distanceTo(directOffset) < 0.05,
+                    "the deferred contact keeps the direct hit's body-relative point: "
+                            + impact.point().subtract(zombie.position()) + " vs " + directOffset);
+            helper.assertTrue(impact.capturedPoint().distanceTo(directImpact.capturedPoint()) < 0.05,
+                    "the original server-space capture point remains available beside the body-following delivery point");
+            FeedbackPayload heldFeedback = Feedback.lastPayload(player);
+            helper.assertTrue(heldFeedback != null && heldFeedback.contact() != null
+                            && heldFeedback.contact().attackIdentity().equals(heldIdentity)
+                            && Math.abs(heldFeedback.contact().progress() - directImpact.progress()) < 1e-6
+                            && heldFeedback.recipientAttackSerial() == heldIdentity.serial(),
+                    "deferred LANDED feedback keeps captured contact progress and the original attacker recipient token");
+            helper.assertTrue(impact.normal() != null && directImpact.normal() != null
+                            && impact.normal().distanceTo(directImpact.normal()) < 1e-6,
+                    "the same sweep keeps the same entry normal");
+            helper.assertTrue(impact.collisionProvenance() == directImpact.collisionProvenance(),
+                    "the deferred contact keeps its collision provenance");
         });
     }
 
@@ -333,6 +538,40 @@ public final class HitFeelGameTests {
                 zombie.discard();
             });
         }
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void aHeldHitWithPlainEffectsKeepsOriginalFeedbackToken(GameTestHelper helper) {
+        Player attacker = swordsman(helper, new ItemStack(Items.IRON_SWORD), FACING_POSITIVE_X);
+        TrainingDummy defender = dummy(helper, 3, 4, FACING_POSITIVE_X); // its guard faces away from the blow
+        LagCompensation.forceLatency(defender, 200);
+        long capturedTick = helper.getLevel().getGameTime();
+        with(Config.TRACED_CONTACTS, false, () -> {
+            strike(attacker, AttackType.STAB);
+            check(helper, !isHurt(defender), "premise: the original contact is held");
+            CombatStateMachine.AttackIdentity heldIdentity = data(attacker).machine.attackIdentity();
+            Combat.requestAttack(attacker, AttackType.OVERHEAD, 0, false);
+            CombatStateMachine.AttackIdentity laterIdentity = data(attacker).machine.attackIdentity();
+            check(helper, !heldIdentity.equals(laterIdentity), "premise: a different attack has begun");
+            Combat.requestParry(defender);
+            check(helper, data(defender).machine.phase() == Phase.PARRY, "premise: the defender raises its guard");
+            // Becoming ready resolves the real held queue now; facing away means that this guard cannot stop the hit.
+            LagCompensation.tick();
+            check(helper, isHurt(defender), "the original held hit still damages the body");
+            check(helper, HitFeel.lastImpact(defender) == null, "detailed contact effects stay disabled");
+            FeedbackPayload feedback = Feedback.lastPayload(attacker);
+            check(helper, feedback != null && feedback.kind() == FeedbackPayload.Kind.LANDED
+                            && feedback.contact() != null,
+                    "plain effects retain captured contact metadata in LANDED feedback");
+            check(helper, feedback.contact().attackIdentity().equals(heldIdentity)
+                            && feedback.contact().serverTick() == capturedTick
+                            && feedback.recipientAttackSerial() == heldIdentity.serial(),
+                    "plain delayed feedback keeps the original identity, tick and recipient token");
+            check(helper, !FeedbackEligibility.accepts(feedback.recipientAttackSerial(), laterIdentity.serial(),
+                            feedback.parryDefender()),
+                    "the client token gate rejects freezing the newer attack for this old contact");
+        });
         helper.succeed();
     }
 

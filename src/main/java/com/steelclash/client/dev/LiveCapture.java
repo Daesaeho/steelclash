@@ -4,6 +4,8 @@ import com.google.gson.GsonBuilder;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.steelclash.SteelClash;
 import com.steelclash.client.ClientInput;
+import com.steelclash.client.CombatDebugRenderer;
+import com.steelclash.client.anim.CombatPresentation;
 import com.steelclash.client.anim.CombatPose;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.combat.Combat;
@@ -54,6 +56,12 @@ public final class LiveCapture {
     private static final String SCENE = System.getProperty("steelclash.liveCapture");
     private static final boolean BACKGROUND = Boolean.getBoolean("steelclash.liveCaptureBackground");
     private static final boolean CLOCK_PROBE = Boolean.getBoolean("steelclash.liveCaptureClockProbe");
+    private static final boolean CONTACT_PROBE = Boolean.getBoolean("steelclash.liveCaptureContactProbe")
+            && ("hitstop".equals(System.getProperty("steelclash.liveCapture"))
+            || "riposte".equals(System.getProperty("steelclash.liveCapture")));
+    private static final List<Map<String, Object>> CONTACT_PROBE_FRAMES = new ArrayList<>();
+    private static boolean previousContactDebugEnabled;
+    private static boolean contactDebugRestorePending;
     private static final List<Map<String, Object>> CLOCK_PROBES = new ArrayList<>();
     private static boolean probingClock;
     @Nullable private static CombatPose clockProbePose;
@@ -391,6 +399,12 @@ public final class LiveCapture {
             firstServerSerial = server == null ? 0 : server.serial;
             initialPlayerHealth = player.getHealth();
             startNanos = System.nanoTime();
+            if (CONTACT_PROBE) {
+                previousContactDebugEnabled = CombatDebugRenderer.isEnabled();
+                contactDebugRestorePending = true;
+                CombatDebugRenderer.setEnabled(true);
+                CONDITIONS.put("contact_probe_enabled", true);
+            }
             active = true;
             CONDITIONS.put("view", mc.options.getCameraType()); CONDITIONS.put("arm", player.getMainArm());
             CONDITIONS.put("background", BACKGROUND);
@@ -632,6 +646,11 @@ public final class LiveCapture {
         }
         row.put("frame", frames); row.put("time_ns", System.nanoTime() - startNanos); row.put("client_tick", player.tickCount);
         row.put("presentation_frame",com.steelclash.client.anim.CombatPresentation.frameNumber());
+        if (CONTACT_PROBE) {
+            Map<String, Object> contactProbe = contactProbeSnapshot(System.nanoTime());
+            row.put("contact_probe", contactProbe);
+            CONTACT_PROBE_FRAMES.add(contactProbe);
+        }
         row.put("partial", event.getPartialTick().getGameTimeDeltaPartialTick(false)); row.put("phase", machine.phase());
         row.put("phase_duration_us", machine.phaseDurationUs());
         row.put("resolved_timings", timingsMap(machine.timings()));
@@ -726,6 +745,13 @@ public final class LiveCapture {
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("scene", SCENE); report.put("frames", FRAMES); report.put("inputs", INPUTS);
         report.put("conditions", CONDITIONS);
+        if (CONTACT_PROBE) {
+            report.put("contact_probe", contactProbeSummary());
+            if (contactDebugRestorePending) {
+                CombatDebugRenderer.setEnabled(previousContactDebugEnabled);
+                contactDebugRestorePending = false;
+            }
+        }
         if (CLOCK_PROBE) report.put("zero_partial_clock_probes",CLOCK_PROBES);
         if (TURN_CAP) report.put("turn_requests", TURN_REQUESTS);
         report.put("reload_requested",reloadRequested); report.put("reload_completed",reloadCompleted); report.put("reload_overlay_frames",reloadOverlayFrames);
@@ -851,6 +877,84 @@ public final class LiveCapture {
                 || TURN_REQUESTS.stream().noneMatch(request -> request.get("phase") == Phase.WINDUP)
                 || TURN_REQUESTS.stream().noneMatch(request -> request.get("phase") == Phase.RELEASE)))
             throw new IllegalStateException("Turn-cap probe did not request turns during both windup and release on an ordinary slash");
+    }
+
+    private static Map<String, Object> contactProbeSnapshot(long now) {
+        var markers = CombatDebugRenderer.contactDebugSnapshot(now);
+        var freeze = CombatPresentation.hitStopDebugSnapshot(now);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("debug_enabled", markers.enabled());
+        result.put("received_marker_count", markers.markersRetained());
+        result.put("received_marker_total", markers.contactsReceived());
+        result.put("latest_marker_age_ns", markers.latestAgeNanos());
+        result.put("latest_contact", contactMap(markers.latest()));
+        result.put("last_draw_frame", markers.lastDrawFrame());
+        result.put("last_draw_age_ns", markers.lastDrawAgeNanos());
+        result.put("last_draw_marker_count", markers.lastDrawMarkers());
+        result.put("last_draw_normal_lines", markers.lastDrawNormalLines());
+        result.put("presentation_freeze_holding", freeze.freezeHolding());
+        result.put("hitstop_source_within_metadata_ttl", freeze.sourceWithinMetadataTtl());
+        result.put("hitstop_source_age_ns", freeze.sourceAgeNanos());
+        result.put("hitstop_source", contactMap(freeze.source()));
+        result.put("latest_marker_is_hitstop_source", markers.latest() != null && markers.latest().equals(freeze.source()));
+        return result;
+    }
+
+    private static Map<String, Object> contactProbeSummary() {
+        long received = 0;
+        int maxDrawnMarkers = 0, maxNormalLines = 0;
+        Map<String, Object> latestContact = null, latestHitstopSource = null;
+        boolean everHeld = false, anySource = false, sourceAssociated = false;
+        for (Map<String, Object> frame : CONTACT_PROBE_FRAMES) {
+            received = Math.max(received, ((Number) frame.get("received_marker_total")).longValue());
+            maxDrawnMarkers = Math.max(maxDrawnMarkers, ((Number) frame.get("last_draw_marker_count")).intValue());
+            maxNormalLines = Math.max(maxNormalLines, ((Number) frame.get("last_draw_normal_lines")).intValue());
+            if (frame.get("latest_contact") != null) latestContact = (Map<String, Object>) frame.get("latest_contact");
+            if (frame.get("hitstop_source") != null) {
+                latestHitstopSource = (Map<String, Object>) frame.get("hitstop_source");
+                anySource = true;
+            }
+            everHeld |= Boolean.TRUE.equals(frame.get("presentation_freeze_holding"));
+            sourceAssociated |= Boolean.TRUE.equals(frame.get("latest_marker_is_hitstop_source"));
+        }
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("scoped_scene", SCENE);
+        summary.put("frames_with_diagnostics", CONTACT_PROBE_FRAMES.size());
+        summary.put("server_contacts_received", received);
+        summary.put("contact_marker_was_drawn", maxDrawnMarkers > 0);
+        summary.put("maximum_drawn_markers", maxDrawnMarkers);
+        summary.put("maximum_drawn_normal_lines", maxNormalLines);
+        summary.put("latest_observed_contact", latestContact);
+        summary.put("hitstop_source_observed", anySource);
+        summary.put("hitstop_source_associated_with_received_contact", sourceAssociated);
+        summary.put("presentation_freeze_was_holding", everHeld);
+        summary.put("latest_observed_hitstop_source", latestHitstopSource);
+        summary.put("world_replacement_lifecycle", "not_exercised_by_liveCapture hitstop/riposte scenes");
+        return summary;
+    }
+
+    @Nullable
+    private static Map<String, Object> contactMap(@Nullable com.steelclash.net.FeedbackPayload.Contact contact) {
+        if (contact == null) return null;
+        var identity = contact.attackIdentity();
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("captured_body_or_block_point", vectorMap(contact.capturedPoint()));
+        map.put("entry_point", vectorMap(contact.entryPoint()));
+        map.put("blade_motion", vectorMap(contact.motion()));
+        map.put("normal", vectorMap(contact.normal()));
+        map.put("normal_surface_provenance", contact.normal() == null ? null : contact.collisionProvenance());
+        map.put("collision_provenance", contact.collisionProvenance());
+        map.put("server_tick", contact.serverTick());
+        map.put("release_progress", contact.progress());
+        map.put("attack_identity", Map.of("type", identity.type(), "serial", identity.serial(), "heavy", identity.heavy(),
+                "morphed", identity.morphed(), "counter_feinted", identity.counterFeinted(), "variant", identity.variant(),
+                "mirrored", identity.mirrored()));
+        return map;
+    }
+
+    @Nullable
+    private static double[] vectorMap(@Nullable net.minecraft.world.phys.Vec3 v) {
+        return v == null ? null : new double[]{v.x, v.y, v.z};
     }
 
     private static Map<String, Integer> timingsMap(AttackTimings timings) {

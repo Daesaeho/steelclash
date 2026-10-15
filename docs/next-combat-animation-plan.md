@@ -13,7 +13,7 @@ Target: Minecraft 1.21.1, NeoForge 21.1.252, Java 21, PAL 1.1.6. Preserve unrela
 | 2. Rules and fidelity | Bounded measurement gate closed; N07 fixed; unresolved reference tuning stays explicit | [Measured rule table](combat-rule-evidence.md#measured-representative-weapons) and remaining fidelity questions |
 | 3. PAL More Rotation | In progress; live heavy/morph, mob and reload evidence added; adoption remains open | [Evidence and tracking/shutdown limits](archive/pal-more-prototype-20261011.md#live-transitions-and-lifecycle-checkpoint-2026-10-12) |
 | 4. Blockbench/styles | Native retarget/clock fix and sword mesh capture verified; bounded grip correction and selected live controls verified; full style gate open | [Source-aware import](animation-authoring.md#source-aware-native-import), [mesh/placement evidence](archive/blade-mesh-20261012.md) and [physical grip evidence](archive/player-physical-grip-20261014.md); next: resolve blended/pitched/near-plane cases, then continue the remaining weapon families and lifecycle acceptance |
-| 5. Server collision | Partial | Collision-point groundwork is merged; extended metadata remains isolated in `steelclash-contact-metadata`, with integration and Deliverable A acceptance open |
+| 5. Server collision | Contact metadata implemented and verified in bounded fixtures; Deliverable B open | [Contact metadata checkpoint](archive/contact-metadata-20261015.md): three contact frames, held-hit identity/progress and source-gated feedback; next: anatomical narrow phase and remaining lifecycle/remote acceptance |
 | 6. CPM | Pending | Cosmetics/model lifecycle after the default rig is stable |
 
 Detailed earlier progress is retained in [checkpoint history](archive/roadmap-checkpoints.md). The [bounded player
@@ -21,7 +21,9 @@ grip checkpoint](archive/grip-and-vector-checkpoint-20261013.md), [husk grip evi
 and [updated player grip evidence](archive/player-physical-grip-20261014.md) record their limits. The latest player
 checkpoint verifies a 277-JUnit full build, six caught mutations, selected iron-sword binding/live controls and
 occupied-shield parity. Pitched first-person contact, blended recovery and near-plane cases remain open; evidence does
-not establish other model or family support. Step 5 metadata is still isolated and does not close its roadmap gate.
+not establish other model or family support. Step 5 metadata passes 281 fresh JUnit, 215 required GameTests in each
+Spartan variant and the final merged native diagnostics; anatomical Deliverable B and remaining lifecycle/remote
+acceptance keep the full step-5 gate open.
 Verification procedures and unsupported acceptance are centralized in [testing.md](testing.md).
 
 ## 1. Close the important baseline gaps

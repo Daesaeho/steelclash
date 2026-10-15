@@ -100,4 +100,55 @@ public final class Blade {
         }
         return tMin;
     }
+
+    /**
+     * Outward unit normal of the unique box face first entered by the segment, or {@code null} when the segment starts
+     * inside the box or enters through an edge/corner where a single face normal is not meaningful.
+     */
+    public static Vec entryNormal(Vec a, Vec b, double minX, double minY, double minZ,
+                                  double maxX, double maxY, double maxZ) {
+        double tMin = Double.NEGATIVE_INFINITY;
+        double tMax = Double.POSITIVE_INFINITY;
+        int entryAxis = -1;
+        double entrySign = 0;
+        boolean tied = false;
+        for (int axis = 0; axis < 3; axis++) {
+            double start = component(a, axis);
+            double delta = component(b, axis) - start;
+            double lo = axis == 0 ? minX : axis == 1 ? minY : minZ;
+            double hi = axis == 0 ? maxX : axis == 1 ? maxY : maxZ;
+            if (Math.abs(delta) < 1e-9) {
+                if (start < lo || start > hi) {
+                    return null;
+                }
+                continue;
+            }
+            double t1 = (lo - start) / delta;
+            double t2 = (hi - start) / delta;
+            if (t1 > t2) {
+                double swap = t1;
+                t1 = t2;
+                t2 = swap;
+            }
+            tMax = Math.min(tMax, t2);
+            if (t1 > tMin + 1e-9) {
+                tMin = t1;
+                entryAxis = axis;
+                entrySign = delta > 0 ? -1 : 1;
+                tied = false;
+            } else if (entryAxis >= 0 && Math.abs(t1 - tMin) <= 1e-9) {
+                tied = true;
+            }
+        }
+        // Match entry()'s finite segment interval: a slab face beyond the tip (or behind the hilt) is not a contact.
+        if (entryAxis < 0 || tied || tMin < -1e-9 || tMin > 1 || tMax < 0 || tMin > tMax) {
+            return null;
+        }
+        return entryAxis == 0 ? new Vec(entrySign, 0, 0)
+                : entryAxis == 1 ? new Vec(0, entrySign, 0) : new Vec(0, 0, entrySign);
+    }
+
+    private static double component(Vec v, int axis) {
+        return axis == 0 ? v.x() : axis == 1 ? v.y() : v.z();
+    }
 }

@@ -60,12 +60,13 @@ existing `DRAW_INTERRUPTED` feedback at strength 0, which needed no protocol cha
 ## Hit feel
 
 - **Contact point.** `SwingTracer` tested the whole hilt-to-tip segment at each sample, so a hit was traced along
-  the blade; what it lacked was *where*. `Blade.entry` returns the slab test's entry fraction, and the contact is the
-  first point of the blade inside the (inflated) hitbox, clamped onto the real box. It is stored relative to the
-  body (`Contact.offset`, unrewound), so a hit lag compensation holds lands where the body then stands
-  (`aHeldHitLandsWhereTheBodyNowStands`); a held hit that is then parried bounces from where the blade has got to.
-  The blade's travel is that point of the blade compared with the neighbouring sample. Contacts ride on `Combat.Hit`
-  and `SwingContext.Active`, so a parry decided inside vanilla's damage call knows where the blade met the guard.
+  the blade; contact metadata now distinguishes the historical collision entry, clamped historical body point
+  and projection onto the target's current body. Original attack identity/tick/progress survive held delivery;
+  resolution progress is separate. Old held hits cannot grant a later whiff a combo, and plain effects retain
+  the source token used to reject stale hit-stop. These are AABB intersections, not rendered anatomical contacts.
+  [Contact-frame contracts, protocol 13, verification and remaining checks](archive/contact-metadata-20261015.md)
+  own the detailed evidence. Final main checks passed 281 fresh JUnit, 215 required GameTests per Spartan variant,
+  the effects-disabled mutation and a merged 139-frame native riposte capture.
 - **Swept blade.** Samples alone only test the blade where it is at each one: before, the fixed 6 a tick kept the gap
   under a mob's width at normal speeds. Now, when the tip would move more than 0.5 blocks between two samples, up
   to 16 more are taken on the true arc between them (`sweptBlade`). At default settings (360°/s turn cap, 6
@@ -114,7 +115,7 @@ existing `DRAW_INTERRUPTED` feedback at strength 0, which needed no protocol cha
   attacker isn't staggered.
 - **Blood spray** is spawned by clients from `HitReactionPayload` (its `spray` count); `sendParticles` with a count
   of 0 sends one packet per particle per player, so the server now sends only the puff.
-- `HitReactionPayload` is new, so the protocol is 12.
+- Contact metadata extends `HitReactionPayload` and `FeedbackPayload`; both peers now use protocol 13.
 
 ## Mob weapon speed
 

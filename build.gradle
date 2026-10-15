@@ -161,6 +161,9 @@ neoForge {
                 if (project.hasProperty('liveCaptureBackground')) {
                     systemProperty 'steelclash.liveCaptureBackground', 'true'
                 }
+                if (project.hasProperty('liveCaptureContactProbe')) {
+                    systemProperty 'steelclash.liveCaptureContactProbe', 'true'
+                }
             }
             if (project.hasProperty('poseSheet')) {
                 systemProperty 'steelclash.poseSheet', project.property('poseSheet').toString()
