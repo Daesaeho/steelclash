@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.steelclash.ai.BotStyles;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.compat.Compat;
+import com.steelclash.compat.SpartanCestusLoot;
 import com.steelclash.compat.SpartanWeaponryCompat;
 import com.steelclash.entity.ModEntities;
 import com.steelclash.net.ModNetwork;
@@ -31,6 +32,7 @@ public class SteelClash {
         ModAttachments.register(modEventBus);
         ModEntities.register(modEventBus);
         ModSounds.register(modEventBus);
+        SpartanCestusLoot.register(modEventBus);
 
         // Combat prediction must use the server's rules; retain the existing global config file.
         modContainer.registerConfig(ModConfig.Type.SERVER, Config.SPEC, "steelclash-common.toml");

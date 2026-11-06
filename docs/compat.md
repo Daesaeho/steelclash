@@ -47,6 +47,10 @@ Pinned sources, inspected versions and the PDF comparison are preserved in the
 
 Two-handed archetypes (`two_handed`, `polearm`, `spear`) cannot raise an offhand shield.
 
+Steelclash excludes Spartan cestus from profile lookup and weaponsmith loot, including addon items tagged
+or classified as cestus. Set `[cestus].disable = true` in Spartan Weaponry's common config to turn off the
+stock cestus and studded cestus crafting recipes. Existing stacks keep their Spartan item behavior.
+
 ## Config
 
 The server's `steelclash-common.toml` controls stamina, defense, offense, mobs and networking.

@@ -28,6 +28,10 @@ and energy costs retain their hooks. See [mod IDs](archive/findings-history.md#m
 [reach/speed traits](archive/findings-history.md#b-are-sw-reachspeed-traits-attributes--yes) and
 [shield/input findings](archive/findings-history.md#c-how-do-ss-block-and-bash-work--conflict-found).
 
+Spartan Weaponry 1.2.3 groups `cestus` and `studded_cestus` under `weapons/cestus`. Its common config
+disables both recipes, while its weaponsmith loot table still rolls the plain cestus. Steelclash filters
+that loot and checks the tag or API classification before data-map, vanilla-tag, and mob-claw fallback.
+
 ## Sub-tick combat and Chivalry 2 timings
 
 The simulation uses microseconds; profiles can override phase durations in milliseconds. The pinned Chivalry

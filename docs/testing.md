@@ -120,6 +120,9 @@ Select the relevant checks below; preserve the player guide's normal controls an
 
 ### Hit feel
 
+- With Spartan Weaponry enabled and cestus crafting disabled, confirm both recipes are unavailable
+  after restart. GameTests cover both stock variants even with a profile override, and seed both the
+  vanilla and Spartan weaponsmith tables to check that the other Spartan weapons still appear.
 - Land a nonlethal sideways head hit on a zombie with a second zombie nearby. Check that the head and its
   outer layer move together, the struck zombie returns to its normal pose, and the second stays upright.
 - Contact metadata: [the checkpoint](archive/contact-metadata-20261015.md) separates server contact frames,

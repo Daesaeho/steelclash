@@ -12,9 +12,12 @@ import com.steelclash.core.CollisionProvenance;
 import com.steelclash.core.CombatStateMachine;
 import com.steelclash.core.Phase;
 import com.steelclash.profile.WeaponProfile;
+import com.steelclash.profile.WeaponProfileRef;
 import com.steelclash.profile.WeaponProfiles;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceKey;
@@ -29,6 +32,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -176,6 +182,68 @@ public final class SwingGameTests {
             TestSupport.expectProfile(helper, TestSupport.spartan("iron_greatsword"), "two_handed");
             TestSupport.expectProfile(helper, TestSupport.spartan("iron_spear"), "spear");
             TestSupport.expectProfile(helper, TestSupport.spartan("iron_warhammer"), "blunt");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void spartanCestusBypassesWeaponAndNaturalProfiles(GameTestHelper helper) {
+        if (!Compat.SPARTAN_WEAPONRY.isLoaded()) {
+            helper.succeed();
+            return;
+        }
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 3, 2, 4);
+        TestSupport.check(helper, WeaponProfiles.resolveFor(zombie).orElseThrow().key().equals(WeaponProfiles.key("claw")),
+                "an unarmed zombie still uses claws");
+
+        var profiles = BuiltInRegistries.ITEM.getDataMap(WeaponProfiles.DATA_MAP);
+        for (String id : List.of("cestus", "studded_cestus")) {
+            ItemStack cestus = TestSupport.spartan(id);
+            TestSupport.check(helper, !cestus.isEmpty(), "expected a registered Spartan " + id);
+            zombie.setItemSlot(EquipmentSlot.MAINHAND, cestus);
+            TestSupport.check(helper, WeaponProfiles.resolveFor(zombie).isEmpty(),
+                    id + " must not get the mob's claw fallback");
+
+            var itemKey = cestus.getItemHolder().unwrapKey().orElseThrow();
+            var previous = profiles.put(itemKey, new WeaponProfileRef(WeaponProfiles.key("sword")));
+            try {
+                TestSupport.expectProfile(helper, cestus, null);
+            } finally {
+                if (previous == null) profiles.remove(itemKey);
+                else profiles.put(itemKey, previous);
+            }
+        }
+        zombie.setItemSlot(EquipmentSlot.MAINHAND, TestSupport.spartan("iron_longsword"));
+        TestSupport.check(helper, WeaponProfiles.resolveFor(zombie).orElseThrow().key().equals(WeaponProfiles.key("sword")),
+                "a supported Spartan weapon still resolves normally");
+        helper.succeed();
+    }
+
+    @GameTest(template = ARENA)
+    public static void spartanWeaponsmithLootOmitsCestus(GameTestHelper helper) {
+        if (!Compat.SPARTAN_WEAPONRY.isLoaded()) {
+            helper.succeed();
+            return;
+        }
+        String spartan = Compat.SPARTAN_WEAPONRY.modId();
+        var level = helper.getLevel();
+        var params = new LootParams.Builder(level)
+                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(helper.absolutePos(net.minecraft.core.BlockPos.ZERO)))
+                .create(LootContextParamSets.CHEST);
+        ItemStack plain = TestSupport.spartan("cestus");
+        ItemStack studded = TestSupport.spartan("studded_cestus");
+        for (ResourceLocation id : List.of(ResourceLocation.withDefaultNamespace("chests/village/village_weaponsmith"),
+                ResourceLocation.fromNamespaceAndPath(spartan, "inject/chests/village/village_weaponsmith"))) {
+            var table = level.getServer().reloadableRegistries().getLootTable(ResourceKey.create(Registries.LOOT_TABLE, id));
+            boolean foundSpartanWeapon = false;
+            for (int seed = 1; seed <= 128; seed++) {
+                for (ItemStack loot : table.getRandomItems(params, seed)) {
+                    TestSupport.check(helper, !loot.is(plain.getItem()) && !loot.is(studded.getItem()),
+                            id + " generated a cestus at seed " + seed);
+                    foundSpartanWeapon |= BuiltInRegistries.ITEM.getKey(loot.getItem()).getNamespace().equals(spartan);
+                }
+            }
+            TestSupport.check(helper, foundSpartanWeapon, id + " should still generate other Spartan weapons");
         }
         helper.succeed();
     }

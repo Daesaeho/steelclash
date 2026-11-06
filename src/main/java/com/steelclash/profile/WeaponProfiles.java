@@ -20,9 +20,9 @@ import net.neoforged.neoforge.registries.datamaps.DataMapType;
 import net.neoforged.neoforge.registries.datamaps.RegisterDataMapTypesEvent;
 
 /**
- * Finds the weapon profile for an item. Resolution order:
+ * Finds the weapon profile for an item. Spartan cestus are excluded before profile lookup. Resolution order:
  * <ol>
- *     <li>the {@code steelclash:weapon_profile} item data map (datapacks can override anything)</li>
+ *     <li>the {@code steelclash:weapon_profile} item data map</li>
  *     <li>Spartan Weaponry weapon type, when installed (covers SW addon weapons automatically)</li>
  *     <li>vanilla tags: {@code #minecraft:swords} → sword, {@code #minecraft:axes} → axe</li>
  * </ol>
@@ -66,6 +66,14 @@ public final class WeaponProfiles {
     }
 
     public static Optional<Resolved> resolve(ItemStack stack, RegistryAccess access) {
+        return isExcluded(stack) ? Optional.empty() : resolveProfile(stack, access);
+    }
+
+    private static boolean isExcluded(ItemStack stack) {
+        return !stack.isEmpty() && Compat.SPARTAN_WEAPONRY.isLoaded() && SpartanWeaponryCompat.isCestus(stack);
+    }
+
+    private static Optional<Resolved> resolveProfile(ItemStack stack, RegistryAccess access) {
         if (stack.isEmpty()) {
             return Optional.empty();
         }
@@ -83,8 +91,12 @@ public final class WeaponProfiles {
      * mob data map.
      */
     public static Optional<Resolved> resolveFor(LivingEntity entity) {
+        ItemStack stack = entity.getMainHandItem();
+        if (isExcluded(stack)) {
+            return Optional.empty();
+        }
         RegistryAccess access = entity.level().registryAccess();
-        Optional<Resolved> held = resolve(entity.getMainHandItem(), access);
+        Optional<Resolved> held = resolveProfile(stack, access);
         if (held.isPresent() || entity instanceof Player) {
             return held;
         }

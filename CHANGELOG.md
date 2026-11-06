@@ -1,5 +1,6 @@
 # Unreleased
 
+- Exclude the Spartan cestus family from Steelclash weapon profiles, mob arming, and new weaponsmith loot.
 - Fix zombie head roll carrying over between draws and keep the outer head layer aligned during combat poses.
 - Add opt-in grip-shoulder and final arm-transform measurements for blended first-person poses and weapon/kick
   handovers. Record the remaining reach gaps and an offline joint-solve candidate; runtime grip acceptance remains open.
