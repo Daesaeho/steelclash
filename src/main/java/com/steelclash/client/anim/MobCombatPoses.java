@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.steelclash.Config;
 import com.steelclash.SteelClash;
+import com.steelclash.client.HitReactions;
 import com.steelclash.client.dev.PoseSheet;
 import com.steelclash.combat.ModAttachments;
 import com.steelclash.core.WeaponRig;
@@ -150,6 +151,8 @@ public final class MobCombatPoses {
         // ModelPart yaw is in model space, where the body's turn is -y (see WeaponRig.bodyRotation).
         parts.rightLeg.yRot += pose.hipLagOffset();
         parts.leftLeg.yRot += pose.hipLagOffset();
+        // The model is shared, and vanilla does not reset the head's roll in setupAnim.
+        HitReactions.preserveHeadPose(model, parts.head);
         add(parts.head, pose, "head");
         if (parts.body != null) {
             add(parts.body, pose, "torso"); // the torso part only gets the clip's extra torso motion
@@ -159,6 +162,9 @@ public final class MobCombatPoses {
         blendPart(blend, "right_leg", parts.rightLeg);
         blendPart(blend, "left_leg", parts.leftLeg);
         blendPart(blend, "head", parts.head);
+        if (model instanceof HumanoidModel<?> humanoid) {
+            humanoid.hat.copyFrom(humanoid.head);
+        }
         if (parts.body != null) blendPart(blend, "torso", parts.body);
         HumanoidArm main = pose.leftHanded() ? HumanoidArm.LEFT : HumanoidArm.RIGHT;
         HeldItemTurn target = ITEM_TURNS.get(entity);

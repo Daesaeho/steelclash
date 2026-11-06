@@ -67,6 +67,26 @@ public final class HitReactions {
     private record Blow(long at, HitReaction reaction) {
     }
 
+    private record PartTransform(ModelPart part, PartPose pose, float xScale, float yScale, float zScale) {
+        PartTransform(ModelPart part) {
+            this(part, part.storePose(), part.xScale, part.yScale, part.zScale);
+        }
+
+        void restore() {
+            part.loadPose(pose);
+            part.xScale = xScale;
+            part.yScale = yScale;
+            part.zScale = zScale;
+        }
+    }
+
+    private record HeadPose(PartTransform head, @Nullable PartTransform hat) {
+        void restore() {
+            head.restore();
+            if (hat != null) hat.restore();
+        }
+    }
+
     /** A parried blade waiting for (or showing in) the stagger of the attack it belongs to. */
     private static final class Bounce {
         final int serial;
@@ -88,6 +108,7 @@ public final class HitReactions {
     private static final Map<LivingEntity, Bounce> BOUNCES = new WeakHashMap<>();
     /** Model parts hidden for the body being drawn; shown again after it, as models are shared between bodies. */
     private static final List<ModelPart> HIDDEN = new ArrayList<>();
+    private static final Map<EntityModel<?>, HeadPose> HEAD_POSES = new WeakHashMap<>();
     private static final List<FlyingHead> HEADS = new ArrayList<>();
     /** The level the flying heads are in: a new level (another dimension, another world) clears them. */
     @Nullable
@@ -148,6 +169,17 @@ public final class HitReactions {
         return bounce.progress;
     }
 
+    /** Save the vanilla head pose once even when a combat pose and a hit reaction both modify it. */
+    public static void preserveHeadPose(EntityModel<?> model, ModelPart head) {
+        HEAD_POSES.computeIfAbsent(model, ignored -> new HeadPose(new PartTransform(head),
+                model instanceof HumanoidModel<?> humanoid ? new PartTransform(humanoid.hat) : null));
+    }
+
+    static void restoreHeadPose(EntityModel<?> model) {
+        HeadPose pose = HEAD_POSES.remove(model);
+        if (pose != null) pose.restore();
+    }
+
     /** After the model's own pose (and Steel Clash's combat pose): throw the struck part, hide a lost head. */
     public static void applyParts(LivingEntity entity, EntityModel<?> model) {
         if (HEADLESS.containsKey(entity)) {
@@ -170,9 +202,9 @@ public final class HitReactions {
         }
         double scale = envelope * strength;
         if (model instanceof HumanoidModel<?> humanoid) {
-            throwParts(blow.reaction(), scale, humanoid.head, humanoid.rightArm, humanoid.leftArm, humanoid.rightLeg, humanoid.leftLeg);
+            throwParts(model, blow.reaction(), scale, humanoid.head,
+                    humanoid.rightArm, humanoid.leftArm, humanoid.rightLeg, humanoid.leftLeg);
             // The outer layers copy their parts at the end of setupAnim, which has already run.
-            humanoid.hat.copyFrom(humanoid.head);
             if (model instanceof PlayerModel<?> player) {
                 player.rightSleeve.copyFrom(player.rightArm);
                 player.leftSleeve.copyFrom(player.leftArm);
@@ -180,7 +212,8 @@ public final class HitReactions {
                 player.leftPants.copyFrom(player.leftLeg);
             }
         } else if (model instanceof IllagerModel<?> illager) {
-            throwParts(blow.reaction(), scale, illager.getHead(), illager.rightArm, illager.leftArm, illager.rightLeg, illager.leftLeg);
+            throwParts(model, blow.reaction(), scale, illager.getHead(),
+                    illager.rightArm, illager.leftArm, illager.rightLeg, illager.leftLeg);
         }
     }
 
@@ -233,6 +266,7 @@ public final class HitReactions {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     static void afterBody(RenderLivingEvent.Post<?, ?> event) {
+        restoreHeadPose(event.getRenderer().getModel());
         for (ModelPart part : HIDDEN) {
             part.visible = true;
         }
@@ -305,9 +339,16 @@ public final class HitReactions {
         }
     }
 
-    private static void throwParts(HitReaction reaction, double scale, ModelPart head, ModelPart rightArm, ModelPart leftArm,
-                                   ModelPart rightLeg, ModelPart leftLeg) {
-        add(head, reaction.parts().get("head"), scale);
+    private static void throwParts(EntityModel<?> model, HitReaction reaction, double scale, ModelPart head,
+                                   ModelPart rightArm, ModelPart leftArm, ModelPart rightLeg, ModelPart leftLeg) {
+        double[] headRotation = reaction.parts().get("head");
+        if (headRotation != null) {
+            preserveHeadPose(model, head);
+            add(head, headRotation, scale);
+            if (model instanceof HumanoidModel<?> humanoid) {
+                humanoid.hat.copyFrom(head);
+            }
+        }
         add(rightArm, reaction.parts().get("rightArm"), scale);
         add(leftArm, reaction.parts().get("leftArm"), scale);
         add(rightLeg, reaction.parts().get("rightLeg"), scale);

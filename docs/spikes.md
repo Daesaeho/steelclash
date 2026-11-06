@@ -62,6 +62,10 @@ existing `DRAW_INTERRUPTED` feedback at strength 0, which needed no protocol cha
 
 ## Hit feel
 
+- Vanilla humanoid setup updates head pitch and yaw but leaves roll intact on the shared model. Steelclash
+  saves the head and headwear before combat offsets or a hit reaction, then restores them after the render
+  layers. A client-model probe verified repeated head hits and caught all three mutations to the save,
+  restore, and hit-reaction headwear paths. Twelve matched zombie slash samples showed no visible change.
 - **Contact point.** `SwingTracer` tested the whole hilt-to-tip segment at each sample, so a hit was traced along
   the blade; contact metadata now distinguishes the historical collision entry, clamped historical body point
   and projection onto the target's current body. Original attack identity/tick/progress survive held delivery;

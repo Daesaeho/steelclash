@@ -120,6 +120,8 @@ Select the relevant checks below; preserve the player guide's normal controls an
 
 ### Hit feel
 
+- Land a nonlethal sideways head hit on a zombie with a second zombie nearby. Check that the head and its
+  outer layer move together, the struck zombie returns to its normal pose, and the second stays upright.
 - Contact metadata: [the checkpoint](archive/contact-metadata-20261015.md) separates server contact frames,
   received/debug-drawn data, retained source diagnostics and actual freeze. Exercise world replacement, real remote delivery and broader model/view
   stacks. The recorded natural expiry does not establish runtime world-replacement cleanup or anatomical collision.
